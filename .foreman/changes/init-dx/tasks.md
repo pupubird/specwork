@@ -10,7 +10,7 @@
 
 ## 3. Migration Core
 
-- [ ] 3.1 Implement `migrateOpenspec(cwd: string): Promise<MigrateResult>` in `src/core/migrate.ts`: scan `openspec/specs/` and `openspec/changes/`, apply path mapping rules, copy files, merge config, delete `openspec/`
+- [x] 3.1 Implement `migrateOpenspec(cwd: string): Promise<MigrateResult>` in `src/core/migrate.ts`: scan `openspec/specs/` and `openspec/changes/`, apply path mapping rules, copy files, merge config, delete `openspec/`
 
 ## 4. Migration CLI
 

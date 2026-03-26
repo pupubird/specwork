@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -14,12 +14,18 @@ export function createTestProject(): string {
 }
 
 export function runForeman(cwd: string, args: string): { stdout: string; stderr: string; exitCode: number } {
-  try {
-    const stdout = execSync(`node ${CLI} ${args}`, { cwd, encoding: 'utf-8', stdio: 'pipe' });
-    return { stdout, stderr: '', exitCode: 0 };
-  } catch (e: any) {
-    return { stdout: e.stdout || '', stderr: e.stderr || '', exitCode: e.status || 1 };
-  }
+  // Use shell: true to preserve quoted arguments
+  const result = spawnSync(`node ${CLI} ${args}`, {
+    cwd,
+    encoding: 'utf-8',
+    stdio: 'pipe',
+    shell: true,
+  });
+  return {
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+    exitCode: result.status ?? 1,
+  };
 }
 
 export function cleanup(dir: string) {

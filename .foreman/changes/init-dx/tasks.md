@@ -1,6 +1,6 @@
 ## 1. Types & Template Module
 
-- [ ] 1.1 Define `MigrateResult` and `InitResult` types in `src/types/` for structured init/migrate output
+- [x] 1.1 Define `MigrateResult` and `InitResult` types in `src/types/` for structured init/migrate output
 - [ ] 1.2 Create `src/templates/claude-files.ts` exporting `CLAUDE_FILES: Record<string, string>` with all 17 embedded `.claude/` file contents (agents, skills, commands, hooks)
 
 ## 2. Enhanced `foreman init`

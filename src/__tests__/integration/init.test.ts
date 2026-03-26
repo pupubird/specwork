@@ -79,8 +79,8 @@ describe('foreman init', () => {
     expect(files).toContain('spec.md');
   });
 
-  it('creates .claude/ directories when --with-claude is passed', () => {
-    const result = runForeman(dir, 'init --with-claude');
+  it('creates .claude/ directories automatically (batteries-included)', () => {
+    const result = runForeman(dir, 'init');
     expect(result.exitCode).toBe(0);
 
     const expectedClaudeDirs = [
@@ -94,7 +94,7 @@ describe('foreman init', () => {
       expect(fs.existsSync(path.join(dir, d)), `Expected .claude dir ${d} to exist`).toBe(true);
     }
 
-    expect(fs.existsSync(path.join(dir, '.claude', 'FOREMAN.md'))).toBe(true);
+    expect(fs.existsSync(path.join(dir, '.claude', 'settings.json'))).toBe(true);
   });
 
   it('warns and exits non-zero on re-init without --force', () => {

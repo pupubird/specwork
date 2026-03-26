@@ -15,3 +15,10 @@ export interface OutputOptions {
   json: boolean;
   quiet: boolean;
 }
+
+export interface MigrateResult {
+  specsMigrated: number;
+  changesMigrated: number;
+  filesTotal: number;
+  openspecRemoved: boolean;
+}

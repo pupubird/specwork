@@ -1,5 +1,5 @@
 {
-  "name": "@pupubird/specwork",
+  "name": "specwork",
   "version": "0.1.0",
   "description": "Spec-driven, test-first, graph-based workflow engine for Claude Code",
   "type": "module",

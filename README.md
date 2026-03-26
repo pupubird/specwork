@@ -1,111 +1,110 @@
 # Specwork
 
-> Spec-driven, test-first, graph-based workflow engine for Claude Code
+> Your AI agent keeps forgetting what it's supposed to do halfway through. Specwork fixes that.
 
-[![npm version](https://img.shields.io/npm/v/@pupubird/specwork.svg)](https://www.npmjs.com/package/@pupubird/specwork)
+[![npm version](https://img.shields.io/npm/v/specwork.svg)](https://www.npmjs.com/package/specwork)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 
-Specwork orchestrates multi-step AI development workflows using a directed acyclic graph (DAG) of nodes. Each node is either a deterministic shell command or an LLM subagent. Every workflow follows the same discipline: **specs first, tests before implementation, verified at every step**.
+Specwork is a **spec-driven, test-first workflow engine** built and optimized for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **Agent Teams**. It breaks complex changes into a graph of small, verifiable steps — and guides the AI agent through every single one without losing focus.
+
+> **Note:** Specwork currently requires Claude Code with Agent Teams support. It uses `TeamCreate`/`TeamDelete`, subagent spawning, hooks, and skills — all Claude Code primitives. No other AI coding tools are supported at this time.
 
 ---
 
-## Features
+## The Problem
 
-- **Graph-based DAG execution** — define nodes with explicit dependencies; Specwork walks the graph in order, running nodes in parallel when possible
-- **Test-first by design** — `write-tests` node always runs before any implementation node; tests must fail (red state) before any code is written
-- **Progressive context (L0/L1/L2)** — subagents receive exactly the context they need: compressed headlines for all completed nodes, full summaries for parent nodes, on-demand expansion for deep dives
-- **Scope enforcement** — each LLM node declares the files it may touch; a hook blocks any write outside that scope
-- **Human gates** — pause execution at any node and require human approval before continuing
-- **Spec-driven conventions** — built-in spec system (proposal → specs → design → tasks) tracks WHY and WHAT before any code is written
-- **Claude Code native** — built entirely on Claude Code primitives (agents, hooks, skills, commands); no runtime dependencies beyond Claude Code itself
+Ask an AI agent to build something non-trivial and watch what happens:
 
----
+- It forgets the original goal after 3-4 steps
+- It skips writing tests, or writes them after the code
+- It modifies files it shouldn't touch
+- It loses track of what's done and what's left
+- When something fails, it spirals instead of recovering gracefully
 
-## How It Works
+You end up babysitting the agent, re-explaining context, and fixing drift. The bigger the task, the worse it gets.
 
-```
-Proposal → Specs → Design → Tasks → Graph → Execute → Verify
-```
+## How Specwork Solves This
 
-1. **Write a change proposal** describing why and what
-2. **Write delta specs** (behavior contracts: GIVEN/WHEN/THEN) for affected capabilities
-3. **Generate a graph** from your tasks checklist — Specwork maps each task to a node
-4. **Run the workflow** — Specwork walks the graph: snapshot → write tests (RED) → implement node by node (GREEN) → verify
-5. **Archive the change** — delta specs merge into source-of-truth specs; artifacts are preserved in history
+**Specs before code. Tests before implementation. Context flows, never dumps.**
 
----
+Specwork decomposes your change into a directed acyclic graph (DAG) of nodes. Each node is a small, scoped unit of work — either a shell command or an LLM subagent. The engine walks the graph and at every step tells the agent exactly what to do next.
 
-## Architecture
+Three key mechanisms make this work:
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    /specwork-run                      │
-│              (specwork-engine skill)                  │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │     Graph Executor      │
-          │  reads graph.yaml +     │
-          │  state.yaml             │
-          └─┬──────────┬───────────┘
-            │          │
-   ┌────────▼──┐  ┌────▼──────────┐
-   │deterministic│  │   llm node   │
-   │shell command│  │  (subagent)  │
-   └────────────┘  └──────┬───────┘
-                          │
-              ┌───────────▼──────────┐
-              │   Context Assembly   │
-              │  L0 (all nodes)      │
-              │  L1 (parent nodes)   │
-              │  L2 (on EXPAND req)  │
-              └───────────┬──────────┘
-                          │
-          ┌───────────────▼──────────────┐
-          │         Subagents            │
-          │  test-writer  · implementer  │
-          │  verifier     · summarizer   │
-          └──────────────────────────────┘
+### 1. Gradual Reveal
+
+Instead of loading a 500-line instruction manual upfront (which the agent will forget), Specwork embeds the next instruction directly in each CLI response:
+
+```json
+{
+  "status": "ready",
+  "next_action": {
+    "command": "team:spawn",
+    "description": "Spawn teammates for ready nodes",
+    "context": "Add JWT authentication to the API"
+  }
+}
 ```
 
-**Context tiers:**
+The agent never needs to remember the full workflow — it just follows `next_action`.
 
-| Tier | Who gets it | Size | Content |
-|------|-------------|------|---------|
-| L0 | All completed nodes | ~10 tokens | One-line headline |
-| L1 | Direct parent nodes | ~100 tokens | Files changed, exports, decisions |
-| L2 | On-demand (EXPAND) | ~1000+ tokens | Full diff + verify + output |
+### 2. Context Reinforcement
+
+Every `next_action` includes a `context` field pulled from your original change description. The agent is reminded of the user's intent at every state transition, so it never drifts off-task.
+
+### 3. Progressive Context (L0 / L1 / L2)
+
+Subagents get exactly the context they need — not a full conversation dump:
+
+| Tier   | Scope                | Size          | Content                               |
+| ------ | -------------------- | ------------- | ------------------------------------- |
+| **L0** | All completed nodes  | ~10 tokens    | One-line headline                     |
+| **L1** | Parent nodes only    | ~100 tokens   | Files changed, exports, key decisions |
+| **L2** | On-demand (`EXPAND`) | ~1000+ tokens | Full diff, verification output        |
+
+This keeps the context window lean while ensuring no information is lost.
 
 ---
 
 ## Quick Start
 
+### Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured (with Agent Teams support)
+- Node.js >= 18
+
 ### Install
 
 ```bash
-npm install -g @pupubird/specwork
+npm install -g specwork
 ```
+
+### Initialize (one-time per project)
+
+```bash
+cd your-project
+specwork init
+```
+
+This creates the `.specwork/` directory, config, templates, and all Claude Code integration files (agents, skills, commands, hooks). Everything is batteries-included.
 
 ### Three commands to remember
 
 ```bash
-# 1. Initialize (one-time per project)
-specwork init
-
-# 2. Plan a change — describe what you want in plain English
+# 1. Plan a change — describe what you want in plain English
 specwork plan "Add JWT authentication to the API"
 
-# 3. Run the workflow — Specwork drives everything autonomously
+# 2. Run the workflow — Specwork drives everything autonomously
 specwork go add-jwt-authentication
 
-# Check progress anytime
+# 3. Check progress anytime
 specwork status
 ```
 
-That's it. `plan` creates the change structure and scaffolds all artifacts. `go` runs the full workflow: snapshot → write tests (RED) → implement node by node (GREEN) → verify at each step. `status` shows all active changes with progress.
+That's it. `plan` scaffolds the change structure. `go` runs the full workflow. `status` shows progress.
 
-### With Claude Code slash commands
+### Or use Claude Code slash commands
 
 ```
 /project:specwork-plan "Add JWT authentication"
@@ -113,99 +112,112 @@ That's it. `plan` creates the change structure and scaffolds all artifacts. `go`
 /project:specwork-status
 ```
 
-### What happens under the hood
+---
 
-1. `specwork plan` creates `.specwork/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
-2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
-3. `specwork graph generate <name>` maps tasks to a DAG of nodes
-4. `specwork go <name>` walks the graph: environment snapshot → tests (must fail first) → implementation → verification → commit
+## How It Works
 
-All the plumbing commands (`node start`, `context assemble`, `scope set`, etc.) are used by the engine internally — you never need to type them.
+```
+You describe a change
+        │
+        ▼
+┌──────────────────┐
+│   specwork plan   │  Scaffolds: proposal (WHY) → specs (WHAT) → design (HOW) → tasks (STEPS)
+└────────┬─────────┘
+         ▼
+┌──────────────────┐
+│  graph generate   │  Maps tasks to a DAG of nodes with dependencies
+└────────┬─────────┘
+         ▼
+┌──────────────────┐
+│   specwork go     │  Walks the graph autonomously:
+│                    │
+│  snapshot ─────────│──▶ Capture project state (file tree, deps, exports)
+│  write-tests ─────│──▶ Tests first — they MUST fail (RED)
+│  implement ───────│──▶ Make tests pass, minimum code, scoped files only (GREEN)
+│  verify ──────────│──▶ Type-check, test-pass, scope-check at every step
+│  commit ──────────│──▶ Atomic commits per node
+└──────────────────┘
+```
+
+The engine uses **Agent Teams** — Claude Code's multi-agent primitive — as its core execution model. Every batch of ready nodes gets a dedicated team: teammates execute in parallel, and the team is cleaned up before the next batch. This is mandatory for all Specwork execution, regardless of node count or workflow complexity.
 
 ---
 
-## Project Structure
+## Philosophy
+
+### Specs are the source of truth
+
+Every change starts with a behavior spec — not code. Specs use `SHALL/MUST/SHOULD` keywords and `GIVEN/WHEN/THEN` scenarios to describe what the system should do, not how. Implementation details (class names, libraries) stay out of specs.
+
+```markdown
+### Requirement: Token Validation
+
+The system SHALL reject expired JWT tokens with a 401 status code.
+
+#### Scenario: Expired token submitted
+
+- **GIVEN** a JWT token with `exp` in the past
+- **WHEN** the token is submitted to any authenticated endpoint
+- **THEN** the system responds with HTTP 401 and error body `{"error": "token_expired"}`
+```
+
+### Tests prove the spec, code satisfies the tests
+
+The `write-tests` node runs before any implementation. Tests are written from specs and must fail (red state). Implementation nodes then make them pass — nothing more. Implementer agents cannot modify test files.
+
+### Scope keeps agents honest
+
+Each node declares the files it may touch. A scope guard hook blocks any write outside that boundary. An implementer working on `src/auth/jwt.ts` cannot accidentally modify `src/db/schema.ts`.
+
+### Failures are handled, not ignored
+
+When a node fails, the engine knows what to do:
+
+- **Retries remaining?** Re-spawn the subagent with error context
+- **Retries exhausted?** Escalate to the user with actionable suggestions
+- **Blocked by dependencies?** Report which nodes are stuck and why
+
+Every failure path has a `next_action`. The agent never gets stuck in a loop.
+
+---
+
+## Architecture
 
 ```
 .specwork/
 ├── config.yaml              # Engine + spec configuration
-├── schema.yaml              # Artifact dependency graph
-├── templates/               # Proposal, spec, design, tasks starters
-├── specs/                   # Source-of-truth specs (current behavior)
-├── changes/                 # In-flight change proposals
-│   ├── <change-name>/       # proposal + specs + design + tasks
-│   └── archive/             # Completed changes (immutable history)
-├── graph/                   # Execution graphs
-│   └── <change>/
-│       ├── graph.yaml       # Node DAG
-│       └── state.yaml       # Runtime status
-├── nodes/                   # Per-node artifacts (L0/L1/L2, verify, output)
-├── examples/                # Reference graphs
-└── env/                     # Environment configs (dev/prod)
+├── specs/                   # Source-of-truth behavior specs
+├── changes/                 # In-flight changes (proposal + specs + design + tasks)
+│   └── <change-name>/
+├── graph/<change>/
+│   ├── graph.yaml           # Node DAG (dependencies, scope, validation)
+│   └── state.yaml           # Runtime state (status per node)
+├── nodes/<change>/          # Per-node artifacts (L0/L1/L2, verify output)
+└── templates/               # Starter templates for proposals, specs, design, tasks
 
 .claude/
-├── agents/                  # Subagent definitions (test-writer, implementer, verifier, summarizer)
-├── skills/                  # Engine logic (specwork-engine, specwork-context, specwork-conventions)
-├── commands/                # Slash commands (specwork-run, specwork-graph, specwork-status)
-└── hooks/                   # Lifecycle hooks (scope-guard, type-check, session-init, node-complete)
+├── agents/                  # Subagent definitions
+├── skills/                  # Engine logic
+├── commands/                # Slash commands
+└── hooks/                   # Lifecycle hooks (scope-guard, type-check)
 ```
 
----
+### Subagents
 
-## Subagents
+| Agent                  | Model  | Role                                                      |
+| ---------------------- | ------ | --------------------------------------------------------- |
+| `specwork-test-writer` | opus   | Writes tests from specs — must all fail (RED)             |
+| `specwork-implementer` | sonnet | Makes tests pass, minimum code, scoped files only         |
+| `specwork-verifier`    | haiku  | Read-only validation: type-check, tests pass, files exist |
+| `specwork-summarizer`  | haiku  | Generates L0/L1/L2 context after each node                |
 
-| Agent | Model | Role |
-|-------|-------|------|
-| `specwork-test-writer` | claude-opus | Writes tests from specs — must all fail (RED state) |
-| `specwork-implementer` | claude-sonnet | Makes tests pass, minimum code, within declared scope |
-| `specwork-verifier` | claude-haiku | Read-only validation: tsc-check, tests-pass, file-exists, exit-code |
-| `specwork-summarizer` | claude-haiku | Generates L0/L1/L2 context artifacts after each node |
+### Node Types
 
----
+**`deterministic`** — Runs a shell command. Captures stdout/stderr, validates exit code.
 
-## Node Types
+**`llm`** — Spawns a scoped subagent. Declares which files it may touch, what validation to run, and optionally requires a human gate.
 
-### `deterministic`
-
-Runs a shell command. Specwork captures stdout/stderr and validates the exit code.
-
-```yaml
-- id: snapshot
-  type: deterministic
-  command: |
-    find src -name "*.ts" | head -100 > .specwork/nodes/snapshot/output.txt
-  outputs:
-    - .specwork/nodes/snapshot/output.txt
-```
-
-### `llm`
-
-Spawns a subagent with scoped file access.
-
-```yaml
-- id: impl-jwt
-  type: llm
-  agent: specwork-implementer
-  scope:
-    - src/auth/jwt.ts
-  validate:
-    - tsc-check: ""
-    - tests-pass: src/__tests__/auth.unit.test.ts
-  prompt: |
-    Implement JWT token generation and validation.
-    Make the unit tests pass.
-```
-
-### `human`
-
-Pauses execution and requires manual approval.
-
-```yaml
-- id: write-tests
-  type: llm
-  agent: specwork-test-writer
-  gate: human
-```
+**`human`** — Pauses execution for manual approval before continuing.
 
 ---
 
@@ -223,7 +235,7 @@ models:
 execution:
   max_retries: 2
   expand_limit: 1
-  parallel_mode: parallel  # TeamCreate always used; controls concurrency
+  parallel_mode: parallel
   snapshot_refresh: after_each_node
 
 context:
@@ -238,31 +250,30 @@ spec:
 
 ---
 
-## Spec Conventions (Quick Reference)
+## CLI Reference
 
-```markdown
-### Requirement: Name          ← 3 hashtags
-The system SHALL <behavior>.
+| Command                                  | Description                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `specwork init`                          | Initialize project (creates `.specwork/` + Claude Code integration) |
+| `specwork plan "<description>"`          | Create a new change from a plain-English description                |
+| `specwork go <change>`                   | Run the workflow — walks the graph autonomously                     |
+| `specwork status [change]`               | Show progress for all or a specific change                          |
+| `specwork graph generate <change>`       | Generate DAG from tasks.md                                          |
+| `specwork graph show <change>`           | Display the node graph                                              |
+| `specwork node start <change> <node>`    | Start a specific node                                               |
+| `specwork node complete <change> <node>` | Mark a node complete                                                |
+| `specwork node fail <change> <node>`     | Mark a node failed                                                  |
+| `specwork node verify <change> <node>`   | Run verification checks                                             |
+| `specwork archive <change>`              | Archive a completed change                                          |
+| `specwork doctor [change]`               | Health-check project or change artifacts                            |
 
-#### Scenario: Description     ← 4 hashtags (critical — never 3)
-- **GIVEN** <initial state>
-- **WHEN** <trigger>
-- **THEN** <expected outcome>
-```
-
-- `SHALL/MUST` — absolute requirement
-- `SHOULD` — recommended, exceptions exist
-- `MAY` — optional
-- Specs describe **behavior only** — no class names, no library choices
-- `.specwork/specs/` = source of truth; `.specwork/changes/` = proposed deltas
+All commands support `--json` for machine-readable output with `next_action` guidance.
 
 ---
 
 ## Credits
 
-Specwork's spec convention system is based on [OpenSpec](https://github.com/Fission-AI/OpenSpec) by [Fission AI](https://github.com/Fission-AI). The proposal → design → tasks workflow, GIVEN/WHEN/THEN scenario format, and delta spec system were adapted from OpenSpec and integrated as a built-in Specwork feature. We thank the OpenSpec team for their foundational work on spec-driven development.
-
----
+Specwork's spec convention system is based on [OpenSpec](https://github.com/Fission-AI/OpenSpec) by [Fission AI](https://github.com/Fission-AI). The proposal/design/tasks workflow, GIVEN/WHEN/THEN scenario format, and delta spec system were adapted from OpenSpec and integrated as a built-in feature.
 
 ## Contributing
 

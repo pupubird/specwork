@@ -157,9 +157,11 @@ describe('foreman go', () => {
 
   it('fails if no tasks.md and no graph', () => {
     runForeman(dir, 'new my-change');
+    // Delete tasks.md to simulate missing tasks
+    fs.unlinkSync(path.join(dir, '.foreman', 'changes', 'my-change', 'tasks.md'));
     const result = runForeman(dir, 'go my-change --json');
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toMatch(/graph|tasks/i);
+    expect(result.stderr).toMatch(/graph|tasks|plan/i);
   });
 
   it('reports done when all nodes are complete', () => {

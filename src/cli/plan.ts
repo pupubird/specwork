@@ -26,7 +26,8 @@ export function makePlanCommand(): Command {
     .description('Plan a new change from a natural language description')
     .argument('<description>', 'What you want to build (in quotes)')
     .option('--name <name>', 'Override the auto-generated change name')
-    .action((description: string, opts: { name?: string }, cmd: Command) => {
+    .option('--yolo', 'Skip clarifying questions — generate everything from description alone', false)
+    .action((description: string, opts: { name?: string; yolo: boolean }, cmd: Command) => {
       const root = findForemanRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
@@ -75,12 +76,14 @@ export function makePlanCommand(): Command {
       }
 
       // .foreman.yaml metadata — status is "planning" (not "draft")
+      const mode = opts.yolo ? 'yolo' : 'brainstorm';
       const metadata = {
         schema: 'foreman-change/v1',
         change,
         description,
         created_at: new Date().toISOString(),
         status: 'planning',
+        mode,
       };
       writeYaml(path.join(changeDir, '.foreman.yaml'), metadata);
 
@@ -91,6 +94,7 @@ export function makePlanCommand(): Command {
         output({
           change,
           description,
+          mode,
           path: changeDir,
           files,
           next_steps,

@@ -9,12 +9,36 @@ Plan a new change from description: $ARGUMENTS
 
 ## Steps
 
-1. Run `foreman plan "$ARGUMENTS" --json` to create the change directory and get the payload
-2. Read the output JSON — it contains the change name, file paths, and description
-3. Fill in the change artifacts:
-   - **proposal.md** — expand the description into WHY and WHAT sections
-   - **tasks.md** — break the work into numbered task groups with checkboxes
-   - **design.md** — document architectural decisions (skip for simple changes)
-4. Run `foreman graph generate <change-name>` to create the execution graph
-5. Run `foreman graph show <change-name>` to display the generated graph
-6. Present the plan to the user for approval before running `foreman go <change-name>`
+### 1. Create the change
+```bash
+foreman plan "$ARGUMENTS" --json
+```
+Read the output JSON — it contains `change`, `mode`, `path`, and `description`.
+
+### 2. Branch based on mode
+
+**If `mode: "brainstorm"` (default):**
+
+1. Spawn `foreman-planner` agent with `phase: "research"`:
+   - Pass the description and change path
+   - Agent reads codebase, finds context, returns findings + 3-5 clarifying questions
+2. Present the questions to the user with the agent's findings
+3. Collect user answers
+4. Spawn `foreman-planner` agent with `phase: "generate"`:
+   - Pass the description, answers, and change path
+   - Agent writes proposal.md, design.md, tasks.md, and specs/
+   - Returns a summary of what was generated
+
+**If `mode: "yolo"` (--yolo flag):**
+
+1. Spawn `foreman-planner` agent with `phase: "yolo"`:
+   - Pass the description and change path
+   - Agent researches codebase silently, makes all decisions, writes all artifacts
+   - Returns a summary
+
+### 3. Generate graph and present plan
+```bash
+foreman graph generate <change-name>
+foreman graph show <change-name>
+```
+Show the generated graph to the user. Ask for approval before proceeding to `foreman go`.

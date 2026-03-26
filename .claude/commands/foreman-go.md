@@ -10,13 +10,14 @@ Run the workflow autonomously for change: $ARGUMENTS
 ## Steps
 
 1. Run `foreman go $ARGUMENTS --json` to get the execution payload
+   - If no graph exists, `go` auto-generates it from tasks.md (check `auto_generated_graph` in response)
 2. Check the response status:
    - `ready` — nodes are ready to execute; follow the foreman-engine skill execution loop
    - `done` — workflow is complete; report summary
    - `blocked` — no runnable nodes; report which nodes are blocked and why
    - `waiting` — nodes are in progress; wait or check back later
 3. For each ready node, follow the foreman-engine skill:
-   - `deterministic`: run the command, then `foreman node complete $ARGUMENTS <node-id>`
+   - `deterministic`: `foreman node start` → run command → `foreman node complete`
    - `llm`: `foreman node start` → `foreman context assemble` → spawn subagent → verify → `foreman node complete`
    - `human`: present output to user, await approval
 4. After each node completes, run `foreman go $ARGUMENTS --json` again to get the next batch

@@ -18,7 +18,7 @@
 
 ## 5. Init Tests
 
-- [ ] 5.1 Unit tests for enhanced init: verify all expected files written, correct config keys, `.gitignore` contents, `.claude/settings.json` hooks
+- [x] 5.1 Unit tests for enhanced init: verify all expected files written, correct config keys, `.gitignore` contents, `.claude/settings.json` hooks
 - [ ] 5.2 Integration test for `foreman init --force`: verify idempotent re-init overwrites existing files without error
 
 ## 6. Migration Tests

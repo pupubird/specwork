@@ -1,0 +1,6 @@
+schema: foreman-change/v1
+change: tighten-qa-loop
+description: Tighten QA verification loop - auto-retry when verifier or QA agent finds issues, with configurable max retries and escalation to user when exhausted
+created_at: 2026-03-26T15:42:25.754Z
+status: planning
+mode: brainstorm

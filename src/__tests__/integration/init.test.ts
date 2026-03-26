@@ -55,6 +55,17 @@ describe('foreman init', () => {
     expect(models.verifier).toBe('haiku');
   });
 
+  it('defaults parallel_mode to parallel', () => {
+    runForeman(dir, 'init');
+
+    const configPath = path.join(dir, '.foreman', 'config.yaml');
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const config = parseYaml(raw) as Record<string, unknown>;
+    const execution = config.execution as Record<string, string>;
+
+    expect(execution.parallel_mode).toBe('parallel');
+  });
+
   it('creates 4 template files', () => {
     runForeman(dir, 'init');
 

@@ -19,7 +19,7 @@ const DEFAULT_CONFIG = {
   execution: {
     max_retries: 2,
     expand_limit: 1,
-    parallel_mode: 'sequential',
+    parallel_mode: 'parallel',
     snapshot_refresh: 'after_each_node',
   },
   context: {

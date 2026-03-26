@@ -12,7 +12,7 @@ models:
 execution:
   max_retries: 2
   expand_limit: 1
-  parallel_mode: sequential   # or "parallel" for Agent Teams when 3+ nodes ready
+  parallel_mode: parallel   # TeamCreate always used; sequential available for resource-constrained environments
   snapshot_refresh: after_each_node
   verify: gates              # strict = every node, gates = human gates + integration, none = skip
 

@@ -52,7 +52,7 @@ function initForeman(root: string): void {
 
   const config = {
     models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
-    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'sequential', snapshot_refresh: 'after_each_node' },
+    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
     context: { ancestors: 'L0', parents: 'L1' },
     spec: { schema: 'spec-driven', specs_dir: '.foreman/specs', changes_dir: '.foreman/changes', archive_dir: '.foreman/changes/archive', templates_dir: '.foreman/templates' },
     graph: { graphs_dir: '.foreman/graph', nodes_dir: '.foreman/nodes' },

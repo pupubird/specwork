@@ -163,9 +163,9 @@ export function checkSpecs(root: string): CheckResult {
       const scenarioBlocks = content.split(/^#{3,4} Scenario:/m).slice(1);
       for (const block of scenarioBlocks) {
         const blockLines = block.split('\n').map(l => l.trim()).filter(Boolean);
-        const hasGWT = blockLines.some(l => /\bGIVEN\b/.test(l)) &&
-                       blockLines.some(l => /\bWHEN\b/.test(l)) &&
-                       blockLines.some(l => /\bTHEN\b/.test(l));
+        const hasGWT = blockLines.some(l => /\*{0,2}GIVEN\*{0,2}/i.test(l)) &&
+                       blockLines.some(l => /\*{0,2}WHEN\*{0,2}/i.test(l)) &&
+                       blockLines.some(l => /\*{0,2}THEN\*{0,2}/i.test(l));
         if (!hasGWT) {
           results.push(fail(category, `${fileName}: GIVEN/WHEN/THEN structure`, `Scenario missing GIVEN/WHEN/THEN`));
         }
@@ -227,6 +227,27 @@ export function checkArchives(root: string): CheckResult {
         results.push(pass(category, `${name}: ${file} exists`));
       } else {
         results.push(fail(category, `${name}: ${file} exists`, `Missing ${file} in archive ${name}`));
+      }
+    }
+
+    // Check all tasks are checked off
+    const tasksFilePath = path.join(dir, 'tasks.md');
+    if (fs.existsSync(tasksFilePath)) {
+      const tasksContent = fs.readFileSync(tasksFilePath, 'utf-8');
+      const unchecked = tasksContent.split('\n').filter(l => /^- \[ \]/.test(l));
+      if (unchecked.length > 0) {
+        results.push(fail(
+          category,
+          `${name}: all tasks checked off`,
+          `${unchecked.length} unchecked task(s) in archived tasks.md`,
+          true,
+          async () => {
+            const content = fs.readFileSync(tasksFilePath, 'utf-8');
+            fs.writeFileSync(tasksFilePath, content.replace(/^- \[ \]/gm, '- [x]'), 'utf-8');
+          }
+        ));
+      } else {
+        results.push(pass(category, `${name}: all tasks checked off`));
       }
     }
 

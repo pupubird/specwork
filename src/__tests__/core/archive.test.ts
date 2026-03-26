@@ -54,7 +54,7 @@ function createChange(root: string, change: string): void {
   writeYaml(path.join(cd, '.foreman.yaml'), { schema: 'foreman-change/v1', change, status: 'active' });
   writeMarkdown(path.join(cd, 'proposal.md'), '# Proposal\n\nTest proposal');
   writeMarkdown(path.join(cd, 'design.md'), '# Design\n\nTest design');
-  writeMarkdown(path.join(cd, 'tasks.md'), '## 1. Core\n\n- [ ] 1.1 Do something\n');
+  writeMarkdown(path.join(cd, 'tasks.md'), '## 1. Core\n\n- [x] 1.1 Do something\n');
 }
 
 function generateAndCompleteAll(root: string, change: string): void {
@@ -187,6 +187,15 @@ describe('archiveChange', () => {
 
   it('throws if change directory does not exist', () => {
     expect(() => archiveChange(root, 'nonexistent')).toThrow();
+  });
+
+  it('throws if tasks.md has unchecked tasks', () => {
+    createChange(root, 'my-feature');
+    // Overwrite tasks with unchecked items
+    writeMarkdown(path.join(changeDir(root, 'my-feature'), 'tasks.md'), '## 1. Core\n\n- [ ] 1.1 Not done yet\n');
+    generateAndCompleteAll(root, 'my-feature');
+
+    expect(() => archiveChange(root, 'my-feature')).toThrow(/unchecked/);
   });
 
   it('preserves specs subdirectory in archive', () => {

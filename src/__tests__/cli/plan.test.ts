@@ -181,6 +181,9 @@ describe('foreman go', () => {
     state.updated_at = ts;
     fs.writeFileSync(stateFp, stringifyYaml(state), 'utf-8');
 
+    // Check off tasks (archive requires all tasks checked)
+    writeTasksFile(dir, 'my-change', `## 1. Setup\n\n- [x] 1.1 Initialize the module\n`);
+
     const result = runForeman(dir, 'go my-change --json');
     const out = JSON.parse(result.stdout);
     expect(out.status).toBe('done');

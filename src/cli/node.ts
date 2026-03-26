@@ -7,6 +7,7 @@ import {
   nodeDir,
   currentNodePath,
   lockPath,
+  changeDir,
 } from '../utils/paths.js';
 import { readYaml, writeYaml, writeMarkdown, ensureDir } from '../io/filesystem.js';
 import { commit } from '../io/git.js';
@@ -129,6 +130,50 @@ const startCmd = new Command('start')
     }
   });
 
+// ── task check-off ────────────────────────────────────────────────────────────
+
+/**
+ * When a node completes, check off its corresponding task in tasks.md.
+ * Node IDs follow the pattern impl-{group}-{task} which maps to the
+ * N-th checkbox in the M-th ## group in tasks.md.
+ */
+function checkOffTask(root: string, change: string, nodeId: string): void {
+  const tasksPath = path.join(changeDir(root, change), 'tasks.md');
+  if (!fs.existsSync(tasksPath)) return;
+
+  // Parse node ID to get group/task indices
+  const match = /^impl-(\d+)-(\d+)$/.exec(nodeId);
+  if (!match) return; // non-impl nodes (snapshot, write-tests, integration) don't map to tasks
+
+  const targetGroup = parseInt(match[1], 10);
+  const targetTask = parseInt(match[2], 10);
+
+  const content = fs.readFileSync(tasksPath, 'utf-8');
+  const lines = content.split('\n');
+
+  let currentGroup = 0;
+  let taskInGroup = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    // Section header
+    if (/^##\s+/.test(lines[i])) {
+      currentGroup++;
+      taskInGroup = 0;
+      continue;
+    }
+
+    // Checkbox task
+    if (/^- \[ \]/.test(lines[i])) {
+      taskInGroup++;
+      if (currentGroup === targetGroup && taskInGroup === targetTask) {
+        lines[i] = lines[i].replace('- [ ]', '- [x]');
+        fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
+        return;
+      }
+    }
+  }
+}
+
 // ── foreman node complete ─────────────────────────────────────────────────────
 
 const completeCmd = new Command('complete')
@@ -158,6 +203,9 @@ const completeCmd = new Command('complete')
       ensureDir(nDir);
       writeMarkdown(`${nDir}/L0.md`, `- ${nodeId}: ${l0Summary}\n`);
     }
+
+    // Check off corresponding task in tasks.md
+    checkOffTask(root, change, nodeId);
 
     // Clear scope and current-node tracking
     clearScope(root);

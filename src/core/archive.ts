@@ -95,6 +95,19 @@ export function archiveChange(root: string, change: string): void {
     );
   }
 
+  // Validate all tasks are checked off before archiving
+  const tasksPath = path.join(src, 'tasks.md');
+  if (fs.existsSync(tasksPath)) {
+    const content = fs.readFileSync(tasksPath, 'utf-8');
+    const unchecked = content.split('\n').filter(l => /^- \[ \]/.test(l));
+    if (unchecked.length > 0) {
+      throw new ForemanError(
+        `Cannot archive "${change}": ${unchecked.length} unchecked task(s) remain in tasks.md. Complete all tasks before archiving.`,
+        ExitCode.ERROR
+      );
+    }
+  }
+
   const dest = archiveChangeDir(root, change);
   fs.mkdirSync(dest, { recursive: true });
 

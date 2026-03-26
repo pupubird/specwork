@@ -91,7 +91,7 @@ function createArchive(root: string, name: string, opts: { missingFiles?: string
     '.foreman.yaml': stringifyYaml({ schema: 'foreman-change/v1', change: name, status: opts.status ?? 'archived', archived_at: '2026-03-27T00:00:00Z' }),
     'proposal.md': '# Proposal\n',
     'design.md': '# Design\n',
-    'tasks.md': '## 1. Core\n\n- [ ] 1.1 Done\n',
+    'tasks.md': '## 1. Core\n\n- [x] 1.1 Done\n',
     'summary.md': '# Summary\n\nCompleted.',
   };
 

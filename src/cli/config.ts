@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { findForemanRoot, configPath } from '../utils/paths.js';
+import { findSpecworkRoot, configPath } from '../utils/paths.js';
 import { readYaml, writeYaml, exists } from '../io/filesystem.js';
 import { output, table } from '../utils/output.js';
 import { success, info } from '../utils/logger.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 
 // ── dot-path helpers ───────────────────────────────────────────────────────
@@ -48,24 +48,24 @@ function parseValue(raw: string): unknown {
   return raw;
 }
 
-// ── foreman config ─────────────────────────────────────────────────────────
+// ── specwork config ─────────────────────────────────────────────────────────
 
 export function makeConfigCommand(): Command {
-  const configCmd = new Command('config').description('Read and update Foreman configuration');
+  const configCmd = new Command('config').description('Read and update Specwork configuration');
 
-  // ── foreman config show ───────────────────────────────────────────────────
+  // ── specwork config show ───────────────────────────────────────────────────
 
   configCmd
     .command('show')
-    .description('Display the current .foreman/config.yaml')
+    .description('Display the current .specwork/config.yaml')
     .option('--key <dotpath>', 'Show a specific key (dot-separated path)')
     .action((opts: { key?: string }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const cp = configPath(root);
       if (!exists(cp)) {
-        throw new ForemanError('No config.yaml found. Run `foreman init` first.', ExitCode.ERROR);
+        throw new SpecworkError('No config.yaml found. Run `specwork init` first.', ExitCode.ERROR);
       }
 
       const config = readYaml<Record<string, unknown>>(cp);
@@ -73,7 +73,7 @@ export function makeConfigCommand(): Command {
       if (opts.key) {
         const val = getNestedValue(config, opts.key);
         if (val === undefined) {
-          throw new ForemanError(`Key "${opts.key}" not found in config`, ExitCode.ERROR);
+          throw new SpecworkError(`Key "${opts.key}" not found in config`, ExitCode.ERROR);
         }
         if (jsonMode) {
           output({ key: opts.key, value: val }, { json: true, quiet: false });
@@ -102,18 +102,18 @@ export function makeConfigCommand(): Command {
       table(['Key', 'Value'], rows);
     });
 
-  // ── foreman config set ────────────────────────────────────────────────────
+  // ── specwork config set ────────────────────────────────────────────────────
 
   configCmd
     .command('set <key> <value>')
     .description('Set a config value by dot-path (e.g., models.default opus)')
     .action((key: string, rawValue: string, _opts, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const cp = configPath(root);
       if (!exists(cp)) {
-        throw new ForemanError('No config.yaml found. Run `foreman init` first.', ExitCode.ERROR);
+        throw new SpecworkError('No config.yaml found. Run `specwork init` first.', ExitCode.ERROR);
       }
 
       const config = readYaml<Record<string, unknown>>(cp);

@@ -4,20 +4,20 @@ import { validateGraph } from '../core/graph-validator.js';
 import { initializeState } from '../core/state-machine.js';
 import { readYaml, writeYaml, exists, ensureDir } from '../io/filesystem.js';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   nodesDir,
 } from '../utils/paths.js';
 import { success, error, warn, info } from '../utils/logger.js';
 import { table } from '../utils/output.js';
-import { ForemanError, ChangeNotFoundError } from '../utils/errors.js';
+import { SpecworkError, ChangeNotFoundError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 
 export function makeGraphCommand(): Command {
-  const graph = new Command('graph').description('Manage Foreman execution graphs');
+  const graph = new Command('graph').description('Manage Specwork execution graphs');
 
   // ── generate ─────────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ export function makeGraphCommand(): Command {
     .command('generate <change>')
     .description('Generate graph.yaml and state.yaml from tasks.md')
     .action(async (change: string) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
 
       const generatedGraph = generateGraph(root, change);
 
@@ -53,7 +53,7 @@ export function makeGraphCommand(): Command {
     .description('Display the graph as a table or mermaid diagram')
     .option('--format <format>', 'Output format: table | mermaid', 'table')
     .action(async (change: string, opts: { format: string }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const gPath = graphPath(root, change);
       const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
@@ -95,7 +95,7 @@ export function makeGraphCommand(): Command {
     .command('validate <change>')
     .description('Validate graph.yaml and report errors/warnings')
     .action(async (change: string) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const gPath = graphPath(root, change);
 
       if (!exists(gPath)) {
@@ -115,7 +115,7 @@ export function makeGraphCommand(): Command {
         for (const e of result.errors) {
           error(`  ERR   ${e}`);
         }
-        throw new ForemanError(
+        throw new SpecworkError(
           `Graph "${change}" is invalid (${result.errors.length} error(s))`,
           ExitCode.ERROR
         );

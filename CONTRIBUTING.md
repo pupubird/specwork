@@ -1,4 +1,4 @@
-# Contributing to Foreman
+# Contributing to Specwork
 
 Thank you for your interest in contributing! This document covers dev setup, PR process, and code style.
 
@@ -9,8 +9,8 @@ Thank you for your interest in contributing! This document covers dev setup, PR 
 **Requirements:** Node.js ≥ 18, Claude Code CLI
 
 ```bash
-git clone https://github.com/foreman-ai/foreman.git
-cd foreman
+git clone https://github.com/specwork-ai/specwork.git
+cd specwork
 npm install
 npm run build
 ```
@@ -30,24 +30,24 @@ npm run typecheck
 ## Project Structure
 
 ```
-.foreman/           Foreman's own config, specs, and graphs
+.specwork/           Specwork's own config, specs, and graphs
 .claude/
   agents/           Subagent role definitions (.md with YAML frontmatter)
   skills/           Engine logic loaded into agents (SKILL.md)
-  commands/         Slash commands (/project:foreman-*)
+  commands/         Slash commands (/project:specwork-*)
   hooks/            Lifecycle hooks (shell scripts)
 src/                TypeScript source (CLI entry, utilities)
 docs/               Internal documentation
 ```
 
-The core engine is in `.claude/skills/foreman-engine/SKILL.md`. Subagent roles are in `.claude/agents/`. Configuration lives in `.foreman/config.yaml`.
+The core engine is in `.claude/skills/specwork-engine/SKILL.md`. Subagent roles are in `.claude/agents/`. Configuration lives in `.specwork/config.yaml`.
 
 ---
 
 ## Making Changes
 
 1. **Fork** the repo and create a branch: `git checkout -b feat/my-feature`
-2. **Write a proposal** (for non-trivial changes): `cp .foreman/templates/proposal.md .foreman/changes/my-feature/proposal.md`
+2. **Write a proposal** (for non-trivial changes): `cp .specwork/templates/proposal.md .specwork/changes/my-feature/proposal.md`
 3. **Write tests first** if adding new behavior
 4. **Implement** the change
 5. **Run** `npm run build && npm test && npm run typecheck`
@@ -78,7 +78,7 @@ For changes to the engine skill, agent definitions, or hook scripts — test end
 
 ## Where to Find Issues
 
-- [GitHub Issues](https://github.com/foreman-ai/foreman/issues) — bugs and feature requests
+- [GitHub Issues](https://github.com/specwork-ai/specwork/issues) — bugs and feature requests
 - Issues labeled `good first issue` are a good starting point
 
 ---

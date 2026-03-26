@@ -13,7 +13,7 @@ else
   [ -z "$FILE_PATH" ] && FILE_PATH=$(echo "$INPUT" | grep -o '"path"\\s*:\\s*"[^"]*"' | head -1 | sed 's/.*"path"\\s*:\\s*"//;s/"$//')
 fi
 
-SCOPE_FILE=".foreman/.current-scope"
+SCOPE_FILE=".specwork/.current-scope"
 if [ -f "$SCOPE_FILE" ] && [ -n "$FILE_PATH" ]; then
   ALLOWED=false
   while IFS= read -r pattern; do

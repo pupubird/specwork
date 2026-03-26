@@ -4,7 +4,7 @@ import { scopePath } from '../utils/paths.js';
 import { ensureDir } from '../io/filesystem.js';
 
 /**
- * Write scope paths to .foreman/.current-scope (one path per line).
+ * Write scope paths to .specwork/.current-scope (one path per line).
  * Subsequent writes by Write/Edit hooks will be checked against these prefixes.
  */
 export function setScope(root: string, paths: string[]): void {

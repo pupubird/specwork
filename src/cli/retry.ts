@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
 } from '../utils/paths.js';
@@ -9,7 +9,7 @@ import { getNode } from '../core/graph-walker.js';
 import { output } from '../utils/output.js';
 import { success, info } from '../utils/logger.js';
 import {
-  ForemanError,
+  SpecworkError,
   NodeNotFoundError,
   ChangeNotFoundError,
 } from '../utils/errors.js';
@@ -18,8 +18,8 @@ import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
 
-// ── foreman retry ──────────────────────────────────────────────────────────
-//   Usage: foreman retry <change>/<node>
+// ── specwork retry ──────────────────────────────────────────────────────────
+//   Usage: specwork retry <change>/<node>
 
 export function makeRetryCommand(): Command {
   return new Command('retry')
@@ -27,13 +27,13 @@ export function makeRetryCommand(): Command {
     .argument('<change/node>', 'Change and node in <change>/<node> format')
     .option('--clear-retries', 'Reset retry counter to 0', false)
     .action((changeNode: string, opts: { clearRetries: boolean }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       // Parse <change>/<node>
       const slash = changeNode.indexOf('/');
       if (slash === -1) {
-        throw new ForemanError(
+        throw new SpecworkError(
           `Invalid argument "${changeNode}": expected <change>/<node> format`,
           ExitCode.ERROR
         );
@@ -54,7 +54,7 @@ export function makeRetryCommand(): Command {
       const currentStatus = ns?.status ?? 'pending';
 
       if (currentStatus !== 'failed' && currentStatus !== 'escalated') {
-        throw new ForemanError(
+        throw new SpecworkError(
           `Cannot retry node "${nodeId}": status is "${currentStatus}" (must be failed or escalated)`,
           ExitCode.ERROR
         );
@@ -92,7 +92,7 @@ export function makeRetryCommand(): Command {
         success(`Node reset to pending: ${change}/${nodeId}`);
         info(`  Previous status: ${currentStatus}`);
         info(`  Retry count: ${updatedNode.retries}${opts.clearRetries ? ' (cleared)' : ''}`);
-        info(`  Run with: foreman node start ${change} ${nodeId}`);
+        info(`  Run with: specwork node start ${change} ${nodeId}`);
       }
     });
 }

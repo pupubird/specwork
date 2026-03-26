@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml, stringifyYaml } from './yaml.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 
 export function readYaml<T>(filePath: string): T {
   if (!fs.existsSync(filePath)) {
-    throw new ForemanError(`File not found: ${filePath}`, ExitCode.ERROR);
+    throw new SpecworkError(`File not found: ${filePath}`, ExitCode.ERROR);
   }
   const content = fs.readFileSync(filePath, 'utf8');
   return parseYaml<T>(content, filePath);

@@ -7,7 +7,7 @@ import { acquireLock, releaseLock, checkLock, forceLock } from '../../core/lock-
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function makeTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-lock-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-lock-test-'));
 }
 
 function rmDir(dir: string): void {

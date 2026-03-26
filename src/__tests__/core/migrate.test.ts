@@ -30,8 +30,8 @@ function createOpenspecFixture(root: string, specs: Record<string, string>, chan
   }
 }
 
-function initForemanDirs(root: string) {
-  const dirs = ['.foreman/specs', '.foreman/changes', '.foreman/changes/archive'];
+function initSpecworkDirs(root: string) {
+  const dirs = ['.specwork/specs', '.specwork/changes', '.specwork/changes/archive'];
   for (const d of dirs) {
     fs.mkdirSync(path.join(root, d), { recursive: true });
   }
@@ -43,15 +43,15 @@ describe('migrateOpenspec', () => {
   let root: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-migrate-'));
-    initForemanDirs(root);
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-migrate-'));
+    initSpecworkDirs(root);
   });
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it('flattens spec files from openspec/specs/<name>/spec.md to .foreman/specs/<name>.md', () => {
+  it('flattens spec files from openspec/specs/<name>/spec.md to .specwork/specs/<name>.md', () => {
     createOpenspecFixture(root, {
       'auth': '### Requirement: Auth SHALL work',
       'cache': '### Requirement: Cache SHALL work',
@@ -59,25 +59,25 @@ describe('migrateOpenspec', () => {
 
     const result = migrateOpenspec(root);
 
-    expect(fs.existsSync(path.join(root, '.foreman', 'specs', 'auth.md'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'specs', 'cache.md'))).toBe(true);
-    expect(fs.readFileSync(path.join(root, '.foreman', 'specs', 'auth.md'), 'utf-8')).toContain('Auth SHALL work');
+    expect(fs.existsSync(path.join(root, '.specwork', 'specs', 'auth.md'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'specs', 'cache.md'))).toBe(true);
+    expect(fs.readFileSync(path.join(root, '.specwork', 'specs', 'auth.md'), 'utf-8')).toContain('Auth SHALL work');
     expect(result.specsMigrated).toBe(2);
   });
 
-  it('maps change proposals to .foreman/changes/<name>/proposal.md', () => {
+  it('maps change proposals to .specwork/changes/<name>/proposal.md', () => {
     createOpenspecFixture(root, {}, {
       'add-auth': { proposal: '# Add Auth\n\n## Why\nBecause.' },
     });
 
     const result = migrateOpenspec(root);
 
-    expect(fs.existsSync(path.join(root, '.foreman', 'changes', 'add-auth', 'proposal.md'))).toBe(true);
-    expect(fs.readFileSync(path.join(root, '.foreman', 'changes', 'add-auth', 'proposal.md'), 'utf-8')).toContain('Add Auth');
+    expect(fs.existsSync(path.join(root, '.specwork', 'changes', 'add-auth', 'proposal.md'))).toBe(true);
+    expect(fs.readFileSync(path.join(root, '.specwork', 'changes', 'add-auth', 'proposal.md'), 'utf-8')).toContain('Add Auth');
     expect(result.changesMigrated).toBe(1);
   });
 
-  it('maps change delta specs flattened into .foreman/changes/<name>/specs/<specname>.md', () => {
+  it('maps change delta specs flattened into .specwork/changes/<name>/specs/<specname>.md', () => {
     createOpenspecFixture(root, {}, {
       'add-auth': {
         specs: { 'auth': '### Requirement: JWT Auth delta' },
@@ -86,7 +86,7 @@ describe('migrateOpenspec', () => {
 
     const result = migrateOpenspec(root);
 
-    const destPath = path.join(root, '.foreman', 'changes', 'add-auth', 'specs', 'auth.md');
+    const destPath = path.join(root, '.specwork', 'changes', 'add-auth', 'specs', 'auth.md');
     expect(fs.existsSync(destPath)).toBe(true);
     expect(fs.readFileSync(destPath, 'utf-8')).toContain('JWT Auth delta');
   });
@@ -127,14 +127,14 @@ describe('migrateOpenspec', () => {
   });
 
   it('overwrites existing specs on conflict', () => {
-    // Pre-populate .foreman/specs/
-    fs.writeFileSync(path.join(root, '.foreman', 'specs', 'auth.md'), 'OLD content');
+    // Pre-populate .specwork/specs/
+    fs.writeFileSync(path.join(root, '.specwork', 'specs', 'auth.md'), 'OLD content');
 
     createOpenspecFixture(root, { 'auth': 'NEW content from openspec' });
 
     migrateOpenspec(root);
 
-    const content = fs.readFileSync(path.join(root, '.foreman', 'specs', 'auth.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(root, '.specwork', 'specs', 'auth.md'), 'utf-8');
     expect(content).toContain('NEW content');
     expect(content).not.toContain('OLD content');
   });

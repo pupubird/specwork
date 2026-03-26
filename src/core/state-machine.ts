@@ -1,6 +1,6 @@
 import type { Graph, GraphNode } from '../types/graph.js';
 import type { WorkflowState, NodeState, NodeStatus, ChangeStatus } from '../types/state.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 
 // Valid status transitions
@@ -57,12 +57,12 @@ export function transitionNode(
 ): WorkflowState {
   const nodeState = state.nodes[nodeId];
   if (!nodeState) {
-    throw new ForemanError(`Node "${nodeId}" not found in state`, ExitCode.ERROR);
+    throw new SpecworkError(`Node "${nodeId}" not found in state`, ExitCode.ERROR);
   }
 
   const allowed = TRANSITIONS[nodeState.status];
   if (!allowed.includes(newStatus)) {
-    throw new ForemanError(
+    throw new SpecworkError(
       `Invalid transition for node "${nodeId}": ${nodeState.status} → ${newStatus}. Allowed: [${allowed.join(', ')}]`,
       ExitCode.ERROR
     );
@@ -97,7 +97,7 @@ export function incrementRetry(
 ): { state: WorkflowState; exhausted: boolean } {
   const nodeState = state.nodes[nodeId];
   if (!nodeState) {
-    throw new ForemanError(`Node "${nodeId}" not found in state`, ExitCode.ERROR);
+    throw new SpecworkError(`Node "${nodeId}" not found in state`, ExitCode.ERROR);
   }
 
   const newRetries = nodeState.retries + 1;

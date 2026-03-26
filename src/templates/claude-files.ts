@@ -1,22 +1,22 @@
 /**
- * Embedded .claude/ and .foreman/ template files for `foreman init`.
+ * Embedded .claude/ and .specwork/ template files for `specwork init`.
  * These are written during initialization to provide batteries-included setup.
  * Each template is in its own file under ./instructions/ for maintainability.
  */
 
-import { AGENTS_FOREMAN_IMPLEMENTER } from "./instructions/agents-foreman-implementer.js";
-import { AGENTS_FOREMAN_PLANNER } from "./instructions/agents-foreman-planner.js";
-import { AGENTS_FOREMAN_QA } from "./instructions/agents-foreman-qa.js";
-import { AGENTS_FOREMAN_SUMMARIZER } from "./instructions/agents-foreman-summarizer.js";
-import { AGENTS_FOREMAN_TEST_WRITER } from "./instructions/agents-foreman-test-writer.js";
-import { AGENTS_FOREMAN_VERIFIER } from "./instructions/agents-foreman-verifier.js";
-import { SKILLS_FOREMAN_CONTEXT_SKILL } from "./instructions/skills-foreman-context-SKILL.js";
-import { SKILLS_FOREMAN_CONVENTIONS_SKILL } from "./instructions/skills-foreman-conventions-SKILL.js";
-import { SKILLS_FOREMAN_ENGINE_SKILL } from "./instructions/skills-foreman-engine-SKILL.js";
-import { SKILLS_FOREMAN_SNAPSHOT_SKILL } from "./instructions/skills-foreman-snapshot-SKILL.js";
-import { COMMANDS_FOREMAN_GO } from "./instructions/commands-foreman-go.js";
-import { COMMANDS_FOREMAN_PLAN } from "./instructions/commands-foreman-plan.js";
-import { COMMANDS_FOREMAN_STATUS } from "./instructions/commands-foreman-status.js";
+import { AGENTS_SPECWORK_IMPLEMENTER } from "./instructions/agents-specwork-implementer.js";
+import { AGENTS_SPECWORK_PLANNER } from "./instructions/agents-specwork-planner.js";
+import { AGENTS_SPECWORK_QA } from "./instructions/agents-specwork-qa.js";
+import { AGENTS_SPECWORK_SUMMARIZER } from "./instructions/agents-specwork-summarizer.js";
+import { AGENTS_SPECWORK_TEST_WRITER } from "./instructions/agents-specwork-test-writer.js";
+import { AGENTS_SPECWORK_VERIFIER } from "./instructions/agents-specwork-verifier.js";
+import { SKILLS_SPECWORK_CONTEXT_SKILL } from "./instructions/skills-specwork-context-SKILL.js";
+import { SKILLS_SPECWORK_CONVENTIONS_SKILL } from "./instructions/skills-specwork-conventions-SKILL.js";
+import { SKILLS_SPECWORK_ENGINE_SKILL } from "./instructions/skills-specwork-engine-SKILL.js";
+import { SKILLS_SPECWORK_SNAPSHOT_SKILL } from "./instructions/skills-specwork-snapshot-SKILL.js";
+import { COMMANDS_SPECWORK_GO } from "./instructions/commands-specwork-go.js";
+import { COMMANDS_SPECWORK_PLAN } from "./instructions/commands-specwork-plan.js";
+import { COMMANDS_SPECWORK_STATUS } from "./instructions/commands-specwork-status.js";
 import { HOOKS_NODE_COMPLETE_SH } from "./instructions/hooks-node-complete-sh.js";
 import { HOOKS_SCOPE_GUARD_SH } from "./instructions/hooks-scope-guard-sh.js";
 import { HOOKS_SESSION_INIT_SH } from "./instructions/hooks-session-init-sh.js";
@@ -25,20 +25,20 @@ import { HOOKS_TYPE_CHECK_SH } from "./instructions/hooks-type-check-sh.js";
 // Map of relative path → file content
 // Paths are relative to the project root
 export const CLAUDE_FILES: Record<string, string> = {
-  ".claude/agents/foreman-implementer.md": AGENTS_FOREMAN_IMPLEMENTER,
-  ".claude/agents/foreman-planner.md": AGENTS_FOREMAN_PLANNER,
-  ".claude/agents/foreman-qa.md": AGENTS_FOREMAN_QA,
-  ".claude/agents/foreman-summarizer.md": AGENTS_FOREMAN_SUMMARIZER,
-  ".claude/agents/foreman-test-writer.md": AGENTS_FOREMAN_TEST_WRITER,
-  ".claude/agents/foreman-verifier.md": AGENTS_FOREMAN_VERIFIER,
-  ".claude/skills/foreman-context/SKILL.md": SKILLS_FOREMAN_CONTEXT_SKILL,
-  ".claude/skills/foreman-conventions/SKILL.md":
-    SKILLS_FOREMAN_CONVENTIONS_SKILL,
-  ".claude/skills/foreman-engine/SKILL.md": SKILLS_FOREMAN_ENGINE_SKILL,
-  ".claude/skills/foreman-snapshot/SKILL.md": SKILLS_FOREMAN_SNAPSHOT_SKILL,
-  ".claude/commands/foreman-go.md": COMMANDS_FOREMAN_GO,
-  ".claude/commands/foreman-plan.md": COMMANDS_FOREMAN_PLAN,
-  ".claude/commands/foreman-status.md": COMMANDS_FOREMAN_STATUS,
+  ".claude/agents/specwork-implementer.md": AGENTS_SPECWORK_IMPLEMENTER,
+  ".claude/agents/specwork-planner.md": AGENTS_SPECWORK_PLANNER,
+  ".claude/agents/specwork-qa.md": AGENTS_SPECWORK_QA,
+  ".claude/agents/specwork-summarizer.md": AGENTS_SPECWORK_SUMMARIZER,
+  ".claude/agents/specwork-test-writer.md": AGENTS_SPECWORK_TEST_WRITER,
+  ".claude/agents/specwork-verifier.md": AGENTS_SPECWORK_VERIFIER,
+  ".claude/skills/specwork-context/SKILL.md": SKILLS_SPECWORK_CONTEXT_SKILL,
+  ".claude/skills/specwork-conventions/SKILL.md":
+    SKILLS_SPECWORK_CONVENTIONS_SKILL,
+  ".claude/skills/specwork-engine/SKILL.md": SKILLS_SPECWORK_ENGINE_SKILL,
+  ".claude/skills/specwork-snapshot/SKILL.md": SKILLS_SPECWORK_SNAPSHOT_SKILL,
+  ".claude/commands/specwork-go.md": COMMANDS_SPECWORK_GO,
+  ".claude/commands/specwork-plan.md": COMMANDS_SPECWORK_PLAN,
+  ".claude/commands/specwork-status.md": COMMANDS_SPECWORK_STATUS,
   ".claude/hooks/node-complete.sh": HOOKS_NODE_COMPLETE_SH,
   ".claude/hooks/scope-guard.sh": HOOKS_SCOPE_GUARD_SH,
   ".claude/hooks/session-init.sh": HOOKS_SESSION_INIT_SH,
@@ -81,7 +81,7 @@ export const CLAUDE_SETTINGS = {
 // Schema.yaml content
 export const SCHEMA_YAML: string = `name: spec-driven
 version: 1
-description: Default Foreman workflow - proposal → specs → design → tasks → graph
+description: Default Specwork workflow - proposal → specs → design → tasks → graph
 
 artifacts:
   - id: proposal
@@ -95,7 +95,7 @@ artifacts:
       - **Why**: 1-2 sentences on the problem or opportunity.
       - **What Changes**: Bullet list. Mark breaking changes with **BREAKING**.
       - **Capabilities**: Identify which specs will be created or modified:
-        - **New Capabilities**: List capabilities being introduced. Each becomes \`.foreman/specs/<name>/spec.md\`. Use kebab-case.
+        - **New Capabilities**: List capabilities being introduced. Each becomes \`.specwork/specs/<name>/spec.md\`. Use kebab-case.
         - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Each needs a delta spec file.
       - **Impact**: Affected files, directories, systems.
 
@@ -110,8 +110,8 @@ artifacts:
       Create specification files defining WHAT the system should do.
 
       Create one spec file per capability in the proposal's Capabilities section:
-      - New capabilities: \`.foreman/changes/<change>/specs/<capability>/spec.md\`
-      - Modified capabilities: match existing folder name in \`.foreman/specs/<capability>/\`
+      - New capabilities: \`.specwork/changes/<change>/specs/<capability>/spec.md\`
+      - Modified capabilities: match existing folder name in \`.specwork/specs/<capability>/\`
 
       Delta operations:
       - **ADDED Requirements**: New capabilities
@@ -156,7 +156,7 @@ artifacts:
       - Order by dependency (blockers first)
       - Each task completable in one session
 
-      These tasks become nodes in the Foreman execution graph.
+      These tasks become nodes in the Specwork execution graph.
     requires:
       - specs
       - design
@@ -165,15 +165,15 @@ apply:
   requires: [tasks]
   tracks: tasks.md
   instruction: |
-    Run /project:foreman-graph <change> to generate the execution graph.
-    Then run /project:foreman-run <change> to execute it.
+    Run /project:specwork-graph <change> to generate the execution graph.
+    Then run /project:specwork-run <change> to execute it.
 `;
 
 // Example graph content
-export const EXAMPLE_GRAPH: string = `# Example Foreman graph: add-auth feature
+export const EXAMPLE_GRAPH: string = `# Example Specwork graph: add-auth feature
 # This graph implements JWT authentication for an API service.
-# Generated by: /project:foreman-graph add-auth
-# Run with: /project:foreman-run add-auth
+# Generated by: /project:specwork-graph add-auth
+# Run with: /project:specwork-run add-auth
 
 change: add-auth
 description: Add JWT-based authentication to the API
@@ -184,28 +184,28 @@ nodes:
     type: deterministic
     description: Generate environment snapshot (file tree, deps, conventions)
     command: |
-      echo "=== File Tree ===" > .foreman/nodes/add-auth/snapshot/output.txt
-      find src -name "*.ts" | head -100 >> .foreman/nodes/add-auth/snapshot/output.txt
-      echo "" >> .foreman/nodes/add-auth/snapshot/output.txt
-      echo "=== Dependencies ===" >> .foreman/nodes/add-auth/snapshot/output.txt
-      cat package.json >> .foreman/nodes/add-auth/snapshot/output.txt 2>/dev/null || echo "no package.json"
-      echo "" >> .foreman/nodes/add-auth/snapshot/output.txt
-      echo "=== Existing Interfaces ===" >> .foreman/nodes/add-auth/snapshot/output.txt
-      grep -r "^export interface\\|^export type\\|^export function\\|^export class" src/ >> .foreman/nodes/add-auth/snapshot/output.txt 2>/dev/null
+      echo "=== File Tree ===" > .specwork/nodes/add-auth/snapshot/output.txt
+      find src -name "*.ts" | head -100 >> .specwork/nodes/add-auth/snapshot/output.txt
+      echo "" >> .specwork/nodes/add-auth/snapshot/output.txt
+      echo "=== Dependencies ===" >> .specwork/nodes/add-auth/snapshot/output.txt
+      cat package.json >> .specwork/nodes/add-auth/snapshot/output.txt 2>/dev/null || echo "no package.json"
+      echo "" >> .specwork/nodes/add-auth/snapshot/output.txt
+      echo "=== Existing Interfaces ===" >> .specwork/nodes/add-auth/snapshot/output.txt
+      grep -r "^export interface\\|^export type\\|^export function\\|^export class" src/ >> .specwork/nodes/add-auth/snapshot/output.txt 2>/dev/null
     deps: []
     outputs:
-      - .foreman/nodes/add-auth/snapshot/output.txt
+      - .specwork/nodes/add-auth/snapshot/output.txt
 
   # ── Stage 1: Write Tests (RED state) ─────────────────────────────────────
   - id: write-tests
     type: llm
     description: Write all tests before any implementation exists (RED state)
-    agent: foreman-test-writer
+    agent: specwork-test-writer
     deps:
       - snapshot
     inputs:
-      - .foreman/changes/add-auth/proposal.md
-      - .foreman/changes/add-auth/design.md
+      - .specwork/changes/add-auth/proposal.md
+      - .specwork/changes/add-auth/design.md
     outputs:
       - src/__tests__/auth.unit.test.ts
       - src/__tests__/auth.integration.test.ts
@@ -228,7 +228,7 @@ nodes:
   - id: impl-types
     type: llm
     description: Define TypeScript interfaces and types for auth system
-    agent: foreman-implementer
+    agent: specwork-implementer
     deps:
       - write-tests
     inputs: []
@@ -249,7 +249,7 @@ nodes:
   - id: impl-jwt
     type: llm
     description: Implement JWT token generation and validation utilities
-    agent: foreman-implementer
+    agent: specwork-implementer
     deps:
       - impl-types
     inputs: []
@@ -270,7 +270,7 @@ nodes:
   - id: impl-service
     type: llm
     description: Implement AuthService with login/logout business logic
-    agent: foreman-implementer
+    agent: specwork-implementer
     deps:
       - impl-jwt
     inputs: []
@@ -289,7 +289,7 @@ nodes:
   - id: impl-handler
     type: llm
     description: Implement HTTP route handlers and auth middleware
-    agent: foreman-implementer
+    agent: specwork-implementer
     deps:
       - impl-service
     inputs: []
@@ -311,7 +311,7 @@ nodes:
   - id: acceptance
     type: llm
     description: Verify acceptance tests pass end-to-end
-    agent: foreman-verifier
+    agent: specwork-verifier
     deps:
       - impl-handler
     inputs: []
@@ -328,18 +328,18 @@ nodes:
     type: deterministic
     description: Run full test suite to confirm nothing is broken
     command: |
-      npm test 2>&1 | tee .foreman/nodes/add-auth/integration/output.txt
+      npm test 2>&1 | tee .specwork/nodes/add-auth/integration/output.txt
       exit \${PIPESTATUS[0]}
     deps:
       - acceptance
     outputs:
-      - .foreman/nodes/add-auth/integration/output.txt
+      - .specwork/nodes/add-auth/integration/output.txt
     validate:
       - exit-code: 0
 `;
 
-// .foreman/.gitignore content
-export const FOREMAN_GITIGNORE = `.current-scope
+// .specwork/.gitignore content
+export const SPECWORK_GITIGNORE = `.current-scope
 .current-node
 *.lock
 `;

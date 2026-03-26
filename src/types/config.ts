@@ -1,4 +1,4 @@
-export interface ForemanConfig {
+export interface SpecworkConfig {
   models: {
     default: string;
     test_writer: string;

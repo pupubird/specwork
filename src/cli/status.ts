@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { findForemanRoot, graphPath, statePath } from '../utils/paths.js';
+import { findSpecworkRoot, graphPath, statePath } from '../utils/paths.js';
 import { readYaml } from '../io/filesystem.js';
 import { output, table } from '../utils/output.js';
 import { info } from '../utils/logger.js';
@@ -21,19 +21,19 @@ const STATUS_ICON: Record<NodeStatus, string> = {
   skipped:     '–',
 };
 
-// ── foreman status ─────────────────────────────────────────────────────────
+// ── specwork status ─────────────────────────────────────────────────────────
 
 export function makeStatusCommand(): Command {
   return new Command('status')
     .description('Show workflow status — all changes or a specific change')
     .argument('[change]', 'Change name (omit to list all changes)')
     .action((change: string | undefined, _opts, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       if (!change) {
         // ── list all changes ──────────────────────────────────────────
-        const graphDir = path.join(root, '.foreman', 'graph');
+        const graphDir = path.join(root, '.specwork', 'graph');
         if (!fs.existsSync(graphDir)) {
           if (jsonMode) {
             output({ changes: [] }, { json: true, quiet: false });
@@ -74,7 +74,7 @@ export function makeStatusCommand(): Command {
       // ── single change detail ──────────────────────────────────────────
       const gp = graphPath(root, change);
       if (!fs.existsSync(gp)) {
-        const graphDir = path.join(root, '.foreman', 'graph');
+        const graphDir = path.join(root, '.specwork', 'graph');
         const available = fs.existsSync(graphDir)
           ? fs.readdirSync(graphDir, { withFileTypes: true })
               .filter(e => e.isDirectory())

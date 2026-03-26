@@ -35,16 +35,16 @@ import {
 import type { Graph } from '../../types/graph.js';
 import type { WorkflowState } from '../../types/state.js';
 
-// ── init helper (mirrors foreman init logic) ─────────────────────────────────
+// ── init helper (mirrors specwork init logic) ─────────────────────────────────
 
-function initForeman(root: string): void {
+function initSpecwork(root: string): void {
   const dirs = [
-    '.foreman/env',
-    '.foreman/graph',
-    '.foreman/nodes',
-    '.foreman/specs',
-    '.foreman/changes/archive',
-    '.foreman/templates',
+    '.specwork/env',
+    '.specwork/graph',
+    '.specwork/nodes',
+    '.specwork/specs',
+    '.specwork/changes/archive',
+    '.specwork/templates',
   ];
   for (const dir of dirs) {
     ensureDir(path.join(root, dir));
@@ -54,11 +54,11 @@ function initForeman(root: string): void {
     models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
     execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
     context: { ancestors: 'L0', parents: 'L1' },
-    spec: { schema: 'spec-driven', specs_dir: '.foreman/specs', changes_dir: '.foreman/changes', archive_dir: '.foreman/changes/archive', templates_dir: '.foreman/templates' },
-    graph: { graphs_dir: '.foreman/graph', nodes_dir: '.foreman/nodes' },
-    environments: { env_dir: '.foreman/env', active: 'development' },
+    spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes', archive_dir: '.specwork/changes/archive', templates_dir: '.specwork/templates' },
+    graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
+    environments: { env_dir: '.specwork/env', active: 'development' },
   };
-  writeYaml(path.join(root, '.foreman', 'config.yaml'), config);
+  writeYaml(path.join(root, '.specwork', 'config.yaml'), config);
 
   const templates: Record<string, string> = {
     'proposal.md': '# Proposal\n\n## Problem\n\n## Solution\n',
@@ -66,19 +66,19 @@ function initForeman(root: string): void {
     'tasks.md': '## 1. Default\n\n- [ ] 1.1 Placeholder task\n',
   };
   for (const [file, content] of Object.entries(templates)) {
-    writeMarkdown(path.join(root, '.foreman', 'templates', file), content);
+    writeMarkdown(path.join(root, '.specwork', 'templates', file), content);
   }
 }
 
-// ── new-change helper (mirrors foreman new logic) ────────────────────────────
+// ── new-change helper (mirrors specwork new logic) ────────────────────────────
 
 function newChange(root: string, change: string): void {
-  const changeDir = path.join(root, '.foreman', 'changes', change);
+  const changeDir = path.join(root, '.specwork', 'changes', change);
   ensureDir(changeDir);
   ensureDir(path.join(changeDir, 'specs'));
 
   // Copy templates
-  const templatesDir = path.join(root, '.foreman', 'templates');
+  const templatesDir = path.join(root, '.specwork', 'templates');
   for (const file of ['proposal.md', 'design.md', 'tasks.md']) {
     const src = path.join(templatesDir, file);
     if (exists(src)) {
@@ -86,8 +86,8 @@ function newChange(root: string, change: string): void {
     }
   }
 
-  writeYaml(path.join(changeDir, '.foreman.yaml'), {
-    schema: 'foreman-change/v1',
+  writeYaml(path.join(changeDir, '.specwork.yaml'), {
+    schema: 'specwork-change/v1',
     change,
     created_at: new Date().toISOString(),
     status: 'draft',
@@ -100,7 +100,7 @@ let root: string;
 const CHANGE = 'test-feature';
 
 beforeAll(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-e2e-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-e2e-'));
 });
 
 afterAll(() => {
@@ -113,33 +113,33 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 1: init ────────────────────────────────────────────────────────────
 
-  it('step 1 — foreman init creates .foreman/ structure', () => {
-    initForeman(root);
+  it('step 1 — specwork init creates .specwork/ structure', () => {
+    initSpecwork(root);
 
-    expect(fs.existsSync(path.join(root, '.foreman'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'config.yaml'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'env'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'graph'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'nodes'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'specs'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'changes', 'archive'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'templates'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'config.yaml'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'env'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'graph'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'nodes'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'specs'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'changes', 'archive'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'templates'))).toBe(true);
   });
 
   // ── Step 2: new change ─────────────────────────────────────────────────────
 
-  it('step 2 — foreman new creates change directory with templates', () => {
+  it('step 2 — specwork new creates change directory with templates', () => {
     newChange(root, CHANGE);
 
-    const changeDir = path.join(root, '.foreman', 'changes', CHANGE);
+    const changeDir = path.join(root, '.specwork', 'changes', CHANGE);
     expect(fs.existsSync(changeDir)).toBe(true);
-    expect(fs.existsSync(path.join(changeDir, '.foreman.yaml'))).toBe(true);
+    expect(fs.existsSync(path.join(changeDir, '.specwork.yaml'))).toBe(true);
     expect(fs.existsSync(path.join(changeDir, 'proposal.md'))).toBe(true);
     expect(fs.existsSync(path.join(changeDir, 'design.md'))).toBe(true);
     expect(fs.existsSync(path.join(changeDir, 'tasks.md'))).toBe(true);
 
     const meta = readYaml<{ change: string; status: string }>(
-      path.join(changeDir, '.foreman.yaml')
+      path.join(changeDir, '.specwork.yaml')
     );
     expect(meta.change).toBe(CHANGE);
     expect(meta.status).toBe('draft');
@@ -148,7 +148,7 @@ describe('E2E: full workflow lifecycle', () => {
   // ── Step 3: write tasks.md ─────────────────────────────────────────────────
 
   it('step 3 — write tasks.md with 2 tasks', () => {
-    const changeDir = path.join(root, '.foreman', 'changes', CHANGE);
+    const changeDir = path.join(root, '.specwork', 'changes', CHANGE);
     const tasks = `## 1. Core\n\n- [ ] 1.1 Add feature flag\n- [ ] 1.2 Wire up handler\n`;
     writeMarkdown(path.join(changeDir, 'tasks.md'), tasks);
 
@@ -159,11 +159,11 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 4: graph generate ─────────────────────────────────────────────────
 
-  it('step 4 — foreman graph generate creates graph.yaml and state.yaml', () => {
+  it('step 4 — specwork graph generate creates graph.yaml and state.yaml', () => {
     const graph = generateGraph(root, CHANGE);
     writeYaml(graphPath(root, CHANGE), graph);
     writeYaml(statePath(root, CHANGE), initializeState(graph));
-    ensureDir(path.join(root, '.foreman', 'nodes', CHANGE));
+    ensureDir(path.join(root, '.specwork', 'nodes', CHANGE));
 
     expect(fs.existsSync(graphPath(root, CHANGE))).toBe(true);
     expect(fs.existsSync(statePath(root, CHANGE))).toBe(true);
@@ -176,7 +176,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 5: graph validate ─────────────────────────────────────────────────
 
-  it('step 5 — foreman graph validate passes', () => {
+  it('step 5 — specwork graph validate passes', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
     const result = validateGraph(graph);
 
@@ -205,7 +205,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 7: run — first ready node ────────────────────────────────────────
 
-  it('step 7 — foreman run returns first ready node (snapshot)', () => {
+  it('step 7 — specwork run returns first ready node (snapshot)', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
     const state = readYaml<WorkflowState>(statePath(root, CHANGE));
 
@@ -216,7 +216,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 8: node start ─────────────────────────────────────────────────────
 
-  it('step 8 — foreman node start transitions snapshot to in_progress', () => {
+  it('step 8 — specwork node start transitions snapshot to in_progress', () => {
     let state = readYaml<WorkflowState>(statePath(root, CHANGE));
     state = transitionNode(state, 'snapshot', 'in_progress');
     writeYaml(statePath(root, CHANGE), state);
@@ -228,7 +228,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 9: node complete ──────────────────────────────────────────────────
 
-  it('step 9 — foreman node complete transitions snapshot to complete', () => {
+  it('step 9 — specwork node complete transitions snapshot to complete', () => {
     let state = readYaml<WorkflowState>(statePath(root, CHANGE));
     state = transitionNode(state, 'snapshot', 'complete', { l0: 'snapshot done, 42 files' });
     writeYaml(statePath(root, CHANGE), state);
@@ -257,7 +257,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 11: run — next ready node ────────────────────────────────────────
 
-  it('step 11 — foreman run returns next ready node (write-tests) after snapshot done', () => {
+  it('step 11 — specwork run returns next ready node (write-tests) after snapshot done', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
     const state = readYaml<WorkflowState>(statePath(root, CHANGE));
 
@@ -268,7 +268,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 12: snapshot ──────────────────────────────────────────────────────
 
-  it('step 12 — foreman snapshot creates snapshot.md', () => {
+  it('step 12 — specwork snapshot creates snapshot.md', () => {
     // Create a minimal src/ directory for the scanner
     const srcDir = path.join(root, 'src');
     ensureDir(srcDir);
@@ -284,7 +284,7 @@ describe('E2E: full workflow lifecycle', () => {
 
   // ── Step 13: context l0 ────────────────────────────────────────────────────
 
-  it('step 13 — foreman context l0 returns L0 entries for completed nodes', () => {
+  it('step 13 — specwork context l0 returns L0 entries for completed nodes', () => {
     const entries = getL0All(root, CHANGE);
 
     // snapshot node has an L0 headline

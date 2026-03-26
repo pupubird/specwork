@@ -90,12 +90,12 @@ export function generateGraph(root: string, change: string): Graph {
     id: 'snapshot',
     type: 'deterministic',
     description: 'Capture environment snapshot (file tree, deps, types)',
-    command: 'foreman snapshot',
+    command: 'specwork snapshot',
     deps: [],
     inputs: [],
-    outputs: ['.foreman/env/snapshot.md'],
+    outputs: ['.specwork/env/snapshot.md'],
     scope: [],
-    validate: [{ type: 'file-exists', args: { path: '.foreman/env/snapshot.md' } }],
+    validate: [{ type: 'file-exists', args: { path: '.specwork/env/snapshot.md' } }],
     retry: 2,
   };
   nodes.push(snapshotNode);
@@ -106,7 +106,7 @@ export function generateGraph(root: string, change: string): Graph {
   if (fs.existsSync(specsDir)) {
     const specFiles = fs.readdirSync(specsDir).filter(f => f.endsWith('.md'));
     for (const file of specFiles) {
-      specInputs.push(`.foreman/changes/${change}/specs/${file}`);
+      specInputs.push(`.specwork/changes/${change}/specs/${file}`);
     }
   }
 
@@ -115,11 +115,11 @@ export function generateGraph(root: string, change: string): Graph {
     id: 'write-tests',
     type: 'llm',
     description: 'Write tests from specs (must be RED before implementation)',
-    agent: 'foreman-test-writer',
+    agent: 'specwork-test-writer',
     gate: 'human',
     model: 'opus',
     deps: ['snapshot'],
-    inputs: ['.foreman/env/snapshot.md', ...specInputs],
+    inputs: ['.specwork/env/snapshot.md', ...specInputs],
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
     validate: [{ type: 'tests-fail' }],
@@ -151,9 +151,9 @@ export function generateGraph(root: string, change: string): Graph {
       id: task.id,
       type: 'llm',
       description: task.description,
-      agent: 'foreman-implementer',
+      agent: 'specwork-implementer',
       deps,
-      inputs: ['.foreman/env/snapshot.md'],
+      inputs: ['.specwork/env/snapshot.md'],
       outputs: implScope,
       scope: implScope,
       validate,

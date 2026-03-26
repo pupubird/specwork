@@ -24,34 +24,34 @@ import type { WorkflowState } from '../../types/state.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function initForeman(root: string): void {
+function initSpecwork(root: string): void {
   const dirs = [
-    '.foreman/env',
-    '.foreman/graph',
-    '.foreman/nodes',
-    '.foreman/specs',
-    '.foreman/changes/archive',
-    '.foreman/templates',
+    '.specwork/env',
+    '.specwork/graph',
+    '.specwork/nodes',
+    '.specwork/specs',
+    '.specwork/changes/archive',
+    '.specwork/templates',
   ];
   for (const dir of dirs) {
     ensureDir(path.join(root, dir));
   }
-  writeYaml(path.join(root, '.foreman', 'config.yaml'), {
+  writeYaml(path.join(root, '.specwork', 'config.yaml'), {
     models: { default: 'sonnet' },
     execution: { max_retries: 2, verify: 'gates' },
-    spec: { archive_dir: '.foreman/changes/archive' },
-    graph: { graphs_dir: '.foreman/graph', nodes_dir: '.foreman/nodes' },
+    spec: { archive_dir: '.specwork/changes/archive' },
+    graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
   });
-  writeMarkdown(path.join(root, '.foreman', 'templates', 'tasks.md'), '## 1. Default\n\n- [ ] 1.1 Placeholder\n');
-  writeMarkdown(path.join(root, '.foreman', 'templates', 'proposal.md'), '# Proposal\n');
-  writeMarkdown(path.join(root, '.foreman', 'templates', 'design.md'), '# Design\n');
+  writeMarkdown(path.join(root, '.specwork', 'templates', 'tasks.md'), '## 1. Default\n\n- [ ] 1.1 Placeholder\n');
+  writeMarkdown(path.join(root, '.specwork', 'templates', 'proposal.md'), '# Proposal\n');
+  writeMarkdown(path.join(root, '.specwork', 'templates', 'design.md'), '# Design\n');
 }
 
 function createChange(root: string, change: string): void {
   const cd = changeDir(root, change);
   ensureDir(cd);
   ensureDir(path.join(cd, 'specs'));
-  writeYaml(path.join(cd, '.foreman.yaml'), { schema: 'foreman-change/v1', change, status: 'active' });
+  writeYaml(path.join(cd, '.specwork.yaml'), { schema: 'specwork-change/v1', change, status: 'active' });
   writeMarkdown(path.join(cd, 'proposal.md'), '# Proposal\n\nTest proposal');
   writeMarkdown(path.join(cd, 'design.md'), '# Design\n\nTest design');
   writeMarkdown(path.join(cd, 'tasks.md'), '## 1. Core\n\n- [x] 1.1 Do something\n');
@@ -83,8 +83,8 @@ describe('archiveChange', () => {
   let root: string;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-archive-'));
-    initForeman(root);
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-archive-'));
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -97,7 +97,7 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     expect(fs.existsSync(archivePath)).toBe(true);
     expect(fs.existsSync(path.join(archivePath, 'proposal.md'))).toBe(true);
     expect(fs.existsSync(path.join(archivePath, 'design.md'))).toBe(true);
@@ -120,7 +120,7 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     const summaryPath = path.join(archivePath, 'summary.md');
     expect(fs.existsSync(summaryPath)).toBe(true);
 
@@ -143,7 +143,7 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     expect(fs.existsSync(path.join(archivePath, 'graph.yaml'))).toBe(false);
     expect(fs.existsSync(path.join(archivePath, 'state.yaml'))).toBe(false);
     expect(fs.existsSync(path.join(archivePath, 'nodes'))).toBe(false);
@@ -159,7 +159,7 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
     expect(content).toContain('PASS');
   });
@@ -170,18 +170,18 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    expect(fs.existsSync(path.join(root, '.foreman', 'graph', 'my-feature'))).toBe(false);
-    expect(fs.existsSync(path.join(root, '.foreman', 'nodes', 'my-feature'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.specwork', 'graph', 'my-feature'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.specwork', 'nodes', 'my-feature'))).toBe(false);
   });
 
-  it('updates .foreman.yaml status to archived', () => {
+  it('updates .specwork.yaml status to archived', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
-    const meta = readYaml<{ status: string }>(path.join(archivePath, '.foreman.yaml'));
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
+    const meta = readYaml<{ status: string }>(path.join(archivePath, '.specwork.yaml'));
     expect(meta.status).toBe('archived');
   });
 
@@ -205,13 +205,13 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     expect(fs.existsSync(path.join(archivePath, 'specs', 'auth.md'))).toBe(true);
   });
 
   // ── spec promotion tests ──────────────────────────────────────────────────
 
-  it('promotes specs to .foreman/specs/ during archive', () => {
+  it('promotes specs to .specwork/specs/ during archive', () => {
     createChange(root, 'my-feature');
     writeMarkdown(path.join(changeDir(root, 'my-feature'), 'specs', 'auth.md'), '# Auth Spec\n\nUsers SHALL authenticate via JWT.');
     writeMarkdown(path.join(changeDir(root, 'my-feature'), 'specs', 'rate-limit.md'), '# Rate Limit Spec\n\nAPI SHOULD rate limit at 100 req/min.');
@@ -219,18 +219,18 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    // Specs should now exist in .foreman/specs/
-    expect(fs.existsSync(path.join(root, '.foreman', 'specs', 'auth.md'))).toBe(true);
-    expect(fs.existsSync(path.join(root, '.foreman', 'specs', 'rate-limit.md'))).toBe(true);
+    // Specs should now exist in .specwork/specs/
+    expect(fs.existsSync(path.join(root, '.specwork', 'specs', 'auth.md'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'specs', 'rate-limit.md'))).toBe(true);
 
     // Content should match
-    const content = fs.readFileSync(path.join(root, '.foreman', 'specs', 'auth.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(root, '.specwork', 'specs', 'auth.md'), 'utf-8');
     expect(content).toContain('Users SHALL authenticate via JWT');
   });
 
   it('overwrites existing specs on conflict during promotion', () => {
-    // Pre-populate .foreman/specs/ with an old version
-    writeMarkdown(path.join(root, '.foreman', 'specs', 'auth.md'), '# Old Auth Spec\n\nOld content.');
+    // Pre-populate .specwork/specs/ with an old version
+    writeMarkdown(path.join(root, '.specwork', 'specs', 'auth.md'), '# Old Auth Spec\n\nOld content.');
 
     createChange(root, 'my-feature');
     writeMarkdown(path.join(changeDir(root, 'my-feature'), 'specs', 'auth.md'), '# Updated Auth Spec\n\nNew content.');
@@ -238,7 +238,7 @@ describe('archiveChange', () => {
 
     archiveChange(root, 'my-feature');
 
-    const content = fs.readFileSync(path.join(root, '.foreman', 'specs', 'auth.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(root, '.specwork', 'specs', 'auth.md'), 'utf-8');
     expect(content).toContain('New content');
     expect(content).not.toContain('Old content');
   });
@@ -251,8 +251,8 @@ describe('archiveChange', () => {
     // Should not throw
     archiveChange(root, 'my-feature');
 
-    // .foreman/specs/ should still only have .gitkeep
-    const specs = fs.readdirSync(path.join(root, '.foreman', 'specs'));
+    // .specwork/specs/ should still only have .gitkeep
+    const specs = fs.readdirSync(path.join(root, '.specwork', 'specs'));
     expect(specs.filter(f => f !== '.gitkeep')).toHaveLength(0);
   });
 });

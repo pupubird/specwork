@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { findForemanRoot } from '../utils/paths.js';
+import { findSpecworkRoot } from '../utils/paths.js';
 import { output } from '../utils/output.js';
 import { runDoctor, applyFixes } from '../core/doctor.js';
 import type { DoctorReport, CheckResult, DiagnosticResult } from '../core/doctor.js';
@@ -21,7 +21,7 @@ function formatReport(report: DoctorReport): string {
   lines.push('─'.repeat(40));
   lines.push(`Results: ${report.totalPass} passed, ${report.totalFail} failed`);
   if (report.totalFixable > 0) {
-    lines.push(`Run \`foreman doctor --fix\` to auto-repair fixable issues (${report.totalFixable} fixable)`);
+    lines.push(`Run \`specwork doctor --fix\` to auto-repair fixable issues (${report.totalFixable} fixable)`);
   }
 
   return lines.join('\n');
@@ -42,12 +42,12 @@ function stripFix(report: DoctorReport): DoctorReport {
 
 export function makeDoctorCommand(): Command {
   return new Command('doctor')
-    .description('Validate all Foreman artifacts — config, specs, archives, changes, graphs, templates')
+    .description('Validate all Specwork artifacts — config, specs, archives, changes, graphs, templates')
     .argument('[change]', 'Scope to a specific change (omit to check everything)')
     .option('--fix', 'Auto-repair fixable issues', false)
     .option('--category <name>', 'Only run checks for a specific category')
     .action(async (change: string | undefined, opts: { fix?: boolean; category?: string }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const report = runDoctor({

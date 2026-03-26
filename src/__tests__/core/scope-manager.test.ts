@@ -7,8 +7,8 @@ import { setScope, clearScope, checkScope, getScope } from '../../core/scope-man
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function makeTempRoot(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-test-'));
-  fs.mkdirSync(path.join(dir, '.foreman'), { recursive: true });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-test-'));
+  fs.mkdirSync(path.join(dir, '.specwork'), { recursive: true });
   return dir;
 }
 
@@ -25,21 +25,21 @@ describe('setScope', () => {
 
   it('writes one path per line to .current-scope', () => {
     setScope(root, ['src/auth/', 'src/types/']);
-    const content = fs.readFileSync(path.join(root, '.foreman', '.current-scope'), 'utf8');
+    const content = fs.readFileSync(path.join(root, '.specwork', '.current-scope'), 'utf8');
     const lines = content.trim().split('\n');
     expect(lines).toHaveLength(2);
     expect(lines.some(l => l.endsWith('src/auth/'))).toBe(true);
     expect(lines.some(l => l.endsWith('src/types/'))).toBe(true);
   });
 
-  it('creates .foreman directory if missing', () => {
-    const noForeman = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-no-'));
-    fs.mkdirSync(path.join(noForeman, '.foreman'));
+  it('creates .specwork directory if missing', () => {
+    const noSpecwork = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-no-'));
+    fs.mkdirSync(path.join(noSpecwork, '.specwork'));
     try {
-      setScope(noForeman, ['src/']);
-      expect(fs.existsSync(path.join(noForeman, '.foreman', '.current-scope'))).toBe(true);
+      setScope(noSpecwork, ['src/']);
+      expect(fs.existsSync(path.join(noSpecwork, '.specwork', '.current-scope'))).toBe(true);
     } finally {
-      rmTempRoot(noForeman);
+      rmTempRoot(noSpecwork);
     }
   });
 
@@ -79,7 +79,7 @@ describe('clearScope', () => {
   it('removes the scope file', () => {
     setScope(root, ['src/']);
     clearScope(root);
-    expect(fs.existsSync(path.join(root, '.foreman', '.current-scope'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.specwork', '.current-scope'))).toBe(false);
   });
 
   it('does not throw if no scope file exists', () => {
@@ -103,7 +103,7 @@ describe('getScope', () => {
   });
 
   it('ignores blank lines in scope file', () => {
-    const scopeFile = path.join(root, '.foreman', '.current-scope');
+    const scopeFile = path.join(root, '.specwork', '.current-scope');
     fs.writeFileSync(scopeFile, '\n/path/a/\n\n/path/b/\n\n', 'utf8');
     expect(getScope(root)).toHaveLength(2);
   });

@@ -6,14 +6,14 @@ import os from 'node:os';
 const CLI = path.resolve(__dirname, '../../../dist/index.js');
 
 export function createTestProject(): string {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'foreman-int-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'specwork-int-'));
   execSync('git init', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.email "test@test.com"', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.name "Test"', { cwd: dir, stdio: 'pipe' });
   return dir;
 }
 
-export function runForeman(cwd: string, args: string): { stdout: string; stderr: string; exitCode: number } {
+export function runSpecwork(cwd: string, args: string): { stdout: string; stderr: string; exitCode: number } {
   // Use shell: true to preserve quoted arguments
   const result = spawnSync(`node ${CLI} ${args}`, {
     cwd,
@@ -33,5 +33,5 @@ export function cleanup(dir: string) {
 }
 
 export function writeTasksFile(dir: string, change: string, content: string) {
-  writeFileSync(path.join(dir, '.foreman', 'changes', change, 'tasks.md'), content);
+  writeFileSync(path.join(dir, '.specwork', 'changes', change, 'tasks.md'), content);
 }

@@ -1,5 +1,5 @@
 /**
- * Edge-case integration tests for Foreman CLI.
+ * Edge-case integration tests for Specwork CLI.
  *
  * Tests scenarios that are unusual or boundary conditions:
  *   - Empty tasks.md → only backbone nodes generated
@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { createTestProject, runForeman, cleanup, writeTasksFile } from './helpers.js';
+import { createTestProject, runSpecwork, cleanup, writeTasksFile } from './helpers.js';
 
 // Core modules for state-level tests
 import { initializeState, transitionNode } from '../../core/state-machine.js';
@@ -28,11 +28,11 @@ import type { WorkflowState } from '../../types/state.js';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function setupProject(dir: string): void {
-  runForeman(dir, 'init');
+  runSpecwork(dir, 'init');
 }
 
 function readState(dir: string, change: string): Record<string, unknown> {
-  const p = path.join(dir, '.foreman', 'graph', change, 'state.yaml');
+  const p = path.join(dir, '.specwork', 'graph', change, 'state.yaml');
   return parseYaml(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>;
 }
 
@@ -41,7 +41,7 @@ function patchState(
   change: string,
   patch: (state: Record<string, unknown>) => Record<string, unknown>,
 ): void {
-  const p = path.join(dir, '.foreman', 'graph', change, 'state.yaml');
+  const p = path.join(dir, '.specwork', 'graph', change, 'state.yaml');
   const state = parseYaml(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>;
   const next = patch(state);
   fs.writeFileSync(p, stringifyYaml(next), 'utf-8');
@@ -63,16 +63,16 @@ describe('edge case: empty tasks.md', () => {
   beforeEach(() => {
     dir = createTestProject();
     setupProject(dir);
-    runForeman(dir, 'new empty-change');
+    runSpecwork(dir, 'new empty-change');
     // tasks.md with section header but no checkbox tasks
     writeTasksFile(dir, 'empty-change', '## 1. Setup\n\nNo tasks here.\n');
-    runForeman(dir, 'graph generate empty-change');
+    runSpecwork(dir, 'graph generate empty-change');
   });
 
   afterEach(() => cleanup(dir));
 
   it('generates a graph even when tasks.md has no checkbox items', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'empty-change', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     expect(fs.existsSync(graphFile)).toBe(true);
 
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
@@ -81,35 +81,35 @@ describe('edge case: empty tasks.md', () => {
   });
 
   it('generated graph contains snapshot backbone node', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'empty-change', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
     const ids = graph.nodes.map((n) => n.id);
     expect(ids).toContain('snapshot');
   });
 
   it('generated graph contains write-tests backbone node', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'empty-change', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
     const ids = graph.nodes.map((n) => n.id);
     expect(ids).toContain('write-tests');
   });
 
   it('generated graph contains integration backbone node', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'empty-change', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
     const ids = graph.nodes.map((n) => n.id);
     expect(ids).toContain('integration');
   });
 
   it('generated graph has no impl-* nodes for empty tasks', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'empty-change', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
     const implNodes = graph.nodes.filter((n) => n.id.startsWith('impl-'));
     expect(implNodes).toHaveLength(0);
   });
 
-  it('foreman run still identifies snapshot as first ready node', () => {
-    const result = runForeman(dir, '--json run empty-change');
+  it('specwork run still identifies snapshot as first ready node', () => {
+    const result = runSpecwork(dir, '--json run empty-change');
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as { ready: Array<{ id: string }> };
     expect(parsed.ready[0].id).toBe('snapshot');
@@ -125,22 +125,22 @@ describe('edge case: single-task graph', () => {
   beforeEach(() => {
     dir = createTestProject();
     setupProject(dir);
-    runForeman(dir, 'new single-task');
+    runSpecwork(dir, 'new single-task');
     writeTasksFile(dir, 'single-task', SINGLE_TASK);
-    runForeman(dir, 'graph generate single-task');
+    runSpecwork(dir, 'graph generate single-task');
   });
 
   afterEach(() => cleanup(dir));
 
   it('graph contains exactly one impl-* node', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'single-task', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'single-task', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
     const implNodes = graph.nodes.filter((n) => n.id.startsWith('impl-'));
     expect(implNodes).toHaveLength(1);
   });
 
   it('the single impl node depends on write-tests', () => {
-    const graphFile = path.join(dir, '.foreman', 'graph', 'single-task', 'graph.yaml');
+    const graphFile = path.join(dir, '.specwork', 'graph', 'single-task', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as {
       nodes: Array<{ id: string; deps: string[] }>;
     };
@@ -150,7 +150,7 @@ describe('edge case: single-task graph', () => {
   });
 
   it('graph validates successfully', () => {
-    const result = runForeman(dir, 'graph validate single-task');
+    const result = runSpecwork(dir, 'graph validate single-task');
     expect(result.exitCode).toBe(0);
   });
 
@@ -207,7 +207,7 @@ describe('edge case: diamond dependency execution order', () => {
         outputs: [],
         scope: [],
         validate: [],
-        agent: 'foreman-implementer',
+        agent: 'specwork-implementer',
       },
       {
         id: 'node-c',
@@ -218,7 +218,7 @@ describe('edge case: diamond dependency execution order', () => {
         outputs: [],
         scope: [],
         validate: [],
-        agent: 'foreman-implementer',
+        agent: 'specwork-implementer',
       },
       {
         id: 'node-d',
@@ -229,7 +229,7 @@ describe('edge case: diamond dependency execution order', () => {
         outputs: [],
         scope: [],
         validate: [],
-        agent: 'foreman-implementer',
+        agent: 'specwork-implementer',
       },
     ],
   };
@@ -239,8 +239,8 @@ describe('edge case: diamond dependency execution order', () => {
   beforeEach(() => {
     root = createTestProject();
     // Set up directories
-    fs.mkdirSync(path.join(root, '.foreman', 'graph', CHANGE), { recursive: true });
-    fs.mkdirSync(path.join(root, '.foreman', 'nodes', CHANGE), { recursive: true });
+    fs.mkdirSync(path.join(root, '.specwork', 'graph', CHANGE), { recursive: true });
+    fs.mkdirSync(path.join(root, '.specwork', 'nodes', CHANGE), { recursive: true });
     // Write graph + initial state
     writeYaml(graphPath(root, CHANGE), diamondGraph);
     writeYaml(statePath(root, CHANGE), initializeState(diamondGraph));
@@ -298,16 +298,16 @@ describe('edge case: diamond dependency execution order', () => {
     expect(readyIds).toContain('node-d');
   });
 
-  it('foreman run --json returns only node-a in initial state', () => {
+  it('specwork run --json returns only node-a in initial state', () => {
     // Write initial state to disk so CLI can read it
     writeYaml(statePath(root, CHANGE), initializeState(diamondGraph));
 
-    // Need .foreman dir for root detection
-    if (!fs.existsSync(path.join(root, '.foreman', 'config.yaml'))) {
+    // Need .specwork dir for root detection
+    if (!fs.existsSync(path.join(root, '.specwork', 'config.yaml'))) {
       setupProject(root);
     }
 
-    const result = runForeman(root, `--json run ${CHANGE}`);
+    const result = runSpecwork(root, `--json run ${CHANGE}`);
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as { ready: Array<{ id: string }> };
     const readyIds = parsed.ready.map((n) => n.id);
@@ -348,7 +348,7 @@ describe('edge case: retry exhaustion', () => {
           outputs: [],
           scope: [],
           validate: [],
-          agent: 'foreman-test-writer',
+          agent: 'specwork-test-writer',
           retry: 2,
         },
       ],
@@ -394,7 +394,7 @@ describe('edge case: retry exhaustion', () => {
           outputs: [],
           scope: [],
           validate: [],
-          agent: 'foreman-test-writer',
+          agent: 'specwork-test-writer',
         },
         {
           id: 'impl-core',
@@ -405,7 +405,7 @@ describe('edge case: retry exhaustion', () => {
           outputs: [],
           scope: [],
           validate: [],
-          agent: 'foreman-implementer',
+          agent: 'specwork-implementer',
         },
       ],
     };
@@ -449,7 +449,7 @@ describe('edge case: retry exhaustion', () => {
           outputs: [],
           scope: [],
           validate: [],
-          agent: 'foreman-test-writer',
+          agent: 'specwork-test-writer',
         },
       ],
     };
@@ -463,16 +463,16 @@ describe('edge case: retry exhaustion', () => {
     expect(ready).toHaveLength(0);
   });
 
-  it('foreman run --json reports blocked when all nodes are failed/escalated/skipped', () => {
+  it('specwork run --json reports blocked when all nodes are failed/escalated/skipped', () => {
     const dir = createTestProject();
     try {
-      runForeman(dir, 'init');
-      runForeman(dir, 'new retry-change');
+      runSpecwork(dir, 'init');
+      runSpecwork(dir, 'new retry-change');
       writeTasksFile(dir, 'retry-change', '## 1. Core\n\n- [ ] 1.1 Do thing\n');
-      runForeman(dir, 'graph generate retry-change');
+      runSpecwork(dir, 'graph generate retry-change');
 
       // Escalate snapshot and skip all dependents
-      const stateFilePath = path.join(dir, '.foreman', 'graph', 'retry-change', 'state.yaml');
+      const stateFilePath = path.join(dir, '.specwork', 'graph', 'retry-change', 'state.yaml');
       const state = parseYaml(fs.readFileSync(stateFilePath, 'utf-8')) as Record<string, unknown>;
       const nodes = state.nodes as Record<string, Record<string, unknown>>;
       const ts = new Date().toISOString();
@@ -487,7 +487,7 @@ describe('edge case: retry exhaustion', () => {
       }
       fs.writeFileSync(stateFilePath, stringifyYaml({ ...state, nodes, updated_at: ts }), 'utf-8');
 
-      const result = runForeman(dir, '--json run retry-change');
+      const result = runSpecwork(dir, '--json run retry-change');
       // Should exit with 0 and report complete (all nodes terminal) or blocked
       expect(result.exitCode).toBeGreaterThanOrEqual(0);
 
@@ -506,15 +506,15 @@ describe('edge case: graph validation errors', () => {
 
   beforeEach(() => {
     dir = createTestProject();
-    runForeman(dir, 'init');
-    runForeman(dir, 'new validate-test');
+    runSpecwork(dir, 'init');
+    runSpecwork(dir, 'new validate-test');
   });
 
   afterEach(() => cleanup(dir));
 
   it('validate errors when graph.yaml is missing state.yaml pair', () => {
     // Write graph.yaml but no state.yaml
-    const graphDir = path.join(dir, '.foreman', 'graph', 'validate-test');
+    const graphDir = path.join(dir, '.specwork', 'graph', 'validate-test');
     fs.mkdirSync(graphDir, { recursive: true });
     fs.writeFileSync(
       path.join(graphDir, 'graph.yaml'),
@@ -527,12 +527,12 @@ describe('edge case: graph validation errors', () => {
       'utf-8',
     );
 
-    const result = runForeman(dir, 'graph validate validate-test');
+    const result = runSpecwork(dir, 'graph validate validate-test');
     expect(result.exitCode).not.toBe(0);
   });
 
-  it('foreman run errors when graph has not been generated', () => {
-    const result = runForeman(dir, '--json run validate-test');
+  it('specwork run errors when graph has not been generated', () => {
+    const result = runSpecwork(dir, '--json run validate-test');
     expect(result.exitCode).not.toBe(0);
   });
 });

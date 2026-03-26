@@ -1,32 +1,32 @@
 import { Command } from 'commander';
 import { writeMarkdown, writeYaml, readMarkdown, ensureDir, exists } from '../io/filesystem.js';
-import { findForemanRoot } from '../utils/paths.js';
+import { findSpecworkRoot } from '../utils/paths.js';
 import { output } from '../utils/output.js';
 import { success, info, warn } from '../utils/logger.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
-// ── foreman new <change> ───────────────────────────────────────────────────
+// ── specwork new <change> ───────────────────────────────────────────────────
 
 export function makeNewCommand(): Command {
   return new Command('new')
     .description('Create a new change from templates')
     .argument('<change>', 'Change name (kebab-case)')
     .action((change: string, _opts, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       // Validate change name
       if (!/^[a-z0-9][a-z0-9-]*$/.test(change)) {
-        throw new ForemanError(
+        throw new SpecworkError(
           `Invalid change name "${change}": use lowercase letters, numbers, and hyphens only`,
           ExitCode.ERROR
         );
       }
 
-      const changeDir = path.join(root, '.foreman', 'changes', change);
+      const changeDir = path.join(root, '.specwork', 'changes', change);
 
       if (exists(changeDir)) {
         if (jsonMode) {
@@ -34,14 +34,14 @@ export function makeNewCommand(): Command {
         } else {
           warn(`Change "${change}" already exists at ${changeDir}`);
         }
-        throw new ForemanError(`Change "${change}" already exists`, ExitCode.ERROR);
+        throw new SpecworkError(`Change "${change}" already exists`, ExitCode.ERROR);
       }
 
       ensureDir(changeDir);
       ensureDir(path.join(changeDir, 'specs'));
 
       // ── copy templates ────────────────────────────────────────────────
-      const templatesDir = path.join(root, '.foreman', 'templates');
+      const templatesDir = path.join(root, '.specwork', 'templates');
       const templatesToCopy = ['proposal.md', 'design.md', 'tasks.md'];
 
       const copied: string[] = [];
@@ -55,20 +55,20 @@ export function makeNewCommand(): Command {
         }
       }
 
-      // ── .foreman.yaml metadata ─────────────────────────────────────────
+      // ── .specwork.yaml metadata ─────────────────────────────────────────
       const metadata = {
-        schema: 'foreman-change/v1',
+        schema: 'specwork-change/v1',
         change,
         created_at: new Date().toISOString(),
         status: 'draft',
       };
-      writeYaml(path.join(changeDir, '.foreman.yaml'), metadata);
+      writeYaml(path.join(changeDir, '.specwork.yaml'), metadata);
 
       const result = {
         created: true,
         change,
         path: changeDir,
-        files: ['.foreman.yaml', ...copied],
+        files: ['.specwork.yaml', ...copied],
       };
 
       if (jsonMode) {
@@ -81,8 +81,8 @@ export function makeNewCommand(): Command {
           info(`    ${f}`);
         }
         info('');
-        info(`Edit the files in .foreman/changes/${change}/ then run:`);
-        info(`  foreman graph generate ${change}`);
+        info(`Edit the files in .specwork/changes/${change}/ then run:`);
+        info(`  specwork graph generate ${change}`);
       }
     });
 }

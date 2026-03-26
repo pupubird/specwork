@@ -24,18 +24,18 @@ export interface NextActionOpts {
   retriesLeft?: number;
 }
 
-// ── Read change description from .foreman.yaml ──────────────────────────────
+// ── Read change description from .specwork.yaml ──────────────────────────────
 
 export function readChangeContext(root: string, change: string): string {
   try {
-    const yamlPath = path.join(root, '.foreman', 'changes', change, '.foreman.yaml');
+    const yamlPath = path.join(root, '.specwork', 'changes', change, '.specwork.yaml');
     const raw = fs.readFileSync(yamlPath, 'utf-8');
     const parsed = parseYaml(raw) as Record<string, unknown>;
     return typeof parsed.description === 'string' ? parsed.description : '';
   } catch {
     // Also check archive
     try {
-      const archivePath = path.join(root, '.foreman', 'changes', 'archive', change, '.foreman.yaml');
+      const archivePath = path.join(root, '.specwork', 'changes', 'archive', change, '.specwork.yaml');
       const raw = fs.readFileSync(archivePath, 'utf-8');
       const parsed = parseYaml(raw) as Record<string, unknown>;
       return typeof parsed.description === 'string' ? parsed.description : '';
@@ -68,7 +68,7 @@ export function buildNextAction(
         description: 'Workflow complete. Present options to user.',
         context,
         suggest_to_user: [
-          `Archive this change (foreman archive ${change})`,
+          `Archive this change (specwork archive ${change})`,
           'Review all changes before archiving',
           'Request modifications to specific nodes',
         ],
@@ -84,23 +84,23 @@ export function buildNextAction(
     case 'go:waiting':
       return {
         command: 'wait',
-        description: `Nodes still in progress. Wait for teammates to complete, then run: foreman go ${change} --json`,
+        description: `Nodes still in progress. Wait for teammates to complete, then run: specwork go ${change} --json`,
         context,
       };
 
     case 'node:start':
       return {
-        command: `foreman context assemble ${change} ${nodeId}`,
+        command: `specwork context assemble ${change} ${nodeId}`,
         description: `Assemble context and spawn the appropriate subagent for node ${nodeId}.`,
         context,
-        on_pass: `foreman node complete ${change} ${nodeId} --l0 '<summary>'`,
-        on_fail: `foreman node fail ${change} ${nodeId} --reason '<error>'`,
+        on_pass: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
+        on_fail: `specwork node fail ${change} ${nodeId} --reason '<error>'`,
       };
 
     case 'node:complete':
       return {
-        command: `foreman go ${change} --json`,
-        description: `Node ${nodeId} complete. Run foreman go to get the next batch of ready nodes.`,
+        command: `specwork go ${change} --json`,
+        description: `Node ${nodeId} complete. Run specwork go to get the next batch of ready nodes.`,
         context,
       };
 
@@ -113,12 +113,12 @@ export function buildNextAction(
         };
       }
       return {
-        command: `foreman node escalate ${change} ${nodeId}`,
+        command: `specwork node escalate ${change} ${nodeId}`,
         description: `Node ${nodeId} failed with no retries remaining. Escalate to user for manual intervention.`,
         context,
         suggest_to_user: [
-          `Fix the issue manually and run: foreman node complete ${change} ${nodeId}`,
-          `Skip this node: foreman node escalate ${change} ${nodeId}`,
+          `Fix the issue manually and run: specwork node complete ${change} ${nodeId}`,
+          `Skip this node: specwork node escalate ${change} ${nodeId}`,
           'Abort the workflow',
         ],
       };
@@ -129,26 +129,26 @@ export function buildNextAction(
         description: `Node ${nodeId} escalated. Dependent nodes have been cascade-skipped. Report to user.`,
         context,
         suggest_to_user: [
-          `Fix manually and retry: foreman node start ${change} ${nodeId}`,
-          `Continue workflow without this node: foreman go ${change} --json`,
+          `Fix manually and retry: specwork node start ${change} ${nodeId}`,
+          `Continue workflow without this node: specwork go ${change} --json`,
           'Abort the workflow',
         ],
       };
 
     case 'node:verify:pass':
       return {
-        command: `foreman node complete ${change} ${nodeId} --l0 '<summary>'`,
+        command: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
         description: `Verification passed for ${nodeId}. Complete the node with an L0 summary.`,
         context,
-        on_pass: `foreman node complete ${change} ${nodeId} --l0 '<summary>'`,
+        on_pass: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
       };
 
     case 'node:verify:fail':
       return {
-        command: `foreman node fail ${change} ${nodeId} --reason '<failed checks>'`,
+        command: `specwork node fail ${change} ${nodeId} --reason '<failed checks>'`,
         description: `Verification failed for ${nodeId}. Fail the node so retry logic can kick in.`,
         context,
-        on_fail: `foreman node fail ${change} ${nodeId} --reason '<failed checks>'`,
+        on_fail: `specwork node fail ${change} ${nodeId} --reason '<failed checks>'`,
       };
   }
 }

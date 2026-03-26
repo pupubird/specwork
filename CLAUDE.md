@@ -1,51 +1,51 @@
-# Foreman
+# Specwork
 
-Foreman is a **spec-driven, test-first, graph-based workflow engine** built entirely on Claude Code primitives. It orchestrates multi-step AI development workflows using a directed graph of nodes, where each node is either a deterministic shell command or an LLM subagent.
+Specwork is a **spec-driven, test-first, graph-based workflow engine** built entirely on Claude Code primitives. It orchestrates multi-step AI development workflows using a directed graph of nodes, where each node is either a deterministic shell command or an LLM subagent.
 
 **Core philosophy**: Specs before code. Tests before implementation. Context flows, not full conversation dumps.
 
-Everything lives under `.foreman/` — one directory, one unified system.
+Everything lives under `.specwork/` — one directory, one unified system.
 
 ---
 
-## How to Use Foreman
+## How to Use Specwork
 
 ### Three commands to remember
 
 ```bash
 # 1. Plan a change — describe what you want in plain English
-foreman plan "Add JWT authentication to the API"
+specwork plan "Add JWT authentication to the API"
 
-# 2. Run the workflow — Foreman drives everything autonomously
-foreman go add-jwt-authentication
+# 2. Run the workflow — Specwork drives everything autonomously
+specwork go add-jwt-authentication
 
 # 3. Check progress anytime
-foreman status
+specwork status
 ```
 
 ### With Claude Code slash commands
 
 ```
-/project:foreman-plan "Add JWT authentication"
-/project:foreman-go add-jwt-authentication
-/project:foreman-status
+/project:specwork-plan "Add JWT authentication"
+/project:specwork-go add-jwt-authentication
+/project:specwork-status
 ```
 
 ### What happens under the hood
 
-1. `foreman plan` creates `.foreman/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
+1. `specwork plan` creates `.specwork/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
 2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
-3. `foreman graph generate <name>` maps tasks to a DAG of nodes
-4. `foreman go <name>` walks the graph: snapshot → write tests (RED) → implement (GREEN) → verify → commit
-5. `foreman status` shows all active changes with progress
+3. `specwork graph generate <name>` maps tasks to a DAG of nodes
+4. `specwork go <name>` walks the graph: snapshot → write tests (RED) → implement (GREEN) → verify → commit
+5. `specwork status` shows all active changes with progress
 
-One-time setup: `foreman init` (creates `.foreman/` directory structure).
+One-time setup: `specwork init` (creates `.specwork/` directory structure).
 
 ---
 
 ## Context System (L0 / L1 / L2)
 
-Foreman uses a tiered context system to give each subagent exactly the right information without bloating the context window.
+Specwork uses a tiered context system to give each subagent exactly the right information without bloating the context window.
 
 | Tier | Scope | Size | Content |
 |------|-------|------|---------|
@@ -59,7 +59,7 @@ Foreman uses a tiered context system to give each subagent exactly the right inf
 3. If a subagent needs full details from a previous node, it outputs `EXPAND(node-id)` as its first line
 4. The engine loads L2 of that node and re-spawns the subagent (once)
 
-Context files: `.foreman/nodes/<change>/<node-id>/L0.md`, `L1.md`, `L2.md`
+Context files: `.specwork/nodes/<change>/<node-id>/L0.md`, `L1.md`, `L2.md`
 
 ---
 
@@ -72,7 +72,7 @@ Every graph starts with a `snapshot` node (deterministic). It generates:
 
 Subagents MUST use only imports/types from the snapshot — never guess at interfaces.
 
-Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
+Snapshot refreshes after each LLM node (configurable in `.specwork/config.yaml`).
 
 ---
 
@@ -84,7 +84,7 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 4. **Snapshot-only imports** — subagents use only types/imports visible in the environment snapshot.
 5. **Verify before commit** — the verifier agent runs after each node, before any git commit.
 6. **Human gates** — `write-tests` node requires human approval before implementation begins.
-7. **Auto-archive** — completed changes are automatically archived to `.foreman/changes/archive/` when `foreman go` detects all nodes are done.
+7. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
 
 ---
 
@@ -92,18 +92,18 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 
 | Directory | Purpose |
 |-----------|---------|
-| `.foreman/config.yaml` | Unified config: engine settings + spec conventions |
-| `.foreman/schema.yaml` | Artifact dependency graph (proposal → specs → design → tasks) |
-| `.foreman/templates/` | Starter templates for proposal, spec, design, tasks |
-| `.foreman/specs/` | Source-of-truth specs (current deployed behavior) |
-| `.foreman/changes/` | In-flight change proposals (proposal + specs + design + tasks) |
-| `.foreman/changes/archive/` | Completed changes (auto-archived on workflow completion) |
-| `.foreman/graph/<change>/` | `graph.yaml` (plan) + `state.yaml` (runtime status) |
-| `.foreman/nodes/<change>/` | Node artifacts: L0/L1/L2, verify.md, output.txt |
-| `.foreman/examples/` | Example graphs for reference |
+| `.specwork/config.yaml` | Unified config: engine settings + spec conventions |
+| `.specwork/schema.yaml` | Artifact dependency graph (proposal → specs → design → tasks) |
+| `.specwork/templates/` | Starter templates for proposal, spec, design, tasks |
+| `.specwork/specs/` | Source-of-truth specs (current deployed behavior) |
+| `.specwork/changes/` | In-flight change proposals (proposal + specs + design + tasks) |
+| `.specwork/changes/archive/` | Completed changes (auto-archived on workflow completion) |
+| `.specwork/graph/<change>/` | `graph.yaml` (plan) + `state.yaml` (runtime status) |
+| `.specwork/nodes/<change>/` | Node artifacts: L0/L1/L2, verify.md, output.txt |
+| `.specwork/examples/` | Example graphs for reference |
 | `.claude/agents/` | Subagent roles (test-writer, implementer, verifier, summarizer) |
-| `.claude/skills/` | Engine logic (foreman-engine, foreman-context, foreman-conventions) |
-| `.claude/commands/` | Slash commands (foreman-plan, foreman-go, foreman-status) |
+| `.claude/skills/` | Engine logic (specwork-engine, specwork-context, specwork-conventions) |
+| `.claude/commands/` | Slash commands (specwork-plan, specwork-go, specwork-status) |
 | `.claude/hooks/` | Lifecycle hooks (scope-guard, type-check, session-init, node-complete) |
 
 ---
@@ -112,12 +112,12 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 
 The `session-init.sh` hook detects active workflows when Claude Code starts:
 ```
-Foreman workflow active: <change-name>. Run `foreman status` for details.
+Specwork workflow active: <change-name>. Run `specwork status` for details.
 ```
 
 Check manually:
 ```bash
-foreman status <change-name>
+specwork status <change-name>
 ```
 
 ---
@@ -126,33 +126,33 @@ foreman status <change-name>
 
 | Agent | Model | Role |
 |-------|-------|------|
-| `foreman-test-writer` | opus | Writes tests from specs (RED state required) |
-| `foreman-implementer` | sonnet | Makes tests pass, minimum code, within scope |
-| `foreman-verifier` | haiku | Read-only validation, PASS/FAIL per check |
-| `foreman-summarizer` | haiku | Generates L0/L1/L2 context for completed nodes |
+| `specwork-test-writer` | opus | Writes tests from specs (RED state required) |
+| `specwork-implementer` | sonnet | Makes tests pass, minimum code, within scope |
+| `specwork-verifier` | haiku | Read-only validation, PASS/FAIL per check |
+| `specwork-summarizer` | haiku | Generates L0/L1/L2 context for completed nodes |
 
 ### Agent Teams (Mandatory)
 
-All foreman execution uses Agent Teams (TeamCreate/TeamDelete). This is mandatory for both planning (`foreman-plan`) and execution (`foreman-go`), regardless of node count or `parallel_mode` setting. The `parallel_mode` config (default: `parallel`) controls whether teammates run concurrently or sequentially within the team — it does not control whether teams are used. Use Sonnet for implementation teammates, Opus for planning.
+All specwork execution uses Agent Teams (TeamCreate/TeamDelete). This is mandatory for both planning (`specwork-plan`) and execution (`specwork-go`), regardless of node count or `parallel_mode` setting. The `parallel_mode` config (default: `parallel`) controls whether teammates run concurrently or sequentially within the team — it does not control whether teams are used. Use Sonnet for implementation teammates, Opus for planning.
 
 ---
 
 ## Spec Conventions (Quick Reference)
 
-Foreman's spec system is a built-in feature. Full details in the `foreman-conventions` skill.
+Specwork's spec system is a built-in feature. Full details in the `specwork-conventions` skill.
 
 - `### Requirement: Name` — requirement header (3 hashtags)
 - `#### Scenario: Name` — scenario header (4 hashtags — **CRITICAL**, never 3)
 - `SHALL/MUST` — absolute requirement
 - `SHOULD` — recommended
 - Specs = behavior contracts only (no class names, no library choices)
-- `.foreman/specs/` = source of truth; `.foreman/changes/` = proposed deltas
+- `.specwork/specs/` = source of truth; `.specwork/changes/` = proposed deltas
 
 ---
 
 ## Configuration
 
-`.foreman/config.yaml` controls everything:
+`.specwork/config.yaml` controls everything:
 
 ```yaml
 models:
@@ -173,7 +173,7 @@ context:
 
 spec:
   schema: spec-driven
-  specs_dir: .foreman/specs
-  changes_dir: .foreman/changes
-  templates_dir: .foreman/templates
+  specs_dir: .specwork/specs
+  changes_dir: .specwork/changes
+  templates_dir: .specwork/templates
 ```

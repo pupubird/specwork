@@ -1,5 +1,5 @@
 /**
- * Tests for the foreman doctor diagnostic system.
+ * Tests for the specwork doctor diagnostic system.
  *
  * RED state: src/core/doctor.ts does not exist yet — all tests must fail on import.
  */
@@ -31,18 +31,18 @@ import type {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeTmpRoot(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-doctor-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-doctor-'));
 }
 
-/** Scaffold a minimal valid .foreman/ directory structure. */
-function initForeman(root: string): void {
+/** Scaffold a minimal valid .specwork/ directory structure. */
+function initSpecwork(root: string): void {
   const dirs = [
-    '.foreman/env',
-    '.foreman/graph',
-    '.foreman/nodes',
-    '.foreman/specs',
-    '.foreman/changes/archive',
-    '.foreman/templates',
+    '.specwork/env',
+    '.specwork/graph',
+    '.specwork/nodes',
+    '.specwork/specs',
+    '.specwork/changes/archive',
+    '.specwork/templates',
   ];
   for (const d of dirs) {
     fs.mkdirSync(path.join(root, d), { recursive: true });
@@ -52,31 +52,31 @@ function initForeman(root: string): void {
   const config = {
     models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
     execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
-    spec: { schema: 'spec-driven', specs_dir: '.foreman/specs', changes_dir: '.foreman/changes' },
-    graph: { graphs_dir: '.foreman/graph', nodes_dir: '.foreman/nodes' },
+    spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes' },
+    graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
   };
-  fs.writeFileSync(path.join(root, '.foreman', 'config.yaml'), stringifyYaml(config), 'utf-8');
+  fs.writeFileSync(path.join(root, '.specwork', 'config.yaml'), stringifyYaml(config), 'utf-8');
 
   // Templates
-  fs.writeFileSync(path.join(root, '.foreman', 'templates', 'proposal.md'), '# Proposal\n', 'utf-8');
-  fs.writeFileSync(path.join(root, '.foreman', 'templates', 'design.md'), '# Design\n', 'utf-8');
-  fs.writeFileSync(path.join(root, '.foreman', 'templates', 'tasks.md'), '## 1. Default\n\n- [ ] 1.1 Placeholder\n', 'utf-8');
+  fs.writeFileSync(path.join(root, '.specwork', 'templates', 'proposal.md'), '# Proposal\n', 'utf-8');
+  fs.writeFileSync(path.join(root, '.specwork', 'templates', 'design.md'), '# Design\n', 'utf-8');
+  fs.writeFileSync(path.join(root, '.specwork', 'templates', 'tasks.md'), '## 1. Default\n\n- [ ] 1.1 Placeholder\n', 'utf-8');
 }
 
 /** Write a spec file with given content. */
 function writeSpec(root: string, name: string, content: string): void {
-  const specPath = path.join(root, '.foreman', 'specs', name);
+  const specPath = path.join(root, '.specwork', 'specs', name);
   fs.mkdirSync(path.dirname(specPath), { recursive: true });
   fs.writeFileSync(specPath, content, 'utf-8');
 }
 
 /** Create a change directory with required files. */
 function createChange(root: string, name: string, opts: { status?: string; files?: Record<string, string> } = {}): void {
-  const changeDir = path.join(root, '.foreman', 'changes', name);
+  const changeDir = path.join(root, '.specwork', 'changes', name);
   fs.mkdirSync(changeDir, { recursive: true });
 
-  const meta = { schema: 'foreman-change/v1', change: name, status: opts.status ?? 'active', created_at: '2026-03-27T00:00:00Z' };
-  fs.writeFileSync(path.join(changeDir, '.foreman.yaml'), stringifyYaml(meta), 'utf-8');
+  const meta = { schema: 'specwork-change/v1', change: name, status: opts.status ?? 'active', created_at: '2026-03-27T00:00:00Z' };
+  fs.writeFileSync(path.join(changeDir, '.specwork.yaml'), stringifyYaml(meta), 'utf-8');
   fs.writeFileSync(path.join(changeDir, 'proposal.md'), opts.files?.['proposal.md'] ?? '# Proposal\n\nTest proposal', 'utf-8');
   fs.writeFileSync(path.join(changeDir, 'design.md'), opts.files?.['design.md'] ?? '# Design\n\nTest design', 'utf-8');
   fs.writeFileSync(path.join(changeDir, 'tasks.md'), opts.files?.['tasks.md'] ?? '## 1. Core\n\n- [ ] 1.1 Do something\n', 'utf-8');
@@ -84,11 +84,11 @@ function createChange(root: string, name: string, opts: { status?: string; files
 
 /** Create an archive entry. */
 function createArchive(root: string, name: string, opts: { missingFiles?: string[]; extraFiles?: string[]; status?: string } = {}): void {
-  const archiveDir = path.join(root, '.foreman', 'changes', 'archive', name);
+  const archiveDir = path.join(root, '.specwork', 'changes', 'archive', name);
   fs.mkdirSync(archiveDir, { recursive: true });
 
   const requiredFiles: Record<string, string> = {
-    '.foreman.yaml': stringifyYaml({ schema: 'foreman-change/v1', change: name, status: opts.status ?? 'archived', archived_at: '2026-03-27T00:00:00Z' }),
+    '.specwork.yaml': stringifyYaml({ schema: 'specwork-change/v1', change: name, status: opts.status ?? 'archived', archived_at: '2026-03-27T00:00:00Z' }),
     'proposal.md': '# Proposal\n',
     'design.md': '# Design\n',
     'tasks.md': '## 1. Core\n\n- [x] 1.1 Done\n',
@@ -108,7 +108,7 @@ function createArchive(root: string, name: string, opts: { missingFiles?: string
 
 /** Create a graph with nodes. */
 function createGraph(root: string, change: string, nodeIds: string[], opts: { cycle?: boolean } = {}): void {
-  const graphDir = path.join(root, '.foreman', 'graph', change);
+  const graphDir = path.join(root, '.specwork', 'graph', change);
   fs.mkdirSync(graphDir, { recursive: true });
 
   const nodes = nodeIds.map((id, i) => ({
@@ -120,7 +120,7 @@ function createGraph(root: string, change: string, nodeIds: string[], opts: { cy
     outputs: [],
     scope: i === 0 ? [] : ['src/'],
     validate: [{ type: 'tsc-check' }],
-    ...(i === 0 ? { command: 'foreman snapshot' } : { agent: 'foreman-implementer' }),
+    ...(i === 0 ? { command: 'specwork snapshot' } : { agent: 'specwork-implementer' }),
   }));
 
   // Add cycle: first node depends on last
@@ -148,7 +148,7 @@ function createGraph(root: string, change: string, nodeIds: string[], opts: { cy
 /** Create node directories for a change. */
 function createNodeDirs(root: string, change: string, nodeIds: string[]): void {
   for (const id of nodeIds) {
-    const nd = path.join(root, '.foreman', 'nodes', change, id);
+    const nd = path.join(root, '.specwork', 'nodes', change, id);
     fs.mkdirSync(nd, { recursive: true });
     fs.writeFileSync(path.join(nd, 'L0.md'), `- ${id}: done\n`, 'utf-8');
   }
@@ -163,7 +163,7 @@ describe('checkConfig', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -180,7 +180,7 @@ describe('checkConfig', () => {
   });
 
   it('fails when config.yaml is missing', () => {
-    fs.unlinkSync(path.join(root, '.foreman', 'config.yaml'));
+    fs.unlinkSync(path.join(root, '.specwork', 'config.yaml'));
     const result = checkConfig(root);
     expect(result.category).toBe('Config');
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -192,9 +192,9 @@ describe('checkConfig', () => {
     const config = {
       models: { default: 'sonnet' },
       spec: { schema: 'spec-driven' },
-      graph: { graphs_dir: '.foreman/graph' },
+      graph: { graphs_dir: '.specwork/graph' },
     };
-    fs.writeFileSync(path.join(root, '.foreman', 'config.yaml'), stringifyYaml(config), 'utf-8');
+    fs.writeFileSync(path.join(root, '.specwork', 'config.yaml'), stringifyYaml(config), 'utf-8');
 
     const result = checkConfig(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -214,7 +214,7 @@ describe('checkSpecs', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -311,7 +311,7 @@ describe('checkArchives', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -357,7 +357,7 @@ describe('checkArchives', () => {
     expect(fixableWarnings.length).toBeGreaterThan(0);
   });
 
-  it('errors when archive .foreman.yaml has wrong status', () => {
+  it('errors when archive .specwork.yaml has wrong status', () => {
     createArchive(root, 'wrong-status', { status: 'active' });
 
     const result = checkArchives(root);
@@ -365,8 +365,8 @@ describe('checkArchives', () => {
     expect(failing.length).toBeGreaterThan(0);
   });
 
-  it('errors when archive is missing .foreman.yaml', () => {
-    createArchive(root, 'no-meta', { missingFiles: ['.foreman.yaml'] });
+  it('errors when archive is missing .specwork.yaml', () => {
+    createArchive(root, 'no-meta', { missingFiles: ['.specwork.yaml'] });
 
     const result = checkArchives(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -390,7 +390,7 @@ describe('checkChanges', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -408,7 +408,7 @@ describe('checkChanges', () => {
 
   it('errors when change is missing proposal.md', () => {
     createChange(root, 'no-proposal');
-    fs.unlinkSync(path.join(root, '.foreman', 'changes', 'no-proposal', 'proposal.md'));
+    fs.unlinkSync(path.join(root, '.specwork', 'changes', 'no-proposal', 'proposal.md'));
 
     const result = checkChanges(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -448,7 +448,7 @@ describe('checkGraphs', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -489,7 +489,7 @@ describe('checkTemplates', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -497,7 +497,7 @@ describe('checkTemplates', () => {
   });
 
   it('passes when all templates are present', () => {
-    initForeman(root);
+    initSpecwork(root);
 
     const result = checkTemplates(root);
     expect(result.category).toBe('Templates');
@@ -506,8 +506,8 @@ describe('checkTemplates', () => {
   });
 
   it('errors when a template is missing and marks fixable', () => {
-    initForeman(root);
-    fs.unlinkSync(path.join(root, '.foreman', 'templates', 'proposal.md'));
+    initSpecwork(root);
+    fs.unlinkSync(path.join(root, '.specwork', 'templates', 'proposal.md'));
 
     const result = checkTemplates(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -516,8 +516,8 @@ describe('checkTemplates', () => {
   });
 
   it('errors when templates directory is missing', () => {
-    // Remove templates dir created by initForeman to simulate missing templates
-    fs.rmSync(path.join(root, '.foreman', 'templates'), { recursive: true, force: true });
+    // Remove templates dir created by initSpecwork to simulate missing templates
+    fs.rmSync(path.join(root, '.specwork', 'templates'), { recursive: true, force: true });
 
     const result = checkTemplates(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);
@@ -534,7 +534,7 @@ describe('checkCrossRefs', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -590,7 +590,7 @@ describe('runDoctor', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {
@@ -620,7 +620,7 @@ describe('runDoctor', () => {
 
   it('counts failures correctly on a broken project', () => {
     // Remove config to cause a failure
-    fs.unlinkSync(path.join(root, '.foreman', 'config.yaml'));
+    fs.unlinkSync(path.join(root, '.specwork', 'config.yaml'));
 
     const report = runDoctor({ root });
     expect(report.totalFail).toBeGreaterThan(0);
@@ -628,7 +628,7 @@ describe('runDoctor', () => {
 
   it('counts fixable issues separately from non-fixable', () => {
     // Remove a template (fixable)
-    fs.unlinkSync(path.join(root, '.foreman', 'templates', 'proposal.md'));
+    fs.unlinkSync(path.join(root, '.specwork', 'templates', 'proposal.md'));
 
     const report = runDoctor({ root });
     expect(report.totalFixable).toBeGreaterThan(0);
@@ -644,7 +644,7 @@ describe('applyFixes', () => {
 
   beforeEach(() => {
     root = makeTmpRoot();
-    initForeman(root);
+    initSpecwork(root);
   });
 
   afterEach(() => {

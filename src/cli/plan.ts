@@ -1,9 +1,9 @@
 import { Command } from 'commander';
 import { writeMarkdown, writeYaml, readMarkdown, ensureDir, exists } from '../io/filesystem.js';
-import { findForemanRoot } from '../utils/paths.js';
+import { findSpecworkRoot } from '../utils/paths.js';
 import { output } from '../utils/output.js';
 import { success, info } from '../utils/logger.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -19,7 +19,7 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '');
 }
 
-// ── foreman plan "<description>" ─────────────────────────────────────────
+// ── specwork plan "<description>" ─────────────────────────────────────────
 
 export function makePlanCommand(): Command {
   return new Command('plan')
@@ -28,23 +28,23 @@ export function makePlanCommand(): Command {
     .option('--name <name>', 'Override the auto-generated change name')
     .option('--yolo', 'Skip clarifying questions — generate everything from description alone', false)
     .action((description: string, opts: { name?: string; yolo: boolean }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       // Determine change name
       const change = opts.name ?? slugify(description);
 
       if (!change || !/^[a-z0-9][a-z0-9-]*$/.test(change)) {
-        throw new ForemanError(
+        throw new SpecworkError(
           `Invalid change name "${change}": use lowercase letters, numbers, and hyphens only`,
           ExitCode.ERROR
         );
       }
 
-      const changeDir = path.join(root, '.foreman', 'changes', change);
+      const changeDir = path.join(root, '.specwork', 'changes', change);
 
       if (exists(changeDir)) {
-        throw new ForemanError(`Change "${change}" already exists`, ExitCode.ERROR);
+        throw new SpecworkError(`Change "${change}" already exists`, ExitCode.ERROR);
       }
 
       // ── create change directory + files ────────────────────────────────
@@ -52,8 +52,8 @@ export function makePlanCommand(): Command {
       ensureDir(path.join(changeDir, 'specs'));
 
       // Copy templates and inject description into proposal
-      const templatesDir = path.join(root, '.foreman', 'templates');
-      const files: string[] = ['.foreman.yaml'];
+      const templatesDir = path.join(root, '.specwork', 'templates');
+      const files: string[] = ['.specwork.yaml'];
 
       // proposal.md — inject description
       const proposalTemplate = path.join(templatesDir, 'proposal.md');
@@ -75,20 +75,20 @@ export function makePlanCommand(): Command {
         files.push(tmpl);
       }
 
-      // .foreman.yaml metadata — status is "planning" (not "draft")
+      // .specwork.yaml metadata — status is "planning" (not "draft")
       const mode = opts.yolo ? 'yolo' : 'brainstorm';
       const metadata = {
-        schema: 'foreman-change/v1',
+        schema: 'specwork-change/v1',
         change,
         description,
         created_at: new Date().toISOString(),
         status: 'planning',
         mode,
       };
-      writeYaml(path.join(changeDir, '.foreman.yaml'), metadata);
+      writeYaml(path.join(changeDir, '.specwork.yaml'), metadata);
 
       // ── output ─────────────────────────────────────────────────────────
-      const next_steps = 'Fill in proposal.md, tasks.md, then run: foreman graph generate ' + change;
+      const next_steps = 'Fill in proposal.md, tasks.md, then run: specwork graph generate ' + change;
 
       if (jsonMode) {
         output({
@@ -110,8 +110,8 @@ export function makePlanCommand(): Command {
         info(`Description: ${description}`);
         info('');
         info(`Next: fill in proposal.md & tasks.md, then:`);
-        info(`  foreman graph generate ${change}`);
-        info(`  foreman go ${change}`);
+        info(`  specwork graph generate ${change}`);
+        info(`  specwork go ${change}`);
       }
     });
 }

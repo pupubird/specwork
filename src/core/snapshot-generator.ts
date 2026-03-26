@@ -11,7 +11,7 @@ import { debug } from '../utils/logger.js';
 const EXCLUDE_DIRS = [
   'node_modules',
   '.git',
-  '.foreman',
+  '.specwork',
   'dist',
   'build',
   'coverage',

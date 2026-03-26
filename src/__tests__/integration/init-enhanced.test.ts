@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { createTestProject, runForeman, cleanup } from './helpers.js';
+import { createTestProject, runSpecwork, cleanup } from './helpers.js';
 
-describe('foreman init (enhanced / batteries-included)', () => {
+describe('specwork init (enhanced / batteries-included)', () => {
   let dir: string;
 
   beforeEach(() => {
@@ -17,18 +17,18 @@ describe('foreman init (enhanced / batteries-included)', () => {
 
   // ── Directory structure ─────────────────────────────────────────────────
 
-  it('creates all .foreman/ subdirectories', () => {
-    const result = runForeman(dir, 'init');
+  it('creates all .specwork/ subdirectories', () => {
+    const result = runSpecwork(dir, 'init');
     expect(result.exitCode).toBe(0);
 
     const expectedDirs = [
-      '.foreman/env',
-      '.foreman/graph',
-      '.foreman/nodes',
-      '.foreman/specs',
-      '.foreman/changes/archive',
-      '.foreman/templates',
-      '.foreman/examples',
+      '.specwork/env',
+      '.specwork/graph',
+      '.specwork/nodes',
+      '.specwork/specs',
+      '.specwork/changes/archive',
+      '.specwork/templates',
+      '.specwork/examples',
     ];
 
     for (const d of expectedDirs) {
@@ -39,8 +39,8 @@ describe('foreman init (enhanced / batteries-included)', () => {
   // ── Config ──────────────────────────────────────────────────────────────
 
   it('writes config.yaml with execution.verify: gates', () => {
-    runForeman(dir, 'init');
-    const configPath = path.join(dir, '.foreman', 'config.yaml');
+    runSpecwork(dir, 'init');
+    const configPath = path.join(dir, '.specwork', 'config.yaml');
     const config = parseYaml(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>;
     expect(config.execution.verify).toBe('gates');
   });
@@ -48,16 +48,16 @@ describe('foreman init (enhanced / batteries-included)', () => {
   // ── Schema & examples ──────────────────────────────────────────────────
 
   it('writes schema.yaml', () => {
-    runForeman(dir, 'init');
-    const schemaPath = path.join(dir, '.foreman', 'schema.yaml');
+    runSpecwork(dir, 'init');
+    const schemaPath = path.join(dir, '.specwork', 'schema.yaml');
     expect(fs.existsSync(schemaPath)).toBe(true);
     const content = fs.readFileSync(schemaPath, 'utf-8');
     expect(content).toContain('artifacts');
   });
 
   it('writes example-graph.yaml', () => {
-    runForeman(dir, 'init');
-    const examplePath = path.join(dir, '.foreman', 'examples', 'example-graph.yaml');
+    runSpecwork(dir, 'init');
+    const examplePath = path.join(dir, '.specwork', 'examples', 'example-graph.yaml');
     expect(fs.existsSync(examplePath)).toBe(true);
     const content = fs.readFileSync(examplePath, 'utf-8');
     expect(content).toContain('nodes');
@@ -65,9 +65,9 @@ describe('foreman init (enhanced / batteries-included)', () => {
 
   // ── .gitignore ──────────────────────────────────────────────────────────
 
-  it('writes .foreman/.gitignore covering runtime files', () => {
-    runForeman(dir, 'init');
-    const gitignorePath = path.join(dir, '.foreman', '.gitignore');
+  it('writes .specwork/.gitignore covering runtime files', () => {
+    runSpecwork(dir, 'init');
+    const gitignorePath = path.join(dir, '.specwork', '.gitignore');
     expect(fs.existsSync(gitignorePath)).toBe(true);
     const content = fs.readFileSync(gitignorePath, 'utf-8');
     expect(content).toContain('.current-scope');
@@ -78,14 +78,14 @@ describe('foreman init (enhanced / batteries-included)', () => {
   // ── .claude/ files (batteries-included) ─────────────────────────────────
 
   it('writes all agent files', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
     const agents = [
-      'foreman-implementer.md',
-      'foreman-planner.md',
-      'foreman-qa.md',
-      'foreman-summarizer.md',
-      'foreman-test-writer.md',
-      'foreman-verifier.md',
+      'specwork-implementer.md',
+      'specwork-planner.md',
+      'specwork-qa.md',
+      'specwork-summarizer.md',
+      'specwork-test-writer.md',
+      'specwork-verifier.md',
     ];
     for (const agent of agents) {
       const p = path.join(dir, '.claude', 'agents', agent);
@@ -95,12 +95,12 @@ describe('foreman init (enhanced / batteries-included)', () => {
   });
 
   it('writes all skill files', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
     const skills = [
-      'foreman-context/SKILL.md',
-      'foreman-conventions/SKILL.md',
-      'foreman-engine/SKILL.md',
-      'foreman-snapshot/SKILL.md',
+      'specwork-context/SKILL.md',
+      'specwork-conventions/SKILL.md',
+      'specwork-engine/SKILL.md',
+      'specwork-snapshot/SKILL.md',
     ];
     for (const skill of skills) {
       const p = path.join(dir, '.claude', 'skills', skill);
@@ -110,11 +110,11 @@ describe('foreman init (enhanced / batteries-included)', () => {
   });
 
   it('writes all command files', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
     const commands = [
-      'foreman-go.md',
-      'foreman-plan.md',
-      'foreman-status.md',
+      'specwork-go.md',
+      'specwork-plan.md',
+      'specwork-status.md',
     ];
     for (const cmd of commands) {
       const p = path.join(dir, '.claude', 'commands', cmd);
@@ -124,7 +124,7 @@ describe('foreman init (enhanced / batteries-included)', () => {
   });
 
   it('writes all hook files as executable', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
     const hooks = [
       'node-complete.sh',
       'scope-guard.sh',
@@ -142,7 +142,7 @@ describe('foreman init (enhanced / batteries-included)', () => {
   });
 
   it('writes .claude/settings.json with hooks config', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
     const settingsPath = path.join(dir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
@@ -154,17 +154,17 @@ describe('foreman init (enhanced / batteries-included)', () => {
 
   // ── Post-init message ──────────────────────────────────────────────────
 
-  it('references foreman plan (not foreman new) in output', () => {
-    const result = runForeman(dir, 'init');
+  it('references specwork plan (not specwork new) in output', () => {
+    const result = runSpecwork(dir, 'init');
     const combined = result.stdout + result.stderr;
-    expect(combined).toContain('foreman plan');
-    expect(combined).not.toContain('foreman new');
+    expect(combined).toContain('specwork plan');
+    expect(combined).not.toContain('specwork new');
   });
 
   // ── Doctor auto-run ────────────────────────────────────────────────────
 
   it('runs doctor after init and shows results', () => {
-    const result = runForeman(dir, 'init');
+    const result = runSpecwork(dir, 'init');
     const combined = result.stdout + result.stderr;
     // Doctor output should contain pass/fail symbols
     expect(combined).toMatch(/✓|passed|pass/i);
@@ -173,26 +173,26 @@ describe('foreman init (enhanced / batteries-included)', () => {
   // ── --with-claude flag removed ─────────────────────────────────────────
 
   it('does NOT accept --with-claude flag', () => {
-    const result = runForeman(dir, 'init --with-claude');
+    const result = runSpecwork(dir, 'init --with-claude');
     // Should either error (unknown option) or just ignore it
     // The key assertion is that .claude/ files are always written regardless
-    runForeman(dir, 'init --force');
-    expect(fs.existsSync(path.join(dir, '.claude', 'agents', 'foreman-implementer.md'))).toBe(true);
+    runSpecwork(dir, 'init --force');
+    expect(fs.existsSync(path.join(dir, '.claude', 'agents', 'specwork-implementer.md'))).toBe(true);
   });
 
   // ── --force re-init ────────────────────────────────────────────────────
 
   it('re-initializes with --force and overwrites all files', () => {
-    runForeman(dir, 'init');
+    runSpecwork(dir, 'init');
 
     // Corrupt a file
-    fs.writeFileSync(path.join(dir, '.foreman', 'config.yaml'), 'corrupted: true');
+    fs.writeFileSync(path.join(dir, '.specwork', 'config.yaml'), 'corrupted: true');
 
-    const result = runForeman(dir, 'init --force');
+    const result = runSpecwork(dir, 'init --force');
     expect(result.exitCode).toBe(0);
 
     // Config should be restored
-    const config = parseYaml(fs.readFileSync(path.join(dir, '.foreman', 'config.yaml'), 'utf-8')) as Record<string, any>;
+    const config = parseYaml(fs.readFileSync(path.join(dir, '.specwork', 'config.yaml'), 'utf-8')) as Record<string, any>;
     expect(config.models).toBeDefined();
     expect(config.execution.verify).toBe('gates');
   });
@@ -200,10 +200,10 @@ describe('foreman init (enhanced / batteries-included)', () => {
   // ── JSON mode ──────────────────────────────────────────────────────────
 
   it('outputs structured JSON with --json flag', () => {
-    const result = runForeman(dir, 'init --json');
+    const result = runSpecwork(dir, 'init --json');
     expect(result.exitCode).toBe(0);
     const out = JSON.parse(result.stdout);
     expect(out.initialized).toBe(true);
-    expect(out.path).toContain('.foreman');
+    expect(out.path).toContain('.specwork');
   });
 });

@@ -17,11 +17,11 @@ import type { ContextBundle } from '../../types/context.js';
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function makeTmpRoot(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-test-'));
 }
 
 function makeNodeDir(root: string, change: string, nodeId: string): string {
-  const dir = path.join(root, '.foreman', 'nodes', change, nodeId);
+  const dir = path.join(root, '.specwork', 'nodes', change, nodeId);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -163,7 +163,7 @@ describe('assembleContext', () => {
     l1Map: Record<string, string> = {},
     snapshot = ''
   ): void {
-    const graphDir = path.join(root, '.foreman', 'graph', change);
+    const graphDir = path.join(root, '.specwork', 'graph', change);
     fs.mkdirSync(graphDir, { recursive: true });
     fs.writeFileSync(path.join(graphDir, 'graph.yaml'), stringifyYaml(graph), 'utf8');
     fs.writeFileSync(path.join(graphDir, 'state.yaml'), stringifyYaml(state), 'utf8');
@@ -178,7 +178,7 @@ describe('assembleContext', () => {
     }
 
     if (snapshot) {
-      const snapDir = path.join(root, '.foreman', 'env');
+      const snapDir = path.join(root, '.specwork', 'env');
       fs.mkdirSync(snapDir, { recursive: true });
       fs.writeFileSync(path.join(snapDir, 'snapshot.md'), snapshot, 'utf8');
     }
@@ -187,7 +187,7 @@ describe('assembleContext', () => {
   it('returns empty l0 when no nodes complete', () => {
     const graph = makeGraph('ch', [
       { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'foreman-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
     const state = makeState('ch', { snapshot: 'pending', 'write-tests': 'pending' });
     setupChange('ch', graph, state);
@@ -199,7 +199,7 @@ describe('assembleContext', () => {
   it('includes L0 only for completed nodes', () => {
     const graph = makeGraph('ch', [
       { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'foreman-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
     const state = makeState('ch', { snapshot: 'complete', 'write-tests': 'pending' });
     setupChange('ch', graph, state, { snapshot: 'snapshot: complete, env captured' });
@@ -212,8 +212,8 @@ describe('assembleContext', () => {
   it('includes L1 only for direct parents', () => {
     const graph = makeGraph('ch', [
       { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'foreman-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
-      { id: 'impl-core', type: 'llm', description: 'impl', agent: 'foreman-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'impl-core', type: 'llm', description: 'impl', agent: 'specwork-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
     const state = makeState('ch', { snapshot: 'complete', 'write-tests': 'complete', 'impl-core': 'pending' });
     setupChange(
@@ -253,7 +253,7 @@ describe('assembleContext', () => {
 
   it('includes node prompt from graph', () => {
     const graph = makeGraph('ch', [
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'foreman-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [], prompt: 'Write failing tests for the new feature.' },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [], prompt: 'Write failing tests for the new feature.' },
     ]);
     const state = makeState('ch', { 'write-tests': 'pending' });
     setupChange('ch', graph, state);

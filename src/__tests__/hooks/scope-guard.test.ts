@@ -3,7 +3,7 @@
  *
  * The hook is a PreToolUse bash script that:
  *   - Reads JSON from stdin (tool_input.file_path or tool_input.path)
- *   - Reads scope patterns from .foreman/.current-scope (one prefix per line)
+ *   - Reads scope patterns from .specwork/.current-scope (one prefix per line)
  *   - Exits 2 (BLOCKED) if the file is outside scope
  *   - Exits 0 (allowed) if no scope file exists, or file is in scope
  */
@@ -19,7 +19,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const HOOK_PATH = path.resolve(__dirname, '../../../.claude/hooks/scope-guard.sh');
-const SCOPE_FILE = '.foreman/.current-scope';
+const SCOPE_FILE = '.specwork/.current-scope';
 
 function runHook(
   json: object,
@@ -46,7 +46,7 @@ let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(path.join(os.tmpdir(), 'scope-guard-test-'));
-  mkdirSync(path.join(tmpDir, '.foreman'), { recursive: true });
+  mkdirSync(path.join(tmpDir, '.specwork'), { recursive: true });
 });
 
 afterEach(() => {
@@ -173,9 +173,9 @@ describe('scope-guard.sh — edge cases', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('exits 0 (not an error) for in-scope .foreman/ internal files', () => {
-    writeScopeFile(tmpDir, '.foreman/\n');
-    const result = runHook({ tool_input: { file_path: '.foreman/graph/my-change/state.yaml' } }, tmpDir);
+  it('exits 0 (not an error) for in-scope .specwork/ internal files', () => {
+    writeScopeFile(tmpDir, '.specwork/\n');
+    const result = runHook({ tool_input: { file_path: '.specwork/graph/my-change/state.yaml' } }, tmpDir);
     expect(result.exitCode).toBe(0);
   });
 

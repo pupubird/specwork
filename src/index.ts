@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { setVerbose } from './utils/logger.js';
-import { ForemanError } from './utils/errors.js';
+import { SpecworkError } from './utils/errors.js';
 import { ExitCode } from './types/index.js';
 
 // Porcelain (human-facing)
@@ -37,7 +37,7 @@ const pkg = JSON.parse(
 const program = new Command();
 
 program
-  .name('foreman')
+  .name('specwork')
   .description('Spec-driven, test-first, graph-based workflow engine for Claude Code')
   .version(pkg.version, '-v, --version', 'Output the current version')
   .option('--json', 'Output results as JSON', false)
@@ -75,13 +75,13 @@ program.addCommand(makeSnapshotCommand());
 // Custom help to show the porcelain/plumbing split
 program.addHelpText('after', `
 Workflow:
-  foreman init                 One-time project setup
-  foreman plan "<description>" Plan a new change from natural language
-  foreman go <change>          Run the workflow autonomously
-  foreman status [change]      Check progress
+  specwork init                 One-time project setup
+  specwork plan "<description>" Plan a new change from natural language
+  specwork go <change>          Run the workflow autonomously
+  specwork status [change]      Check progress
 
 All other commands are used by the engine internally.
-Run: foreman <command> --help  for details on any command.
+Run: specwork <command> --help  for details on any command.
 `);
 
 // Global error handler
@@ -90,7 +90,7 @@ program.exitOverride();
 try {
   await program.parseAsync(process.argv);
 } catch (err) {
-  if (err instanceof ForemanError) {
+  if (err instanceof SpecworkError) {
     process.stderr.write(`Error: ${err.message}\n`);
     process.exit(err.exitCode);
   }

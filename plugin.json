@@ -1,26 +1,26 @@
 {
-  "name": "foreman",
+  "name": "specwork",
   "version": "0.1.0",
   "description": "Spec-driven, test-first, graph-based workflow engine for Claude Code",
   "author": "pupubird",
   "license": "MIT",
-  "repository": "https://github.com/pupubird/foreman",
+  "repository": "https://github.com/pupubird/specwork",
   "skills": [
-    ".claude/skills/foreman-engine/SKILL.md",
-    ".claude/skills/foreman-context/SKILL.md",
-    ".claude/skills/foreman-conventions/SKILL.md",
-    ".claude/skills/foreman-snapshot/SKILL.md"
+    ".claude/skills/specwork-engine/SKILL.md",
+    ".claude/skills/specwork-context/SKILL.md",
+    ".claude/skills/specwork-conventions/SKILL.md",
+    ".claude/skills/specwork-snapshot/SKILL.md"
   ],
   "agents": [
-    ".claude/agents/foreman-test-writer.md",
-    ".claude/agents/foreman-implementer.md",
-    ".claude/agents/foreman-verifier.md",
-    ".claude/agents/foreman-summarizer.md"
+    ".claude/agents/specwork-test-writer.md",
+    ".claude/agents/specwork-implementer.md",
+    ".claude/agents/specwork-verifier.md",
+    ".claude/agents/specwork-summarizer.md"
   ],
   "commands": [
-    ".claude/commands/foreman-plan.md",
-    ".claude/commands/foreman-go.md",
-    ".claude/commands/foreman-status.md"
+    ".claude/commands/specwork-plan.md",
+    ".claude/commands/specwork-go.md",
+    ".claude/commands/specwork-status.md"
   ],
   "hooks": {
     "SessionStart": [".claude/hooks/session-init.sh"],
@@ -29,6 +29,6 @@
     "SubagentStop": [".claude/hooks/node-complete.sh"]
   },
   "dependencies": {
-    "cli": "@pupubird/foreman"
+    "cli": "@pupubird/specwork"
   }
 }

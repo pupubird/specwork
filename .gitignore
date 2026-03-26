@@ -15,14 +15,14 @@ out/
 .env.local
 .env.*.local
 
-# Foreman runtime state (generated during workflow execution)
-.foreman/.current-scope
-.foreman/.current-node
-.foreman/.lock
-.foreman/graph/
-.foreman/nodes/
-.foreman/env/snapshot.md
-.foreman/changes/*/specs/
+# Specwork runtime state (generated during workflow execution)
+.specwork/.current-scope
+.specwork/.current-node
+.specwork/.lock
+.specwork/graph/
+.specwork/nodes/
+.specwork/env/snapshot.md
+.specwork/changes/*/specs/
 
 # Package lock (regenerated on install)
 package-lock.json

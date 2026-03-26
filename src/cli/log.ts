@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   nodeDir,
@@ -15,7 +15,7 @@ import type { WorkflowState } from '../types/state.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
-// ── foreman log ────────────────────────────────────────────────────────────
+// ── specwork log ────────────────────────────────────────────────────────────
 //   If node specified: show that node's L2.md
 //   If no node: show all L0 headlines in topo order
 
@@ -25,7 +25,7 @@ export function makeLogCommand(): Command {
     .argument('<change>', 'Change name')
     .argument('[node]', 'Node ID (omit for all L0 headlines)')
     .action((change: string, nodeId: string | undefined, _opts, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const gp = graphPath(root, change);

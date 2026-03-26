@@ -15,7 +15,7 @@ function makeNode(overrides: Partial<GraphNode> & { id: string; type: GraphNode[
     ...overrides,
     // type-specific defaults
     ...(overrides.type === 'deterministic' && !overrides.command ? { command: 'echo ok' } : {}),
-    ...(overrides.type === 'llm' && !overrides.agent ? { agent: 'foreman-implementer' } : {}),
+    ...(overrides.type === 'llm' && !overrides.agent ? { agent: 'specwork-implementer' } : {}),
   };
 }
 
@@ -25,9 +25,9 @@ function validGraph(): Graph {
     version: '1',
     created_at: '2026-03-26T00:00:00Z',
     nodes: [
-      makeNode({ id: 'snapshot', type: 'deterministic', command: 'foreman snapshot' }),
-      makeNode({ id: 'write-tests', type: 'llm', agent: 'foreman-test-writer', deps: ['snapshot'], scope: ['src/__tests__/'] }),
-      makeNode({ id: 'impl-core', type: 'llm', agent: 'foreman-implementer', deps: ['write-tests'], scope: ['src/core/'] }),
+      makeNode({ id: 'snapshot', type: 'deterministic', command: 'specwork snapshot' }),
+      makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer', deps: ['snapshot'], scope: ['src/__tests__/'] }),
+      makeNode({ id: 'impl-core', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/'] }),
       makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-core'] }),
     ],
   };
@@ -153,7 +153,7 @@ describe('validateGraph — required fields', () => {
           id: 'impl',
           type: 'llm',
           description: 'impl',
-          agent: 'foreman-implementer',
+          agent: 'specwork-implementer',
           deps: [],
           inputs: [],
           outputs: [],

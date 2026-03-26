@@ -1,11 +1,11 @@
 /**
- * UX verification tests for Foreman CLI.
+ * UX verification tests for Specwork CLI.
  *
  * Validates the user-facing CLI experience:
  *   - --version outputs version string
  *   - --help outputs help text
  *   - --json flag produces parseable JSON for all commands
- *   - Missing .foreman/ gives actionable error with "Did you run foreman init?" hint
+ *   - Missing .specwork/ gives actionable error with "Did you run specwork init?" hint
  *   - Missing change name gives error that suggests available changes
  *   - Error messages include the change name for context
  */
@@ -13,15 +13,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createTestProject, runForeman, cleanup, writeTasksFile } from './helpers.js';
+import { createTestProject, runSpecwork, cleanup, writeTasksFile } from './helpers.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function setupProjectWithGraph(dir: string, change = 'my-change'): void {
-  runForeman(dir, 'init');
-  runForeman(dir, `new ${change}`);
+  runSpecwork(dir, 'init');
+  runSpecwork(dir, `new ${change}`);
   writeTasksFile(dir, change, '## 1. Core\n\n- [ ] 1.1 Add thing\n- [ ] 1.2 Wire up\n');
-  runForeman(dir, `graph generate ${change}`);
+  runSpecwork(dir, `graph generate ${change}`);
 }
 
 function isValidJson(str: string): boolean {
@@ -47,19 +47,19 @@ describe('UX: --version', () => {
   afterEach(() => cleanup(dir));
 
   it('exits with code 0', () => {
-    const result = runForeman(dir, '--version');
+    const result = runSpecwork(dir, '--version');
     expect(result.exitCode).toBe(0);
   });
 
   it('outputs a semver-like version string', () => {
-    const result = runForeman(dir, '--version');
+    const result = runSpecwork(dir, '--version');
     const output = result.stdout + result.stderr;
     // Should match x.y.z version pattern
     expect(output).toMatch(/\d+\.\d+\.\d+/);
   });
 
   it('-v shorthand also outputs version', () => {
-    const result = runForeman(dir, '-v');
+    const result = runSpecwork(dir, '-v');
     expect(result.exitCode).toBe(0);
     const output = result.stdout + result.stderr;
     expect(output).toMatch(/\d+\.\d+\.\d+/);
@@ -80,31 +80,31 @@ describe('UX: --help', () => {
   afterEach(() => cleanup(dir));
 
   it('exits with code 0', () => {
-    const result = runForeman(dir, '--help');
+    const result = runSpecwork(dir, '--help');
     expect(result.exitCode).toBe(0);
   });
 
   it('outputs Usage: in help text', () => {
-    const result = runForeman(dir, '--help');
+    const result = runSpecwork(dir, '--help');
     const output = result.stdout + result.stderr;
     expect(output).toMatch(/Usage:/i);
   });
 
-  it('lists the foreman command name', () => {
-    const result = runForeman(dir, '--help');
+  it('lists the specwork command name', () => {
+    const result = runSpecwork(dir, '--help');
     const output = result.stdout + result.stderr;
-    expect(output).toContain('foreman');
+    expect(output).toContain('specwork');
   });
 
   it('lists core subcommands in help text', () => {
-    const result = runForeman(dir, '--help');
+    const result = runSpecwork(dir, '--help');
     const output = result.stdout + result.stderr;
     // At minimum, run and status should be listed
     expect(output).toMatch(/run|status/i);
   });
 
   it('subcommand --help works for run', () => {
-    const result = runForeman(dir, 'run --help');
+    const result = runSpecwork(dir, 'run --help');
     expect(result.exitCode).toBe(0);
     const output = result.stdout + result.stderr;
     expect(output).toMatch(/Usage:/i);
@@ -112,14 +112,14 @@ describe('UX: --help', () => {
   });
 
   it('subcommand --help works for status', () => {
-    const result = runForeman(dir, 'status --help');
+    const result = runSpecwork(dir, 'status --help');
     expect(result.exitCode).toBe(0);
     const output = result.stdout + result.stderr;
     expect(output).toMatch(/Usage:/i);
   });
 
   it('subcommand --help works for graph', () => {
-    const result = runForeman(dir, 'graph --help');
+    const result = runSpecwork(dir, 'graph --help');
     expect(result.exitCode).toBe(0);
     const output = result.stdout + result.stderr;
     expect(output).toMatch(/Usage:/i);
@@ -140,44 +140,44 @@ describe('UX: --json produces parseable JSON', () => {
 
   afterEach(() => cleanup(dir));
 
-  it('foreman --json status my-change outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json status my-change');
+  it('specwork --json status my-change outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json status my-change');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
-  it('foreman --json status (no change) outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json status');
+  it('specwork --json status (no change) outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json status');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
-  it('foreman --json run my-change outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json run my-change');
+  it('specwork --json run my-change outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json run my-change');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
-  it('foreman --json run my-change --dry-run outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json run my-change --dry-run');
+  it('specwork --json run my-change --dry-run outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json run my-change --dry-run');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
-  it('foreman --json graph show my-change outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json graph show my-change');
+  it('specwork --json graph show my-change outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json graph show my-change');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
-  it('foreman --json config show outputs parseable JSON', () => {
-    const result = runForeman(dir, '--json config show');
+  it('specwork --json config show outputs parseable JSON', () => {
+    const result = runSpecwork(dir, '--json config show');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });
 
   it('JSON output has no extra non-JSON content before or after', () => {
-    const result = runForeman(dir, '--json status my-change');
+    const result = runSpecwork(dir, '--json status my-change');
     // stdout should be exactly one JSON object/array
     const trimmed = result.stdout.trim();
     expect(trimmed.startsWith('{')).toBe(true);
@@ -185,7 +185,7 @@ describe('UX: --json produces parseable JSON', () => {
   });
 
   it('JSON status response includes expected top-level keys', () => {
-    const result = runForeman(dir, '--json status my-change');
+    const result = runSpecwork(dir, '--json status my-change');
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(parsed).toHaveProperty('change');
     expect(parsed).toHaveProperty('status');
@@ -194,7 +194,7 @@ describe('UX: --json produces parseable JSON', () => {
   });
 
   it('JSON run response includes ready array and progress', () => {
-    const result = runForeman(dir, '--json run my-change');
+    const result = runSpecwork(dir, '--json run my-change');
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(parsed).toHaveProperty('ready');
     expect(parsed).toHaveProperty('progress');
@@ -203,46 +203,46 @@ describe('UX: --json produces parseable JSON', () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Error: missing .foreman/ should suggest foreman init
+// Error: missing .specwork/ should suggest specwork init
 // ══════════════════════════════════════════════════════════════════════════════
 
-describe('UX: missing .foreman/ — actionable error', () => {
+describe('UX: missing .specwork/ — actionable error', () => {
   let emptyDir: string;
 
   beforeEach(() => {
     emptyDir = createTestProject();
-    // Intentionally do NOT run foreman init
+    // Intentionally do NOT run specwork init
   });
 
   afterEach(() => cleanup(emptyDir));
 
-  it('exits with non-zero code when .foreman/ is missing', () => {
-    const result = runForeman(emptyDir, 'status');
+  it('exits with non-zero code when .specwork/ is missing', () => {
+    const result = runSpecwork(emptyDir, 'status');
     expect(result.exitCode).not.toBe(0);
   });
 
-  it('error output mentions .foreman/ directory', () => {
-    const result = runForeman(emptyDir, 'status');
+  it('error output mentions .specwork/ directory', () => {
+    const result = runSpecwork(emptyDir, 'status');
     const output = result.stderr + result.stdout;
-    expect(output).toMatch(/\.foreman/);
+    expect(output).toMatch(/\.specwork/);
   });
 
-  it('error output suggests running foreman init', () => {
-    const result = runForeman(emptyDir, 'status');
+  it('error output suggests running specwork init', () => {
+    const result = runSpecwork(emptyDir, 'status');
     const output = result.stderr + result.stdout;
     // Should prompt user with actionable suggestion
-    expect(output).toMatch(/foreman init|Did you run.*init/i);
+    expect(output).toMatch(/specwork init|Did you run.*init/i);
   });
 
   it('error occurs for run command too', () => {
-    const result = runForeman(emptyDir, 'run my-change');
+    const result = runSpecwork(emptyDir, 'run my-change');
     expect(result.exitCode).not.toBe(0);
     const output = result.stderr + result.stdout;
-    expect(output).toMatch(/\.foreman/);
+    expect(output).toMatch(/\.specwork/);
   });
 
   it('error occurs for graph commands too', () => {
-    const result = runForeman(emptyDir, 'graph generate my-change');
+    const result = runSpecwork(emptyDir, 'graph generate my-change');
     expect(result.exitCode).not.toBe(0);
   });
 });
@@ -256,39 +256,39 @@ describe('UX: missing change name — helpful error', () => {
 
   beforeEach(() => {
     dir = createTestProject();
-    runForeman(dir, 'init');
-    runForeman(dir, 'new real-change');
+    runSpecwork(dir, 'init');
+    runSpecwork(dir, 'new real-change');
     writeTasksFile(dir, 'real-change', '## 1. Core\n\n- [ ] 1.1 Thing\n');
-    runForeman(dir, 'graph generate real-change');
+    runSpecwork(dir, 'graph generate real-change');
   });
 
   afterEach(() => cleanup(dir));
 
   it('exits non-zero for status on a non-existent change', () => {
-    const result = runForeman(dir, 'status nonexistent-change');
+    const result = runSpecwork(dir, 'status nonexistent-change');
     expect(result.exitCode).not.toBe(0);
   });
 
   it('error message includes the unknown change name', () => {
-    const result = runForeman(dir, 'status nonexistent-change');
+    const result = runSpecwork(dir, 'status nonexistent-change');
     const output = result.stderr + result.stdout;
     expect(output).toContain('nonexistent-change');
   });
 
   it('error output suggests available changes', () => {
-    const result = runForeman(dir, 'status nonexistent-change');
+    const result = runSpecwork(dir, 'status nonexistent-change');
     const output = result.stderr + result.stdout;
     // Should list available changes so user knows what to use
     expect(output).toMatch(/real-change|available|Did you mean/i);
   });
 
   it('run on non-existent change exits non-zero', () => {
-    const result = runForeman(dir, 'run nonexistent-change');
+    const result = runSpecwork(dir, 'run nonexistent-change');
     expect(result.exitCode).not.toBe(0);
   });
 
   it('run error includes the unknown change name', () => {
-    const result = runForeman(dir, 'run nonexistent-change');
+    const result = runSpecwork(dir, 'run nonexistent-change');
     const output = result.stderr + result.stdout;
     expect(output).toContain('nonexistent-change');
   });
@@ -303,16 +303,16 @@ describe('UX: --json errors produce JSON output', () => {
 
   beforeEach(() => {
     dir = createTestProject();
-    runForeman(dir, 'init');
-    runForeman(dir, 'new my-change');
+    runSpecwork(dir, 'init');
+    runSpecwork(dir, 'new my-change');
     writeTasksFile(dir, 'my-change', '## 1. Core\n\n- [ ] 1.1 Thing\n');
-    runForeman(dir, 'graph generate my-change');
+    runSpecwork(dir, 'graph generate my-change');
   });
 
   afterEach(() => cleanup(dir));
 
   it('--json status on nonexistent change returns JSON error', () => {
-    const result = runForeman(dir, '--json status nonexistent-change');
+    const result = runSpecwork(dir, '--json status nonexistent-change');
     expect(result.exitCode).not.toBe(0);
     // Error output should be JSON or contain JSON
     const output = result.stdout + result.stderr;
@@ -321,7 +321,7 @@ describe('UX: --json errors produce JSON output', () => {
   });
 
   it('--json run on nonexistent change returns JSON error', () => {
-    const result = runForeman(dir, '--json run nonexistent-change');
+    const result = runSpecwork(dir, '--json run nonexistent-change');
     expect(result.exitCode).not.toBe(0);
   });
 });
@@ -341,8 +341,8 @@ describe('UX: global flags', () => {
   afterEach(() => cleanup(dir));
 
   it('--quiet suppresses non-essential output', () => {
-    const normal = runForeman(dir, 'status my-change');
-    const quiet = runForeman(dir, '--quiet status my-change');
+    const normal = runSpecwork(dir, 'status my-change');
+    const quiet = runSpecwork(dir, '--quiet status my-change');
 
     // Quiet mode should produce less output
     const normalLen = (normal.stdout + normal.stderr).length;
@@ -352,7 +352,7 @@ describe('UX: global flags', () => {
 
   it('--cwd allows running from a different directory', () => {
     // Run from os tmpdir but point --cwd at our test project
-    const result = runForeman(
+    const result = runSpecwork(
       process.cwd(), // run from project root
       `--cwd ${dir} status my-change`,
     );
@@ -361,7 +361,7 @@ describe('UX: global flags', () => {
   });
 
   it('combining --json and --quiet still produces JSON output', () => {
-    const result = runForeman(dir, '--json --quiet status my-change');
+    const result = runSpecwork(dir, '--json --quiet status my-change');
     expect(result.exitCode).toBe(0);
     expect(isValidJson(result.stdout)).toBe(true);
   });

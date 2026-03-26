@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   lockPath,
@@ -17,7 +17,7 @@ import { getChangeStatus, isTerminal } from '../core/state-machine.js';
 import { output, table } from '../utils/output.js';
 import { info, success, warn } from '../utils/logger.js';
 import {
-  ForemanError,
+  SpecworkError,
   NodeNotFoundError,
   ChangeNotFoundError,
   LockError,
@@ -27,7 +27,7 @@ import type { Graph, GraphNode } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
 
-// ── foreman run ────────────────────────────────────────────────────────────
+// ── specwork run ────────────────────────────────────────────────────────────
 
 export function makeRunCommand(): Command {
   return new Command('run')
@@ -39,7 +39,7 @@ export function makeRunCommand(): Command {
     .option('--force', 'Override an existing stale lock', false)
     .option('--unlock', 'Release the change lock and exit', false)
     .action((change: string, opts: { node?: string; from?: string; dryRun: boolean; force: boolean; unlock: boolean }, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const gp = graphPath(root, change);
@@ -202,7 +202,7 @@ export function makeRunCommand(): Command {
           forceLock(lp);
           warn(`Stale lock cleared for: ${change}`);
         } else if (lockStatus.stale) {
-          throw new ForemanError(
+          throw new SpecworkError(
             `Change "${change}" has a stale lock (PID ${lockStatus.info?.pid ?? '?'}). Use --force to override.`,
             ExitCode.BLOCKED
           );
@@ -243,7 +243,7 @@ export function makeRunCommand(): Command {
         info('');
         const first = readyOut[0];
         if (first) {
-          info(`Next: foreman node start ${change} ${first.id}`);
+          info(`Next: specwork node start ${change} ${first.id}`);
         }
       }
     });

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   nodeDir,
@@ -23,7 +23,7 @@ import { releaseLock } from '../core/lock-manager.js';
 import { output, table } from '../utils/output.js';
 import { info, success, error as logError, warn } from '../utils/logger.js';
 import {
-  ForemanError,
+  SpecworkError,
   NodeNotFoundError,
   ChangeNotFoundError,
 } from '../utils/errors.js';
@@ -61,14 +61,14 @@ function clearNodeTracking(root: string): void {
   if (fs.existsSync(cnp)) fs.unlinkSync(cnp);
 }
 
-// ── foreman node start ────────────────────────────────────────────────────────
+// ── specwork node start ────────────────────────────────────────────────────────
 
 const startCmd = new Command('start')
   .description('Mark a node as in_progress and set scope')
   .argument('<change>', 'Change name')
   .argument('<node>', 'Node ID')
   .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
-    const root = findForemanRoot();
+    const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
     const { graph, state } = loadGraphAndState(root, change);
@@ -82,7 +82,7 @@ const startCmd = new Command('start')
       return depState?.status !== 'complete';
     });
     if (blockedDeps.length > 0) {
-      throw new ForemanError(
+      throw new SpecworkError(
         `Cannot start "${nodeId}": dependencies not complete: ${blockedDeps.join(', ')}`,
         ExitCode.BLOCKED
       );
@@ -179,7 +179,7 @@ function checkOffTask(root: string, change: string, nodeId: string): void {
   }
 }
 
-// ── foreman node complete ─────────────────────────────────────────────────────
+// ── specwork node complete ─────────────────────────────────────────────────────
 
 const completeCmd = new Command('complete')
   .description('Mark a node as complete, write L0, commit, clear scope')
@@ -188,7 +188,7 @@ const completeCmd = new Command('complete')
   .option('--l0 <summary>', 'L0 headline summary for this node')
   .option('--no-commit', 'Skip git commit')
   .action(async (change: string, nodeId: string, opts: { l0?: string; commit: boolean }, cmd: Command) => {
-    const root = findForemanRoot();
+    const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
     const { graph, state } = loadGraphAndState(root, change);
@@ -225,7 +225,7 @@ const completeCmd = new Command('complete')
     // Git commit
     if (opts.commit !== false) {
       try {
-        commit(`foreman(${change}): ${nodeId} complete`);
+        commit(`specwork(${change}): ${nodeId} complete`);
       } catch (err) {
         warn(`Git commit skipped: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -252,7 +252,7 @@ const completeCmd = new Command('complete')
     }
   });
 
-// ── foreman node fail ─────────────────────────────────────────────────────────
+// ── specwork node fail ─────────────────────────────────────────────────────────
 
 const failCmd = new Command('fail')
   .description('Mark a node as failed (retries if budget remains, escalates if exhausted)')
@@ -260,7 +260,7 @@ const failCmd = new Command('fail')
   .argument('<node>', 'Node ID')
   .option('--reason <msg>', 'Failure reason')
   .action(async (change: string, nodeId: string, opts: { reason?: string }, cmd: Command) => {
-    const root = findForemanRoot();
+    const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
     const { graph, state } = loadGraphAndState(root, change);
@@ -315,11 +315,11 @@ const failCmd = new Command('fail')
       output(result, { json: true, quiet: false });
     } else if (!exhausted) {
       info(`  Reason: ${opts.reason ?? '(none)'}`);
-      info(`  Retries: ${result.retries}/${maxRetries} — retry with: foreman node start ${change} ${nodeId}`);
+      info(`  Retries: ${result.retries}/${maxRetries} — retry with: specwork node start ${change} ${nodeId}`);
     }
   });
 
-// ── foreman node escalate ─────────────────────────────────────────────────────
+// ── specwork node escalate ─────────────────────────────────────────────────────
 
 const escalateCmd = new Command('escalate')
   .description('Mark a node as escalated and skip all dependents')
@@ -327,7 +327,7 @@ const escalateCmd = new Command('escalate')
   .argument('<node>', 'Node ID')
   .option('--reason <msg>', 'Escalation reason')
   .action(async (change: string, nodeId: string, opts: { reason?: string }, cmd: Command) => {
-    const root = findForemanRoot();
+    const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
     const { graph, state } = loadGraphAndState(root, change);
@@ -455,14 +455,14 @@ function runCheck(root: string, rule: { type: string; args?: Record<string, unkn
   }
 }
 
-// ── foreman node verify ───────────────────────────────────────────────────────
+// ── specwork node verify ───────────────────────────────────────────────────────
 
 const verifyCmd = new Command('verify')
   .description('Run validation checks on a node and return structured verdict')
   .argument('<change>', 'Change name')
   .argument('<node>', 'Node ID')
   .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
-    const root = findForemanRoot();
+    const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
     const { graph, state } = loadGraphAndState(root, change);
@@ -473,7 +473,7 @@ const verifyCmd = new Command('verify')
     // Must be in_progress to verify
     const nodeState = state.nodes[nodeId];
     if (nodeState?.status !== 'in_progress') {
-      throw new ForemanError(
+      throw new SpecworkError(
         `Cannot verify "${nodeId}": node must be in_progress (started). Current: ${nodeState?.status ?? 'pending'}`,
         ExitCode.ERROR
       );
@@ -530,7 +530,7 @@ const verifyCmd = new Command('verify')
     }
   });
 
-// ── foreman node (parent command) ─────────────────────────────────────────────
+// ── specwork node (parent command) ─────────────────────────────────────────────
 
 export function makeNodeCommand(): Command {
   const nodeCmd = new Command('node')

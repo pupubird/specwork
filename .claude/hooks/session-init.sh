@@ -1,13 +1,13 @@
 #!/bin/bash
-# SessionStart hook — detect active Foreman workflow
+# SessionStart hook — detect active Specwork workflow
 
-if [ -d ".foreman" ]; then
-  ACTIVE=$(find .foreman/graph -name "state.yaml" -exec grep -l "status: active" {} \; 2>/dev/null | head -1)
+if [ -d ".specwork" ]; then
+  ACTIVE=$(find .specwork/graph -name "state.yaml" -exec grep -l "status: active" {} \; 2>/dev/null | head -1)
 
   if [ -n "$ACTIVE" ]; then
     CHANGE_DIR=$(dirname "$ACTIVE")
     CHANGE=$(basename "$CHANGE_DIR")
-    echo "{\"additionalContext\": \"Foreman workflow active: ${CHANGE}. Run /project:foreman-status ${CHANGE} for details.\"}" >&2
+    echo "{\"additionalContext\": \"Specwork workflow active: ${CHANGE}. Run /project:specwork-status ${CHANGE} for details.\"}" >&2
   fi
 fi
 

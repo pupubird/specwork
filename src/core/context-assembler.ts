@@ -9,7 +9,7 @@ import type { WorkflowState } from '../types/state.js';
 import type { ContextBundle, L0Entry, L1Entry } from '../types/context.js';
 
 export function getL0All(root: string, change: string): L0Entry[] {
-  const nodesBase = path.join(root, '.foreman', 'nodes', change);
+  const nodesBase = path.join(root, '.specwork', 'nodes', change);
   if (!fs.existsSync(nodesBase)) return [];
 
   const entries: L0Entry[] = [];

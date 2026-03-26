@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in Foreman
+about: Report a bug in Specwork
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -10,7 +10,7 @@ assignees: ''
 A clear description of the bug.
 
 ## Steps to Reproduce
-1. Run `foreman ...`
+1. Run `specwork ...`
 2. ...
 3. See error
 
@@ -21,7 +21,7 @@ What you expected to happen.
 What actually happened. Include error messages or logs.
 
 ## Environment
-- Foreman version: `foreman --version`
+- Specwork version: `specwork --version`
 - Node.js version: `node --version`
 - OS:
 - Claude Code version (if applicable):

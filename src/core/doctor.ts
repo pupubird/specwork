@@ -57,10 +57,10 @@ function readYamlSafe<T>(filePath: string): T | null {
 export function checkConfig(root: string): CheckResult {
   const category = 'Config';
   const results: DiagnosticResult[] = [];
-  const configPath = path.join(root, '.foreman', 'config.yaml');
+  const configPath = path.join(root, '.specwork', 'config.yaml');
 
   if (!fs.existsSync(configPath)) {
-    results.push(fail(category, 'config.yaml exists', 'Missing .foreman/config.yaml'));
+    results.push(fail(category, 'config.yaml exists', 'Missing .specwork/config.yaml'));
     return { category, results };
   }
   results.push(pass(category, 'config.yaml exists'));
@@ -89,10 +89,10 @@ export function checkSpecs(root: string): CheckResult {
   const category = 'Specs';
   const results: DiagnosticResult[] = [];
 
-  const specsDirs = [path.join(root, '.foreman', 'specs')];
+  const specsDirs = [path.join(root, '.specwork', 'specs')];
 
   // Also check change-level specs
-  const changesDir = path.join(root, '.foreman', 'changes');
+  const changesDir = path.join(root, '.specwork', 'changes');
   if (fs.existsSync(changesDir)) {
     const changeDirs = fs.readdirSync(changesDir).filter(d => {
       const fullPath = path.join(changesDir, d);
@@ -189,7 +189,7 @@ export function checkSpecs(root: string): CheckResult {
 export function checkArchives(root: string): CheckResult {
   const category = 'Archives';
   const results: DiagnosticResult[] = [];
-  const archiveDir = path.join(root, '.foreman', 'changes', 'archive');
+  const archiveDir = path.join(root, '.specwork', 'changes', 'archive');
 
   if (!fs.existsSync(archiveDir)) {
     return { category, results };
@@ -207,10 +207,10 @@ export function checkArchives(root: string): CheckResult {
   for (const name of archives) {
     const dir = path.join(archiveDir, name);
 
-    // Check .foreman.yaml exists and has correct status
-    const metaPath = path.join(dir, '.foreman.yaml');
+    // Check .specwork.yaml exists and has correct status
+    const metaPath = path.join(dir, '.specwork.yaml');
     if (!fs.existsSync(metaPath)) {
-      results.push(fail(category, `${name}: .foreman.yaml exists`, `Missing .foreman.yaml in archive ${name}`));
+      results.push(fail(category, `${name}: .specwork.yaml exists`, `Missing .specwork.yaml in archive ${name}`));
     } else {
       const meta = readYamlSafe<Record<string, unknown>>(metaPath);
       if (meta && meta.status === 'archived') {
@@ -287,7 +287,7 @@ export function checkArchives(root: string): CheckResult {
 export function checkChanges(root: string): CheckResult {
   const category = 'Changes';
   const results: DiagnosticResult[] = [];
-  const changesDir = path.join(root, '.foreman', 'changes');
+  const changesDir = path.join(root, '.specwork', 'changes');
 
   if (!fs.existsSync(changesDir)) {
     return { category, results };
@@ -341,7 +341,7 @@ export function checkChanges(root: string): CheckResult {
 export function checkGraphs(root: string): CheckResult {
   const category = 'Graphs';
   const results: DiagnosticResult[] = [];
-  const graphsDir = path.join(root, '.foreman', 'graph');
+  const graphsDir = path.join(root, '.specwork', 'graph');
 
   if (!fs.existsSync(graphsDir)) {
     return { category, results };
@@ -395,7 +395,7 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
 export function checkTemplates(root: string): CheckResult {
   const category = 'Templates';
   const results: DiagnosticResult[] = [];
-  const templatesDir = path.join(root, '.foreman', 'templates');
+  const templatesDir = path.join(root, '.specwork', 'templates');
 
   if (!fs.existsSync(templatesDir)) {
     for (const name of Object.keys(DEFAULT_TEMPLATES)) {
@@ -426,9 +426,9 @@ export function checkTemplates(root: string): CheckResult {
 export function checkCrossRefs(root: string): CheckResult {
   const category = 'CrossRefs';
   const results: DiagnosticResult[] = [];
-  const graphsDir = path.join(root, '.foreman', 'graph');
-  const nodesBaseDir = path.join(root, '.foreman', 'nodes');
-  const changesDir = path.join(root, '.foreman', 'changes');
+  const graphsDir = path.join(root, '.specwork', 'graph');
+  const nodesBaseDir = path.join(root, '.specwork', 'nodes');
+  const changesDir = path.join(root, '.specwork', 'changes');
 
   if (!fs.existsSync(graphsDir)) {
     return { category, results };

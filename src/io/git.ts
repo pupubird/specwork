@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 
 function run(command: string, cwd?: string): string {
@@ -11,7 +11,7 @@ function run(command: string, cwd?: string): string {
     }).trim();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new ForemanError(`Git command failed: ${command}\n${msg}`, ExitCode.ERROR);
+    throw new SpecworkError(`Git command failed: ${command}\n${msg}`, ExitCode.ERROR);
   }
 }
 

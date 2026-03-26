@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   nodeDir,
@@ -15,7 +15,7 @@ import type { WorkflowState } from '../types/state.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
-// ── foreman report ─────────────────────────────────────────────────────────
+// ── specwork report ─────────────────────────────────────────────────────────
 //   Full markdown report: all nodes with L0/L1 summaries, verification results,
 //   and metrics (completion rate, retry count, expand count).
 
@@ -24,7 +24,7 @@ export function makeReportCommand(): Command {
     .description('Full markdown report for a change: L0/L1 summaries, verification, metrics')
     .argument('<change>', 'Change name')
     .action((change: string, _opts, cmd: Command) => {
-      const root = findForemanRoot();
+      const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
       const gp = graphPath(root, change);
@@ -87,7 +87,7 @@ export function makeReportCommand(): Command {
       // ── markdown report ───────────────────────────────────────────────
       const lines: string[] = [];
 
-      lines.push(`# Foreman Report: ${change}`);
+      lines.push(`# Specwork Report: ${change}`);
       lines.push('');
       lines.push(`**Status:** ${state.status.toUpperCase()}  `);
       lines.push(`**Started:** ${state.started_at}  `);

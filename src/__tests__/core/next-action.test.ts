@@ -12,7 +12,7 @@ import { buildNextAction, readChangeContext } from '../../core/next-action.js';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeTempRoot(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-next-action-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-next-action-'));
   return dir;
 }
 
@@ -35,13 +35,13 @@ describe('readChangeContext', () => {
     rmTempRoot(root);
   });
 
-  it('reads description from .foreman.yaml', () => {
-    const changeDir = path.join(root, '.foreman', 'changes', 'my-change');
+  it('reads description from .specwork.yaml', () => {
+    const changeDir = path.join(root, '.specwork', 'changes', 'my-change');
     fs.mkdirSync(changeDir, { recursive: true });
     fs.writeFileSync(
-      path.join(changeDir, '.foreman.yaml'),
+      path.join(changeDir, '.specwork.yaml'),
       stringifyYaml({
-        schema: 'foreman-change/v1',
+        schema: 'specwork-change/v1',
         change: 'my-change',
         description: 'Add JWT authentication to the API',
         status: 'planning',
@@ -53,17 +53,17 @@ describe('readChangeContext', () => {
     expect(ctx).toBe('Add JWT authentication to the API');
   });
 
-  it('returns empty string when .foreman.yaml is missing', () => {
+  it('returns empty string when .specwork.yaml is missing', () => {
     const ctx = readChangeContext(root, 'nonexistent-change');
     expect(ctx).toBe('');
   });
 
   it('returns empty string when description field is absent', () => {
-    const changeDir = path.join(root, '.foreman', 'changes', 'my-change');
+    const changeDir = path.join(root, '.specwork', 'changes', 'my-change');
     fs.mkdirSync(changeDir, { recursive: true });
     fs.writeFileSync(
-      path.join(changeDir, '.foreman.yaml'),
-      stringifyYaml({ schema: 'foreman-change/v1', change: 'my-change' }),
+      path.join(changeDir, '.specwork.yaml'),
+      stringifyYaml({ schema: 'specwork-change/v1', change: 'my-change' }),
       'utf-8'
     );
 
@@ -80,7 +80,7 @@ describe('buildNextAction', () => {
   const context = 'Add JWT authentication to the API';
   const change = 'add-jwt-auth';
 
-  // ── foreman go statuses ─────────────────────────────────────────────────
+  // ── specwork go statuses ─────────────────────────────────────────────────
 
   it('returns team:spawn action for go/ready status', () => {
     const action = buildNextAction('go:ready', context, {
@@ -124,7 +124,7 @@ describe('buildNextAction', () => {
     expect(action.description).toMatch(/wait|in.progress/i);
   });
 
-  // ── foreman node statuses ───────────────────────────────────────────────
+  // ── specwork node statuses ───────────────────────────────────────────────
 
   it('returns subagent action with on_pass/on_fail for node/start', () => {
     const action = buildNextAction('node:start', context, {
@@ -135,9 +135,9 @@ describe('buildNextAction', () => {
     expect(action.context).toBe(context);
     expect(action.on_pass).toBeDefined();
     expect(action.on_fail).toBeDefined();
-    expect(action.on_pass).toMatch(/foreman node complete/);
+    expect(action.on_pass).toMatch(/specwork node complete/);
     expect(action.on_pass).toMatch(/impl-1-1/);
-    expect(action.on_fail).toMatch(/foreman node fail/);
+    expect(action.on_fail).toMatch(/specwork node fail/);
     expect(action.on_fail).toMatch(/impl-1-1/);
   });
 
@@ -147,7 +147,7 @@ describe('buildNextAction', () => {
       nodeId: 'impl-1-1',
     });
 
-    expect(action.command).toMatch(/foreman go/);
+    expect(action.command).toMatch(/specwork go/);
     expect(action.command).toMatch(change);
     expect(action.context).toBe(context);
     expect(action.description).toMatch(/next batch/i);
@@ -199,7 +199,7 @@ describe('buildNextAction', () => {
 
     expect(action.context).toBe(context);
     expect(action.on_pass).toBeDefined();
-    expect(action.on_pass).toMatch(/foreman node complete/);
+    expect(action.on_pass).toMatch(/specwork node complete/);
     expect(action.on_pass).toMatch(/impl-1-1/);
   });
 
@@ -211,7 +211,7 @@ describe('buildNextAction', () => {
 
     expect(action.context).toBe(context);
     expect(action.on_fail).toBeDefined();
-    expect(action.on_fail).toMatch(/foreman node fail/);
+    expect(action.on_fail).toMatch(/specwork node fail/);
     expect(action.on_fail).toMatch(/impl-1-1/);
   });
 

@@ -11,7 +11,7 @@ let tmpDir: string;
 let root: string;
 
 function writeChange(change: string, files: Record<string, string>) {
-  const changeDir = path.join(root, '.foreman', 'changes', change);
+  const changeDir = path.join(root, '.specwork', 'changes', change);
   ensureDir(changeDir);
   for (const [name, content] of Object.entries(files)) {
     writeFileSync(path.join(changeDir, name), content);
@@ -19,9 +19,9 @@ function writeChange(change: string, files: Record<string, string>) {
 }
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(path.join(os.tmpdir(), 'foreman-gen-test-'));
+  tmpDir = mkdtempSync(path.join(os.tmpdir(), 'specwork-gen-test-'));
   root = tmpDir;
-  ensureDir(path.join(root, '.foreman', 'changes'));
+  ensureDir(path.join(root, '.specwork', 'changes'));
 });
 
 // ── Node ID Tests ────────────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ describe('spec input discovery', () => {
       'design.md': '',
     });
     // Create specs directory with spec files
-    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    const specsDir = path.join(root, '.specwork', 'changes', 'test', 'specs');
     ensureDir(specsDir);
     writeFileSync(path.join(specsDir, 'auth.md'), '### Requirement: Auth\n');
     writeFileSync(path.join(specsDir, 'rate-limit.md'), '### Requirement: Rate Limit\n');
@@ -187,8 +187,8 @@ describe('spec input discovery', () => {
     const graph = generateGraph(root, 'test');
     const writeTests = graph.nodes.find(n => n.id === 'write-tests');
 
-    expect(writeTests!.inputs).toContain('.foreman/changes/test/specs/auth.md');
-    expect(writeTests!.inputs).toContain('.foreman/changes/test/specs/rate-limit.md');
+    expect(writeTests!.inputs).toContain('.specwork/changes/test/specs/auth.md');
+    expect(writeTests!.inputs).toContain('.specwork/changes/test/specs/rate-limit.md');
   });
 
   it('should work when specs directory is empty', () => {
@@ -197,7 +197,7 @@ describe('spec input discovery', () => {
       'proposal.md': '',
       'design.md': '',
     });
-    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    const specsDir = path.join(root, '.specwork', 'changes', 'test', 'specs');
     ensureDir(specsDir);
 
     const graph = generateGraph(root, 'test');
@@ -223,7 +223,7 @@ describe('spec input discovery', () => {
       'proposal.md': '',
       'design.md': '',
     });
-    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    const specsDir = path.join(root, '.specwork', 'changes', 'test', 'specs');
     ensureDir(specsDir);
     writeFileSync(path.join(specsDir, 'auth.md'), '### Requirement: Auth\n');
     writeFileSync(path.join(specsDir, '.gitkeep'), '');

@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import { writeYaml, writeMarkdown, ensureDir, exists } from '../io/filesystem.js';
 import { output } from '../utils/output.js';
 import { success, info, warn } from '../utils/logger.js';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
-import { CLAUDE_FILES, CLAUDE_SETTINGS, SCHEMA_YAML, EXAMPLE_GRAPH, FOREMAN_GITIGNORE } from '../templates/claude-files.js';
+import { CLAUDE_FILES, CLAUDE_SETTINGS, SCHEMA_YAML, EXAMPLE_GRAPH, SPECWORK_GITIGNORE } from '../templates/claude-files.js';
 import { migrateOpenspec } from '../core/migrate.js';
 import { runDoctor } from '../core/doctor.js';
 import path from 'node:path';
@@ -32,17 +32,17 @@ const DEFAULT_CONFIG = {
   },
   spec: {
     schema: 'spec-driven',
-    specs_dir: '.foreman/specs',
-    changes_dir: '.foreman/changes',
-    archive_dir: '.foreman/changes/archive',
-    templates_dir: '.foreman/templates',
+    specs_dir: '.specwork/specs',
+    changes_dir: '.specwork/changes',
+    archive_dir: '.specwork/changes/archive',
+    templates_dir: '.specwork/templates',
   },
   graph: {
-    graphs_dir: '.foreman/graph',
-    nodes_dir: '.foreman/nodes',
+    graphs_dir: '.specwork/graph',
+    nodes_dir: '.specwork/nodes',
   },
   environments: {
-    env_dir: '.foreman/env',
+    env_dir: '.specwork/env',
     active: 'development',
   },
 };
@@ -112,7 +112,7 @@ const TEMPLATES: Record<string, string> = {
      - Number tasks N.M (group.task)
      - Order by dependency — blockers first
      - Each task should be completable in one session
-     - These tasks map directly to graph nodes in foreman graph generate
+     - These tasks map directly to graph nodes in specwork graph generate
 -->
 `,
 };
@@ -120,17 +120,17 @@ const TEMPLATES: Record<string, string> = {
 // ── Core init logic (shared by init and migrate) ──────────────────────────
 
 function initializeProject(cwd: string): string[] {
-  const foremanDir = path.join(cwd, '.foreman');
+  const specworkDir = path.join(cwd, '.specwork');
 
   // ── create directory structure ──────────────────────────────────
   const dirs = [
-    '.foreman/env',
-    '.foreman/graph',
-    '.foreman/nodes',
-    '.foreman/specs',
-    '.foreman/changes/archive',
-    '.foreman/templates',
-    '.foreman/examples',
+    '.specwork/env',
+    '.specwork/graph',
+    '.specwork/nodes',
+    '.specwork/specs',
+    '.specwork/changes/archive',
+    '.specwork/templates',
+    '.specwork/examples',
   ];
 
   for (const dir of dirs) {
@@ -138,20 +138,20 @@ function initializeProject(cwd: string): string[] {
   }
 
   // ── write config.yaml ────────────────────────────────────────────
-  writeYaml(path.join(foremanDir, 'config.yaml'), DEFAULT_CONFIG);
+  writeYaml(path.join(specworkDir, 'config.yaml'), DEFAULT_CONFIG);
 
   // ── write schema.yaml ────────────────────────────────────────────
-  fs.writeFileSync(path.join(foremanDir, 'schema.yaml'), SCHEMA_YAML, 'utf-8');
+  fs.writeFileSync(path.join(specworkDir, 'schema.yaml'), SCHEMA_YAML, 'utf-8');
 
   // ── write example graph ──────────────────────────────────────────
-  fs.writeFileSync(path.join(foremanDir, 'examples', 'example-graph.yaml'), EXAMPLE_GRAPH, 'utf-8');
+  fs.writeFileSync(path.join(specworkDir, 'examples', 'example-graph.yaml'), EXAMPLE_GRAPH, 'utf-8');
 
   // ── write .gitignore ─────────────────────────────────────────────
-  fs.writeFileSync(path.join(foremanDir, '.gitignore'), FOREMAN_GITIGNORE, 'utf-8');
+  fs.writeFileSync(path.join(specworkDir, '.gitignore'), SPECWORK_GITIGNORE, 'utf-8');
 
   // ── write templates ───────────────────────────────────────────────
   for (const [filename, content] of Object.entries(TEMPLATES)) {
-    writeMarkdown(path.join(foremanDir, 'templates', filename), content);
+    writeMarkdown(path.join(specworkDir, 'templates', filename), content);
   }
 
   // ── write .claude/ files (batteries-included) ─────────────────────
@@ -193,69 +193,69 @@ function runDoctorCheck(cwd: string, jsonMode: boolean): void {
   }
 }
 
-// ── foreman init ───────────────────────────────────────────────────────────
+// ── specwork init ───────────────────────────────────────────────────────────
 
 export function makeInitCommand(): Command {
   const initCmd = new Command('init')
-    .description('Initialize a Foreman project in the current directory')
-    .option('--force', 'Re-initialize even if .foreman/ already exists', false)
+    .description('Initialize a Specwork project in the current directory')
+    .option('--force', 'Re-initialize even if .specwork/ already exists', false)
     .action((opts: { force: boolean }, cmd: Command) => {
       const cwd = process.cwd();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
-      const foremanDir = path.join(cwd, '.foreman');
+      const specworkDir = path.join(cwd, '.specwork');
 
-      if (exists(foremanDir) && !opts.force) {
+      if (exists(specworkDir) && !opts.force) {
         if (jsonMode) {
-          output({ initialized: false, reason: 'already_exists', path: foremanDir }, { json: true, quiet: false });
+          output({ initialized: false, reason: 'already_exists', path: specworkDir }, { json: true, quiet: false });
         } else {
-          warn(`.foreman/ already exists at ${foremanDir}`);
+          warn(`.specwork/ already exists at ${specworkDir}`);
           warn('Use --force to re-initialize.');
         }
-        throw new ForemanError('.foreman/ already exists', ExitCode.ERROR);
+        throw new SpecworkError('.specwork/ already exists', ExitCode.ERROR);
       }
 
       const dirs = initializeProject(cwd);
 
       if (jsonMode) {
-        output({ initialized: true, path: foremanDir, dirs }, { json: true, quiet: false });
+        output({ initialized: true, path: specworkDir, dirs }, { json: true, quiet: false });
       } else {
-        success(`Foreman project initialized in ${cwd}`);
+        success(`Specwork project initialized in ${cwd}`);
         info('');
         info('Created:');
         for (const dir of dirs) {
           info(`  ${dir}/`);
         }
-        info('  .foreman/config.yaml');
-        info('  .foreman/schema.yaml');
-        info('  .foreman/examples/example-graph.yaml');
-        info('  .foreman/.gitignore');
-        info('  .foreman/templates/ (4 templates)');
+        info('  .specwork/config.yaml');
+        info('  .specwork/schema.yaml');
+        info('  .specwork/examples/example-graph.yaml');
+        info('  .specwork/.gitignore');
+        info('  .specwork/templates/ (4 templates)');
         info('  .claude/ (agents, skills, commands, hooks, settings)');
         info('');
-        info('Next: foreman plan "<description>"');
+        info('Next: specwork plan "<description>"');
 
         // Auto-run doctor
         runDoctorCheck(cwd, jsonMode);
       }
     });
 
-  // ── foreman init migrate ────────────────────────────────────────────
+  // ── specwork init migrate ────────────────────────────────────────────
 
   initCmd
     .command('migrate')
-    .description('Migrate existing openspec/ directory into .foreman/ structure')
+    .description('Migrate existing openspec/ directory into .specwork/ structure')
     .action((_, cmd: Command) => {
       const cwd = process.cwd();
       const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
-      const foremanDir = path.join(cwd, '.foreman');
+      const specworkDir = path.join(cwd, '.specwork');
 
-      // Auto-init if .foreman/ doesn't exist
-      if (!exists(foremanDir)) {
+      // Auto-init if .specwork/ doesn't exist
+      if (!exists(specworkDir)) {
         initializeProject(cwd);
         if (!jsonMode) {
-          success('Foreman project initialized (auto)');
+          success('Specwork project initialized (auto)');
         }
       }
 
@@ -273,8 +273,8 @@ export function makeInitCommand(): Command {
         success('Migration complete');
         info('');
         info('Migrated:');
-        info(`  ${result.specsMigrated} spec(s) → .foreman/specs/`);
-        info(`  ${result.changesMigrated} change(s) → .foreman/changes/`);
+        info(`  ${result.specsMigrated} spec(s) → .specwork/specs/`);
+        info(`  ${result.changesMigrated} change(s) → .specwork/changes/`);
         info(`  ${result.filesTotal} file(s) total`);
         info('  openspec/ removed');
 

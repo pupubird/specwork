@@ -3,9 +3,9 @@
  *
  * The hook is a SubagentStop bash script that:
  *   - Reads JSON from stdin with agent_id field
- *   - Only acts when agent_id starts with "foreman-"
- *   - Reads .foreman/.current-node (format: "change/node-id")
- *   - Creates .foreman/nodes/{change}/{node}/ directory
+ *   - Only acts when agent_id starts with "specwork-"
+ *   - Reads .specwork/.current-node (format: "change/node-id")
+ *   - Creates .specwork/nodes/{change}/{node}/ directory
  *   - Runs git diff HEAD~1 > L2.md (silent errors)
  *   - Appends verify.md to L2.md if it exists
  */
@@ -47,8 +47,8 @@ function runHook(
 
 function initGitRepo(dir: string): void {
   spawnSync('git', ['init'], { cwd: dir, encoding: 'utf-8' });
-  spawnSync('git', ['config', 'user.email', 'test@foreman.test'], { cwd: dir });
-  spawnSync('git', ['config', 'user.name', 'Foreman Test'], { cwd: dir });
+  spawnSync('git', ['config', 'user.email', 'test@specwork.test'], { cwd: dir });
+  spawnSync('git', ['config', 'user.name', 'Specwork Test'], { cwd: dir });
   writeFileSync(path.join(dir, 'README.md'), '# Test\n');
   spawnSync('git', ['add', '.'], { cwd: dir, encoding: 'utf-8' });
   spawnSync('git', ['commit', '-m', 'initial'], { cwd: dir, encoding: 'utf-8' });
@@ -64,19 +64,19 @@ let tmpDir: string;
 
 beforeEach(() => {
   tmpDir = mkdtempSync(path.join(os.tmpdir(), 'node-complete-test-'));
-  mkdirSync(path.join(tmpDir, '.foreman'), { recursive: true });
+  mkdirSync(path.join(tmpDir, '.specwork'), { recursive: true });
 });
 
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
 });
 
-// ── Non-foreman agents ────────────────────────────────────────────────────────
+// ── Non-specwork agents ────────────────────────────────────────────────────────
 
-describe('node-complete.sh — non-foreman agents', () => {
-  it('exits 0 without acting for a non-foreman agent', () => {
+describe('node-complete.sh — non-specwork agents', () => {
+  it('exits 0 without acting for a non-specwork agent', () => {
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'my-change/snapshot',
       'utf8',
     );
@@ -84,14 +84,14 @@ describe('node-complete.sh — non-foreman agents', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('does not create node directory for a non-foreman agent', () => {
+  it('does not create node directory for a non-specwork agent', () => {
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'my-change/snapshot',
       'utf8',
     );
     runHook({ agent_id: 'some-other-agent' }, tmpDir);
-    expect(existsSync(path.join(tmpDir, '.foreman', 'nodes', 'my-change', 'snapshot'))).toBe(false);
+    expect(existsSync(path.join(tmpDir, '.specwork', 'nodes', 'my-change', 'snapshot'))).toBe(false);
   });
 
   it('exits 0 without acting when agent_id is empty string', () => {
@@ -105,18 +105,18 @@ describe('node-complete.sh — non-foreman agents', () => {
   });
 });
 
-// ── Foreman agents — no .current-node file ────────────────────────────────────
+// ── Specwork agents — no .current-node file ────────────────────────────────────
 
-describe('node-complete.sh — foreman agent, no .current-node', () => {
+describe('node-complete.sh — specwork agent, no .current-node', () => {
   it('exits 0 gracefully when .current-node file is missing', () => {
     // No .current-node file written
-    const result = runHook({ agent_id: 'foreman-implementer' }, tmpDir);
+    const result = runHook({ agent_id: 'specwork-implementer' }, tmpDir);
     expect(result.exitCode).toBe(0);
   });
 
   it('does not create any node directories when .current-node is missing', () => {
-    runHook({ agent_id: 'foreman-test-writer' }, tmpDir);
-    const nodesDir = path.join(tmpDir, '.foreman', 'nodes');
+    runHook({ agent_id: 'specwork-test-writer' }, tmpDir);
+    const nodesDir = path.join(tmpDir, '.specwork', 'nodes');
     // Should not exist or be empty
     if (existsSync(nodesDir)) {
       const entries = readdirSync(nodesDir);
@@ -127,55 +127,55 @@ describe('node-complete.sh — foreman agent, no .current-node', () => {
   });
 });
 
-// ── Foreman agents — with .current-node file ──────────────────────────────────
+// ── Specwork agents — with .current-node file ──────────────────────────────────
 
-describe('node-complete.sh — foreman agent, with .current-node', () => {
+describe('node-complete.sh — specwork agent, with .current-node', () => {
   beforeEach(() => {
     initGitRepo(tmpDir);
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'my-change/snapshot',
       'utf8',
     );
   });
 
-  it('exits 0 after processing a foreman agent', () => {
-    const result = runHook({ agent_id: 'foreman-implementer' }, tmpDir);
+  it('exits 0 after processing a specwork agent', () => {
+    const result = runHook({ agent_id: 'specwork-implementer' }, tmpDir);
     expect(result.exitCode).toBe(0);
   });
 
-  it('creates the node directory at .foreman/nodes/{change}/{node}/', () => {
-    runHook({ agent_id: 'foreman-implementer' }, tmpDir);
-    const nodeDir = path.join(tmpDir, '.foreman', 'nodes', 'my-change', 'snapshot');
+  it('creates the node directory at .specwork/nodes/{change}/{node}/', () => {
+    runHook({ agent_id: 'specwork-implementer' }, tmpDir);
+    const nodeDir = path.join(tmpDir, '.specwork', 'nodes', 'my-change', 'snapshot');
     expect(existsSync(nodeDir)).toBe(true);
   });
 
   it('creates L2.md inside the node directory', () => {
-    runHook({ agent_id: 'foreman-implementer' }, tmpDir);
-    const l2Path = path.join(tmpDir, '.foreman', 'nodes', 'my-change', 'snapshot', 'L2.md');
+    runHook({ agent_id: 'specwork-implementer' }, tmpDir);
+    const l2Path = path.join(tmpDir, '.specwork', 'nodes', 'my-change', 'snapshot', 'L2.md');
     expect(existsSync(l2Path)).toBe(true);
   });
 
   it('L2.md contains git diff content (second commit exists)', () => {
-    runHook({ agent_id: 'foreman-implementer' }, tmpDir);
-    const l2Path = path.join(tmpDir, '.foreman', 'nodes', 'my-change', 'snapshot', 'L2.md');
+    runHook({ agent_id: 'specwork-implementer' }, tmpDir);
+    const l2Path = path.join(tmpDir, '.specwork', 'nodes', 'my-change', 'snapshot', 'L2.md');
     const content = readFileSync(l2Path, 'utf8');
     // git diff HEAD~1 should show the diff of the second commit (change.md added)
     expect(content).toContain('change.md');
   });
 
   it('emits a progress message to stderr', () => {
-    const result = runHook({ agent_id: 'foreman-implementer' }, tmpDir);
+    const result = runHook({ agent_id: 'specwork-implementer' }, tmpDir);
     expect(result.stderr).toContain('snapshot');
   });
 
-  it('works for all foreman-* agent variants', () => {
-    const agents = ['foreman-test-writer', 'foreman-verifier', 'foreman-summarizer'];
+  it('works for all specwork-* agent variants', () => {
+    const agents = ['specwork-test-writer', 'specwork-verifier', 'specwork-summarizer'];
     for (const agentId of agents) {
       // Reset .current-node for each agent variant test
       writeFileSync(
-        path.join(tmpDir, '.foreman', '.current-node'),
-        `my-change/${agentId.replace('foreman-', '')}`,
+        path.join(tmpDir, '.specwork', '.current-node'),
+        `my-change/${agentId.replace('specwork-', '')}`,
         'utf8',
       );
       const result = runHook({ agent_id: agentId }, tmpDir);
@@ -190,7 +190,7 @@ describe('node-complete.sh — verify.md integration', () => {
   beforeEach(() => {
     initGitRepo(tmpDir);
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'qa-change/write-tests',
       'utf8',
     );
@@ -198,11 +198,11 @@ describe('node-complete.sh — verify.md integration', () => {
 
   it('appends verify.md content to L2.md when it exists', () => {
     // Pre-create the node directory with a verify.md
-    const nodeDir = path.join(tmpDir, '.foreman', 'nodes', 'qa-change', 'write-tests');
+    const nodeDir = path.join(tmpDir, '.specwork', 'nodes', 'qa-change', 'write-tests');
     mkdirSync(nodeDir, { recursive: true });
     writeFileSync(path.join(nodeDir, 'verify.md'), 'PASS: all checks passed\n', 'utf8');
 
-    runHook({ agent_id: 'foreman-verifier' }, tmpDir);
+    runHook({ agent_id: 'specwork-verifier' }, tmpDir);
 
     const l2Content = readFileSync(path.join(nodeDir, 'L2.md'), 'utf8');
     expect(l2Content).toContain('---');
@@ -210,9 +210,9 @@ describe('node-complete.sh — verify.md integration', () => {
   });
 
   it('L2.md does not contain separator when verify.md is absent', () => {
-    runHook({ agent_id: 'foreman-verifier' }, tmpDir);
+    runHook({ agent_id: 'specwork-verifier' }, tmpDir);
 
-    const nodeDir = path.join(tmpDir, '.foreman', 'nodes', 'qa-change', 'write-tests');
+    const nodeDir = path.join(tmpDir, '.specwork', 'nodes', 'qa-change', 'write-tests');
     const l2Content = readFileSync(path.join(nodeDir, 'L2.md'), 'utf8');
     expect(l2Content).not.toContain('---');
   });
@@ -227,27 +227,27 @@ describe('node-complete.sh — .current-node parsing', () => {
 
   it('correctly parses change and node from "change/node-id" format', () => {
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'alpha-change/impl-core',
       'utf8',
     );
-    runHook({ agent_id: 'foreman-implementer' }, tmpDir);
+    runHook({ agent_id: 'specwork-implementer' }, tmpDir);
 
     expect(existsSync(
-      path.join(tmpDir, '.foreman', 'nodes', 'alpha-change', 'impl-core')
+      path.join(tmpDir, '.specwork', 'nodes', 'alpha-change', 'impl-core')
     )).toBe(true);
   });
 
   it('handles hyphenated change name correctly', () => {
     writeFileSync(
-      path.join(tmpDir, '.foreman', '.current-node'),
+      path.join(tmpDir, '.specwork', '.current-node'),
       'my-feature-change/write-tests',
       'utf8',
     );
-    runHook({ agent_id: 'foreman-test-writer' }, tmpDir);
+    runHook({ agent_id: 'specwork-test-writer' }, tmpDir);
 
     expect(existsSync(
-      path.join(tmpDir, '.foreman', 'nodes', 'my-feature-change', 'write-tests')
+      path.join(tmpDir, '.specwork', 'nodes', 'my-feature-change', 'write-tests')
     )).toBe(true);
   });
 });

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { initializeState, transitionNode } from '../../core/state-machine.js';
 import { setScope } from '../../core/scope-manager.js';
 import {
-  findForemanRoot,
+  findSpecworkRoot,
   graphPath,
   statePath,
   scopePath,
@@ -22,9 +22,9 @@ import type { WorkflowState } from '../../types/state.js';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeTempRoot(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'foreman-cli-test-'));
-  fs.mkdirSync(path.join(dir, '.foreman', 'graph', 'test-change'), { recursive: true });
-  fs.mkdirSync(path.join(dir, '.foreman', 'nodes', 'test-change'), { recursive: true });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-cli-test-'));
+  fs.mkdirSync(path.join(dir, '.specwork', 'graph', 'test-change'), { recursive: true });
+  fs.mkdirSync(path.join(dir, '.specwork', 'nodes', 'test-change'), { recursive: true });
   return dir;
 }
 
@@ -52,7 +52,7 @@ const testGraph: Graph = {
       id: 'write-tests',
       type: 'llm',
       description: 'write tests',
-      agent: 'foreman-test-writer',
+      agent: 'specwork-test-writer',
       deps: ['snapshot'],
       inputs: [],
       outputs: [],
@@ -64,7 +64,7 @@ const testGraph: Graph = {
       id: 'impl-core',
       type: 'llm',
       description: 'impl core',
-      agent: 'foreman-implementer',
+      agent: 'specwork-implementer',
       deps: ['write-tests'],
       inputs: [],
       outputs: [],

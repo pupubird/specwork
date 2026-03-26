@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ForemanError } from '../utils/errors.js';
+import { SpecworkError } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import {
   changeDir,
@@ -89,7 +89,7 @@ function buildSummary(root: string, change: string): string {
 export function archiveChange(root: string, change: string): void {
   const src = changeDir(root, change);
   if (!fs.existsSync(src)) {
-    throw new ForemanError(
+    throw new SpecworkError(
       `Change directory not found: "${change}". Cannot archive.`,
       ExitCode.ERROR
     );
@@ -101,7 +101,7 @@ export function archiveChange(root: string, change: string): void {
     const content = fs.readFileSync(tasksPath, 'utf-8');
     const unchecked = content.split('\n').filter(l => /^- \[ \]/.test(l));
     if (unchecked.length > 0) {
-      throw new ForemanError(
+      throw new SpecworkError(
         `Cannot archive "${change}": ${unchecked.length} unchecked task(s) remain in tasks.md. Complete all tasks before archiving.`,
         ExitCode.ERROR
       );
@@ -118,12 +118,12 @@ export function archiveChange(root: string, change: string): void {
   const summary = buildSummary(root, change);
   fs.writeFileSync(path.join(dest, 'summary.md'), summary, 'utf-8');
 
-  // 3. Promote specs to .foreman/specs/ (source of truth)
+  // 3. Promote specs to .specwork/specs/ (source of truth)
   const specsDir = path.join(src, 'specs');
   if (fs.existsSync(specsDir)) {
     const specFiles = fs.readdirSync(specsDir).filter(f => !f.startsWith('.'));
     if (specFiles.length > 0) {
-      const targetSpecsDir = path.join(root, '.foreman', 'specs');
+      const targetSpecsDir = path.join(root, '.specwork', 'specs');
       fs.mkdirSync(targetSpecsDir, { recursive: true });
       for (const file of specFiles) {
         fs.cpSync(path.join(specsDir, file), path.join(targetSpecsDir, file), { recursive: true });
@@ -131,8 +131,8 @@ export function archiveChange(root: string, change: string): void {
     }
   }
 
-  // 4. Update .foreman.yaml status to 'archived' (in archive copy)
-  const metaPath = path.join(dest, '.foreman.yaml');
+  // 4. Update .specwork.yaml status to 'archived' (in archive copy)
+  const metaPath = path.join(dest, '.specwork.yaml');
   if (fs.existsSync(metaPath)) {
     const meta = readYaml<Record<string, unknown>>(metaPath);
     meta.status = 'archived';

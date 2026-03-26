@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a feature for Foreman
+about: Suggest a feature for Specwork
 title: "[Feature] "
 labels: enhancement
 assignees: ''

@@ -1,9 +1,9 @@
 {
-  "name": "@pupubird/foreman",
+  "name": "@pupubird/specwork",
   "version": "0.1.0",
   "description": "Spec-driven, test-first, graph-based workflow engine for Claude Code",
   "type": "module",
-  "bin": { "foreman": "./dist/index.js" },
+  "bin": { "specwork": "./dist/index.js" },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist/"],
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["claude-code", "workflow", "dag", "spec-driven", "test-first", "ai-agents", "foreman"],
+  "keywords": ["claude-code", "workflow", "dag", "spec-driven", "test-first", "ai-agents", "specwork"],
   "license": "MIT",
   "engines": { "node": ">=18" },
   "dependencies": {

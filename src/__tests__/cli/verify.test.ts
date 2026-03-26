@@ -2,19 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { createTestProject, runForeman, cleanup, writeTasksFile } from '../integration/helpers.js';
+import { createTestProject, runSpecwork, cleanup, writeTasksFile } from '../integration/helpers.js';
 
 const SIMPLE_TASKS = `## 1. Setup\n\n- [ ] 1.1 Initialize the module\n`;
 
 function setupAndStartNode(dir: string, change = 'my-change', nodeId = 'snapshot') {
-  runForeman(dir, 'init');
-  runForeman(dir, `new ${change}`);
+  runSpecwork(dir, 'init');
+  runSpecwork(dir, `new ${change}`);
   writeTasksFile(dir, change, SIMPLE_TASKS);
-  runForeman(dir, `graph generate ${change}`);
-  runForeman(dir, `node start ${change} ${nodeId}`);
+  runSpecwork(dir, `graph generate ${change}`);
+  runSpecwork(dir, `node start ${change} ${nodeId}`);
 }
 
-describe('foreman node verify', () => {
+describe('specwork node verify', () => {
   let dir: string;
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe('foreman node verify', () => {
 
   it('runs tsc-check and returns structured JSON verdict', () => {
     setupAndStartNode(dir);
-    const result = runForeman(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change snapshot');
     expect(result.exitCode).toBe(0);
     const out = JSON.parse(result.stdout);
     expect(out.node).toBe('snapshot');
@@ -39,13 +39,13 @@ describe('foreman node verify', () => {
 
   it('returns PASS when all checks pass', () => {
     setupAndStartNode(dir);
-    // snapshot node has validate: [{ type: "file-exists", args: { path: ".foreman/env/snapshot.md" } }]
+    // snapshot node has validate: [{ type: "file-exists", args: { path: ".specwork/env/snapshot.md" } }]
     // Create the file so the check passes
-    const snapshotPath = path.join(dir, '.foreman', 'env', 'snapshot.md');
+    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
     fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
     fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
 
-    const result = runForeman(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change snapshot');
     expect(result.exitCode).toBe(0);
     const out = JSON.parse(result.stdout);
     expect(out.verdict).toBe('PASS');
@@ -53,9 +53,9 @@ describe('foreman node verify', () => {
 
   it('returns FAIL when a check fails', () => {
     setupAndStartNode(dir);
-    // snapshot node validates file-exists for .foreman/env/snapshot.md
+    // snapshot node validates file-exists for .specwork/env/snapshot.md
     // Don't create it — check should fail
-    const result = runForeman(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change snapshot');
     expect(result.exitCode).toBe(0);
     const out = JSON.parse(result.stdout);
     expect(out.verdict).toBe('FAIL');
@@ -64,7 +64,7 @@ describe('foreman node verify', () => {
 
   it('includes failure details in check results', () => {
     setupAndStartNode(dir);
-    const result = runForeman(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change snapshot');
     const out = JSON.parse(result.stdout);
     if (out.verdict === 'FAIL') {
       const failedCheck = out.checks.find((c: any) => c.status === 'FAIL');
@@ -75,23 +75,23 @@ describe('foreman node verify', () => {
   });
 
   it('fails if node is not in_progress', () => {
-    runForeman(dir, 'init');
-    runForeman(dir, 'new my-change');
+    runSpecwork(dir, 'init');
+    runSpecwork(dir, 'new my-change');
     writeTasksFile(dir, 'my-change', SIMPLE_TASKS);
-    runForeman(dir, 'graph generate my-change');
+    runSpecwork(dir, 'graph generate my-change');
     // Don't start the node
-    const result = runForeman(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change snapshot');
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toMatch(/in.progress|started/i);
   });
 
   it('writes verify.md artifact to node directory', () => {
     setupAndStartNode(dir);
-    fs.mkdirSync(path.join(dir, '.foreman', 'env'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.foreman', 'env', 'snapshot.md'), '# Snapshot\n', 'utf-8');
+    fs.mkdirSync(path.join(dir, '.specwork', 'env'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.specwork', 'env', 'snapshot.md'), '# Snapshot\n', 'utf-8');
 
-    runForeman(dir, '--json node verify my-change snapshot');
-    const verifyPath = path.join(dir, '.foreman', 'nodes', 'my-change', 'snapshot', 'verify.md');
+    runSpecwork(dir, '--json node verify my-change snapshot');
+    const verifyPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'snapshot', 'verify.md');
     expect(fs.existsSync(verifyPath)).toBe(true);
     const content = fs.readFileSync(verifyPath, 'utf-8');
     expect(content).toMatch(/PASS|FAIL/);
@@ -99,12 +99,12 @@ describe('foreman node verify', () => {
 
   it('runs successfully without --json flag', () => {
     setupAndStartNode(dir);
-    fs.mkdirSync(path.join(dir, '.foreman', 'env'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.foreman', 'env', 'snapshot.md'), '# Snapshot\n', 'utf-8');
-    const result = runForeman(dir, 'node verify my-change snapshot');
+    fs.mkdirSync(path.join(dir, '.specwork', 'env'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.specwork', 'env', 'snapshot.md'), '# Snapshot\n', 'utf-8');
+    const result = runSpecwork(dir, 'node verify my-change snapshot');
     expect(result.exitCode).toBe(0);
     // verify.md should still be written
-    const verifyPath = path.join(dir, '.foreman', 'nodes', 'my-change', 'snapshot', 'verify.md');
+    const verifyPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'snapshot', 'verify.md');
     expect(fs.existsSync(verifyPath)).toBe(true);
   });
 });

@@ -91,9 +91,9 @@ export function buildNextAction(
     case 'node:start':
       return {
         command: `specwork context assemble ${change} ${nodeId}`,
-        description: `Assemble context and spawn the appropriate subagent for node ${nodeId}.`,
+        description: `Assemble context and spawn the appropriate subagent for node ${nodeId}. After the subagent finishes, run verification — the implementer never grades its own homework.`,
         context,
-        on_pass: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
+        on_pass: `specwork node verify ${change} ${nodeId} --json`,
         on_fail: `specwork node fail ${change} ${nodeId} --reason '<error>'`,
       };
 

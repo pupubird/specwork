@@ -30,6 +30,9 @@ function defaultNodeState(): NodeState {
     retries: 0,
     error: null,
     l0: null,
+    verified: false,
+    last_verdict: null,
+    verify_history: [],
   };
 }
 

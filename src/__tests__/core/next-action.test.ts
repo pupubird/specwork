@@ -135,7 +135,8 @@ describe('buildNextAction', () => {
     expect(action.context).toBe(context);
     expect(action.on_pass).toBeDefined();
     expect(action.on_fail).toBeDefined();
-    expect(action.on_pass).toMatch(/specwork node complete/);
+    // on_pass points to verify (not complete) — implementer never grades its own homework
+    expect(action.on_pass).toMatch(/specwork node verify/);
     expect(action.on_pass).toMatch(/impl-1-1/);
     expect(action.on_fail).toMatch(/specwork node fail/);
     expect(action.on_fail).toMatch(/impl-1-1/);

@@ -1,6 +1,6 @@
 export type NodeType = 'deterministic' | 'llm' | 'human';
 
-export type ValidationRuleType =
+export type BuiltinValidationRuleType =
   | 'tests-fail'
   | 'tests-pass'
   | 'tsc-check'
@@ -9,6 +9,9 @@ export type ValidationRuleType =
   | 'scope-check'
   | 'files-unchanged'
   | 'imports-exist';
+
+// Allows built-in types + custom string types from config
+export type ValidationRuleType = BuiltinValidationRuleType | (string & {});
 
 export interface ValidationRule {
   type: ValidationRuleType;

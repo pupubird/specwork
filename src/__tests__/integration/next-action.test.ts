@@ -173,8 +173,16 @@ describe('specwork node complete --json next_action', () => {
 
   it('includes next_action pointing to specwork go for next batch', () => {
     setupProjectWithGraph(dir);
-    // Start and complete the snapshot node
+    // Start, verify, and complete the snapshot node
     runSpecwork(dir, 'node start my-change snapshot');
+
+    // Create snapshot file so verification passes
+    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
+    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
+
+    // Verify first (mandatory)
+    runSpecwork(dir, 'node verify my-change snapshot');
 
     const result = runSpecwork(dir, 'node complete my-change snapshot --l0 "snapshot done" --no-commit --json');
     expect(result.exitCode).toBe(0);
@@ -212,7 +220,8 @@ describe('specwork node start --json next_action', () => {
     expect(json.next_action).toBeDefined();
     expect(json.next_action.on_pass).toBeDefined();
     expect(json.next_action.on_fail).toBeDefined();
-    expect(json.next_action.on_pass).toMatch(/specwork node complete/);
+    // on_pass points to verify (not complete) — implementer never grades its own homework
+    expect(json.next_action.on_pass).toMatch(/specwork node verify/);
     expect(json.next_action.on_fail).toMatch(/specwork node fail/);
     expect(json.next_action.context).toBeDefined();
   });

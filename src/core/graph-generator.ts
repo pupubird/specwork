@@ -122,7 +122,11 @@ export function generateGraph(root: string, change: string): Graph {
     inputs: ['.specwork/env/snapshot.md', ...specInputs],
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
-    validate: [{ type: 'tests-fail' }],
+    validate: [
+      { type: 'scope-check' },
+      { type: 'tsc-check' },
+      { type: 'tests-fail' },
+    ],
     retry: 2,
   };
   nodes.push(writeTestsNode);
@@ -134,7 +138,13 @@ export function generateGraph(root: string, change: string): Graph {
     const scope = extractFilePaths(task.rawLine + '\n' + allContext.slice(0, 2000));
     const implScope = scope.length > 0 ? scope : ['src/'];
 
-    const validate: ValidationRule[] = [{ type: 'tsc-check' }, { type: 'tests-pass' }];
+    const validate: ValidationRule[] = [
+      { type: 'scope-check' },
+      { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
+      { type: 'imports-exist' },
+      { type: 'tsc-check' },
+      { type: 'tests-pass' },
+    ];
 
     // Deps: previous task in same group (sequential within group),
     // or write-tests if first task in group (parallel between groups)

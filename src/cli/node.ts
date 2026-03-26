@@ -29,8 +29,15 @@ import {
 } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import { buildNextAction, readChangeContext } from '../core/next-action.js';
+import {
+  runChecks,
+  resolveCustomChecks,
+  detectRegressions,
+} from '../core/verification.js';
+import type { CheckResult } from '../core/verification.js';
 import type { Graph } from '../types/graph.js';
-import type { WorkflowState } from '../types/state.js';
+import type { WorkflowState, VerifyHistoryEntry } from '../types/state.js';
+import { parse as parseYaml } from 'yaml';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -195,6 +202,29 @@ const completeCmd = new Command('complete')
 
     const node = getNode(graph, nodeId);
     if (!node) throw new NodeNotFoundError(nodeId);
+
+    // Enforce mandatory verification
+    const nodeState = state.nodes[nodeId];
+    if (!nodeState?.verified) {
+      if (jsonMode) {
+        const ctx = readChangeContext(root, change);
+        const next_action = buildNextAction('node:verify:pass', ctx, { change, nodeId });
+        next_action.command = `specwork node verify ${change} ${nodeId}`;
+        next_action.description = 'Node must pass verification before completion';
+        output({
+          change,
+          node: nodeId,
+          error: 'Node must pass verification before completion',
+          next_action,
+        }, { json: true, quiet: false });
+        process.exitCode = ExitCode.ERROR;
+        return;
+      }
+      throw new SpecworkError(
+        `Cannot complete "${nodeId}": node must pass verification first. Run: specwork node verify ${change} ${nodeId}`,
+        ExitCode.ERROR
+      );
+    }
 
     // Transition to complete
     const l0Summary = opts.l0 ?? null;
@@ -371,87 +401,17 @@ const escalateCmd = new Command('escalate')
     }
   });
 
-// ── verification check runners ────────────────────────────────────────────────
+// ── load custom checks from config ───────────────────────────────────────────
 
-interface CheckResult {
-  type: string;
-  status: 'PASS' | 'FAIL';
-  detail: string;
-}
-
-function runCheck(root: string, rule: { type: string; args?: Record<string, unknown> }): CheckResult {
-  switch (rule.type) {
-    case 'tsc-check': {
-      try {
-        execSync('npx tsc --noEmit', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
-        return { type: 'tsc-check', status: 'PASS', detail: 'No type errors' };
-      } catch (e: any) {
-        const stderr = (e.stderr || e.stdout || '').toString().slice(0, 500);
-        return { type: 'tsc-check', status: 'FAIL', detail: stderr || 'Type check failed' };
-      }
-    }
-
-    case 'tests-pass': {
-      const testFile = (rule.args?.file as string) ?? '';
-      const cmd = testFile ? `npx vitest run ${testFile}` : 'npx vitest run';
-      try {
-        execSync(cmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
-        return { type: 'tests-pass', status: 'PASS', detail: 'All tests passed' };
-      } catch (e: any) {
-        const out = (e.stdout || e.stderr || '').toString().slice(0, 500);
-        return { type: 'tests-pass', status: 'FAIL', detail: out || 'Tests failed' };
-      }
-    }
-
-    case 'tests-fail': {
-      const testFile = (rule.args?.file as string) ?? '';
-      const cmd = testFile ? `npx vitest run ${testFile}` : 'npx vitest run';
-      try {
-        execSync(cmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
-        return { type: 'tests-fail', status: 'FAIL', detail: 'Tests should fail but passed' };
-      } catch {
-        return { type: 'tests-fail', status: 'PASS', detail: 'Tests correctly failing (RED state)' };
-      }
-    }
-
-    case 'file-exists': {
-      const filePath = rule.args?.path as string;
-      if (!filePath) return { type: 'file-exists', status: 'FAIL', detail: 'No path specified' };
-      const fullPath = path.resolve(root, filePath);
-      if (fs.existsSync(fullPath)) {
-        return { type: 'file-exists', status: 'PASS', detail: `${filePath} exists` };
-      }
-      return { type: 'file-exists', status: 'FAIL', detail: `${filePath} not found` };
-    }
-
-    case 'scope-check': {
-      try {
-        const diff = execSync('git diff --name-only', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
-        return { type: 'scope-check', status: 'PASS', detail: `Changed files: ${diff.trim() || '(none)'}` };
-      } catch {
-        return { type: 'scope-check', status: 'PASS', detail: 'No changes' };
-      }
-    }
-
-    case 'exit-code': {
-      const command = rule.args?.command as string;
-      const expected = (rule.args?.expected as number) ?? 0;
-      if (!command) return { type: 'exit-code', status: 'FAIL', detail: 'No command specified' };
-      try {
-        execSync(command, { cwd: root, stdio: 'pipe' });
-        return expected === 0
-          ? { type: 'exit-code', status: 'PASS', detail: `Exit 0` }
-          : { type: 'exit-code', status: 'FAIL', detail: `Expected exit ${expected}, got 0` };
-      } catch (e: any) {
-        const code = e.status ?? 1;
-        return code === expected
-          ? { type: 'exit-code', status: 'PASS', detail: `Exit ${code}` }
-          : { type: 'exit-code', status: 'FAIL', detail: `Expected exit ${expected}, got ${code}` };
-      }
-    }
-
-    default:
-      return { type: rule.type, status: 'PASS', detail: `Unknown check type — skipped` };
+function loadCustomChecks(root: string): Record<string, any> {
+  const configPath = path.join(root, '.specwork', 'config.yaml');
+  if (!fs.existsSync(configPath)) return {};
+  try {
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const config = parseYaml(raw) as Record<string, unknown>;
+    return (config.checks as Record<string, any>) ?? {};
+  } catch {
+    return {};
   }
 }
 
@@ -465,7 +425,7 @@ const verifyCmd = new Command('verify')
     const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
-    const { graph, state } = loadGraphAndState(root, change);
+    let { graph, state } = loadGraphAndState(root, change);
 
     const node = getNode(graph, nodeId);
     if (!node) throw new NodeNotFoundError(nodeId);
@@ -479,52 +439,131 @@ const verifyCmd = new Command('verify')
       );
     }
 
-    // Run all validation rules
-    const checks: CheckResult[] = [];
-    for (const rule of node.validate) {
-      checks.push(runCheck(root, rule));
-    }
+    // Resolve custom checks from config
+    const customChecks = loadCustomChecks(root);
+    const resolvedRules = resolveCustomChecks(node.validate, customChecks, node.scope);
 
-    const verdict = checks.every(c => c.status === 'PASS') ? 'PASS' : 'FAIL';
-    const failedChecks = checks.filter(c => c.status === 'FAIL');
+    // Run all checks with fail-fast and scope
+    const verifyResult = runChecks(root, resolvedRules, {
+      failFast: true,
+      scope: node.scope,
+    });
 
-    // Write verify.md artifact
+    // Collect full raw output for verify-output.txt
+    const rawOutputLines = verifyResult.checks.map(c => {
+      let line = `[${c.status}] ${c.type}: ${c.detail}`;
+      if (c.errors && c.errors.length > 0) {
+        line += '\n' + c.errors.map(e => {
+          let errLine = `  - ${e.message}`;
+          if (e.file) errLine = `  - ${e.file}${e.line ? `:${e.line}` : ''}: ${e.message}`;
+          if (e.code) errLine += ` (${e.code})`;
+          return errLine;
+        }).join('\n');
+      }
+      return line;
+    });
+
+    // Detect regressions from previous verification history
+    const existingHistory: VerifyHistoryEntry[] = (nodeState as any).verify_history ?? [];
+    const previousChecks = existingHistory.length > 0
+      ? existingHistory[existingHistory.length - 1].checks.map(c => ({
+          type: c.type,
+          status: c.status as 'PASS' | 'FAIL' | 'SKIPPED',
+          detail: c.detail,
+          duration_ms: c.duration_ms,
+        }))
+      : [];
+    const regressions = detectRegressions(previousChecks, verifyResult.checks);
+
+    // Build history entry
+    const attempt = existingHistory.length + 1;
+    const historyEntry: VerifyHistoryEntry = {
+      attempt,
+      verdict: verifyResult.verdict,
+      timestamp: new Date().toISOString(),
+      checks: verifyResult.checks.map(c => ({
+        type: c.type,
+        status: c.status,
+        detail: c.detail,
+        duration_ms: c.duration_ms,
+      })),
+      regressions,
+    };
+
+    // Update node state with verification info
+    const updatedHistory = [...existingHistory, historyEntry];
+    const updatedNodeState = {
+      ...nodeState,
+      verified: verifyResult.verdict === 'PASS',
+      last_verdict: verifyResult.verdict,
+      verify_history: updatedHistory,
+    };
+    state = {
+      ...state,
+      updated_at: new Date().toISOString(),
+      nodes: {
+        ...state.nodes,
+        [nodeId]: updatedNodeState,
+      },
+    };
+    saveState(root, change, state);
+
+    // Write verify.md artifact (full history)
     const nDir = nodeDir(root, change, nodeId);
     ensureDir(nDir);
-    const verifyContent = [
-      `## Verification: ${nodeId}`,
-      '',
-      ...checks.map(c => `- ${c.type}: ${c.status} — ${c.detail}`),
-      '',
-      `**Verdict: ${verdict}**`,
-      ...(failedChecks.length > 0 ? ['', '### Issues', ...failedChecks.map(c => `- ${c.type}: ${c.detail}`)] : []),
-      '',
-    ].join('\n');
-    writeMarkdown(`${nDir}/verify.md`, verifyContent);
+
+    const verifyMdSections: string[] = [`## Verification: ${nodeId}`, ''];
+    for (const entry of updatedHistory) {
+      verifyMdSections.push(`### Attempt ${entry.attempt} — ${entry.verdict} (${entry.timestamp})`);
+      verifyMdSections.push('');
+      for (const c of entry.checks) {
+        verifyMdSections.push(`- ${c.type}: ${c.status} — ${c.detail}`);
+      }
+      if (entry.regressions.length > 0) {
+        verifyMdSections.push('');
+        verifyMdSections.push(`**Regressions:** ${entry.regressions.join(', ')}`);
+      }
+      verifyMdSections.push('');
+    }
+    verifyMdSections.push(`**Latest Verdict: ${verifyResult.verdict}**`);
+    verifyMdSections.push('');
+    writeMarkdown(`${nDir}/verify.md`, verifyMdSections.join('\n'));
+
+    // Write verify-output.txt (full raw output)
+    fs.writeFileSync(`${nDir}/verify-output.txt`, rawOutputLines.join('\n\n'), 'utf-8');
 
     const ctx = readChangeContext(root, change);
-    const verifyStatus = verdict === 'PASS' ? 'node:verify:pass' : 'node:verify:fail';
+    const verifyStatus = verifyResult.verdict === 'PASS' ? 'node:verify:pass' : 'node:verify:fail';
     const next_action = buildNextAction(verifyStatus, ctx, { change, nodeId });
+
+    const fullOutputPath = path.relative(root, `${nDir}/verify-output.txt`);
 
     const result = {
       change,
       node: nodeId,
-      verdict,
-      checks,
-      failed_count: failedChecks.length,
-      total_checks: checks.length,
+      verdict: verifyResult.verdict,
+      checks: verifyResult.checks,
+      failed_count: verifyResult.failed_count,
+      total_checks: verifyResult.total_checks,
+      duration_ms: verifyResult.duration_ms,
+      regressions: regressions.length > 0 ? regressions : undefined,
+      full_output_path: fullOutputPath,
       next_action,
     };
 
     if (jsonMode) {
       output(result, { json: true, quiet: false });
     } else {
-      if (verdict === 'PASS') {
-        success(`✓ Verify ${change}/${nodeId}: PASS (${checks.length} checks)`);
+      if (verifyResult.verdict === 'PASS') {
+        success(`✓ Verify ${change}/${nodeId}: PASS (${verifyResult.total_checks} checks, ${verifyResult.duration_ms}ms)`);
       } else {
-        logError(`✗ Verify ${change}/${nodeId}: FAIL (${failedChecks.length}/${checks.length} failed)`);
+        const failedChecks = verifyResult.checks.filter(c => c.status === 'FAIL');
+        logError(`✗ Verify ${change}/${nodeId}: FAIL (${verifyResult.failed_count}/${verifyResult.total_checks} failed)`);
         for (const c of failedChecks) {
           info(`  - ${c.type}: ${c.detail}`);
+        }
+        if (regressions.length > 0) {
+          warn(`  ⚠ Regressions: ${regressions.join(', ')}`);
         }
       }
     }

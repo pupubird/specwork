@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { setVerbose } from './utils/logger.js';
 import { SpecworkError } from './utils/errors.js';
 import { ExitCode } from './types/index.js';
+import { validateConfig } from './core/config-validator.js';
 
 // Porcelain (human-facing)
 import { makePlanCommand } from './cli/plan.js';
@@ -49,6 +50,11 @@ program
     setVerbose(opts.verbose);
     if (opts.cwd) {
       process.chdir(opts.cwd);
+    }
+    // Validate config if .specwork exists (skip for init)
+    const cmdName = thisCommand.args?.[0] ?? thisCommand.name();
+    if (cmdName !== 'init') {
+      validateConfig();
     }
   });
 

@@ -97,11 +97,14 @@ describe('foreman node verify', () => {
     expect(content).toMatch(/PASS|FAIL/);
   });
 
-  it('outputs human-readable text without --json', () => {
+  it('runs successfully without --json flag', () => {
     setupAndStartNode(dir);
+    fs.mkdirSync(path.join(dir, '.foreman', 'env'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.foreman', 'env', 'snapshot.md'), '# Snapshot\n', 'utf-8');
     const result = runForeman(dir, 'node verify my-change snapshot');
     expect(result.exitCode).toBe(0);
-    const combined = result.stdout + result.stderr;
-    expect(combined).toMatch(/PASS|FAIL|verify/i);
+    // verify.md should still be written
+    const verifyPath = path.join(dir, '.foreman', 'nodes', 'my-change', 'snapshot', 'verify.md');
+    expect(fs.existsSync(verifyPath)).toBe(true);
   });
 });

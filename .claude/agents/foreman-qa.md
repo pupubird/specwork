@@ -48,13 +48,21 @@ Run the node's validation rules:
 - Check that scenarios described in the proposal are actually covered
 
 ## Output format
+
+Your FIRST line of output must be a JSON verdict block for machine parsing:
+
+```json
+{"verdict": "PASS"}
+```
+or
+```json
+{"verdict": "FAIL", "issues": ["Missing null check in handleAuth()", "No test for expired token edge case"]}
+```
+
+Then write the full report in markdown:
+
 ```markdown
 ## QA Report: [node-id]
-
-### Rule Validation
-- tsc-check: PASS/FAIL
-- tests: PASS/FAIL (N/N)
-- scope: PASS/FAIL
 
 ### Adversarial Findings
 - [ISSUE] Description of problem found

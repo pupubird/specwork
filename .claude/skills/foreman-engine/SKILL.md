@@ -101,34 +101,84 @@ Pause and present output to the user. Require explicit approval.
 
 ---
 
-## 3. Verification
+## 3. Verification & Auto-Retry Loop
 
 Every node's output must be verified before marking complete. The verification level is controlled by `config.execution.verify`:
 
 | Mode | When verification runs | Cost |
 |------|----------------------|------|
-| `strict` | Every node: rule-based verifier + adversarial QA agent | High (2 extra agents per node) |
+| `strict` | Every node: rule-based verify + adversarial QA agent | High (2 extra agents per node) |
 | `gates` (default) | Rule-based on every node. QA agent only at human gates and integration nodes | Medium |
 | `none` | Skip verification entirely | Free (use only for trusted/trivial workflows) |
 
-### Step 1: Rule-based verification (foreman-verifier)
-Spawn the `foreman-verifier` agent with the node's `validate` rules. It runs deterministic checks (tsc, tests, scope). Fast, cheap (haiku model).
+### Step 1: Rule-based verification (CLI)
 
-If verifier reports FAIL → `foreman node fail` → retry or escalate.
+Run the built-in verify command — this is deterministic, no LLM needed:
 
-### Step 2: Adversarial QA (foreman-qa)
+```bash
+foreman node verify <change> <node-id> --json
+```
+
+Returns structured JSON:
+```json
+{
+  "verdict": "PASS",        // or "FAIL"
+  "checks": [
+    { "type": "tsc-check", "status": "PASS", "detail": "No type errors" },
+    { "type": "tests-pass", "status": "FAIL", "detail": "2 tests failed..." }
+  ],
+  "failed_count": 1,
+  "total_checks": 2
+}
+```
+
+Writes results to `.foreman/nodes/<change>/<node>/verify.md`.
+
+### Step 2: Adversarial QA (agent — when applicable)
+
+When verify mode is `strict`, or this is a gate/integration node:
+
 Spawn the `foreman-qa` agent. It tries to BREAK the output:
 - Reads changed files looking for bugs, edge cases, missing error handling
 - Runs the full test suite checking for regressions
 - Verifies spec compliance against proposal.md/design.md
-- Reports issues or approves
+- Returns verdict as PASS or FAIL with specific issues
 
-If QA reports FAIL → the lead agent reviews the findings and decides:
-- Fix and retry if issues are real
-- Override and proceed if issues are false positives
-- Escalate to user if uncertain
+QA results are written to `.foreman/nodes/<change>/<node>/qa-report.md`.
 
-QA results are written to `.foreman/nodes/<change>/<node>/qa-report.md` for audit.
+### Step 3: Auto-Retry Loop
+
+```
+implement → verify → FAIL? → inject feedback → re-implement → verify → PASS? → complete
+```
+
+The engine drives this loop automatically:
+
+```
+verify_result = foreman node verify <change> <node-id> --json
+
+if verify_result.verdict == "PASS":
+  # If QA is required (strict mode or gate node):
+  qa_result = spawn_qa_agent(node)
+  if qa_result.verdict == "FAIL":
+    foreman node fail <change> <node-id> --reason "QA: <issues>"
+    # Re-spawn implementer with QA findings injected as context
+    # Loop back to verify
+  else:
+    foreman node complete <change> <node-id>
+
+elif verify_result.verdict == "FAIL":
+  foreman node fail <change> <node-id> --reason "Verify: <failed checks>"
+  # Check retry budget (config.execution.max_retries, default: 2)
+  # If retries remain:
+  #   Re-spawn implementer with failure details injected
+  #   Loop back to verify
+  # If retries exhausted:
+  #   foreman node escalate <change> <node-id>
+  #   Report to user
+```
+
+The `foreman node fail` command tracks retry count automatically. When `max_retries` is exhausted, it auto-escalates and skips dependents.
 
 ---
 
@@ -308,7 +358,24 @@ while true:
         ctx = foreman context expand <change> <node.id> <target>
         result = spawn_subagent(node.agent, ctx)  # once only
 
-      spawn_verifier(node.validate, result)
+      # Verify-retry loop
+      while true:
+        verdict = foreman node verify <change> <node.id> --json
+        if verdict.verdict == "PASS":
+          if needs_qa(node):
+            qa = spawn_qa_agent(node)
+            if qa.verdict == "FAIL":
+              foreman node fail <change> <node.id> --reason qa.issues
+              # re-spawn implementer with feedback, continue loop
+            else:
+              break  # all clear
+          else:
+            break  # verify passed, no QA needed
+        else:
+          foreman node fail <change> <node.id> --reason verdict.checks
+          # if exhausted → auto-escalates, stop loop
+          # else re-spawn implementer with failure context, continue loop
+
       spawn_summarizer(node.id)
       foreman node complete <change> <node.id>
 

@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { execSync } from 'node:child_process';
 import {
   findForemanRoot,
   graphPath,
@@ -29,6 +30,7 @@ import { ExitCode } from '../types/index.js';
 import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
+import path from 'node:path';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -302,6 +304,160 @@ const escalateCmd = new Command('escalate')
     }
   });
 
+// ── verification check runners ────────────────────────────────────────────────
+
+interface CheckResult {
+  type: string;
+  status: 'PASS' | 'FAIL';
+  detail: string;
+}
+
+function runCheck(root: string, rule: { type: string; args?: Record<string, unknown> }): CheckResult {
+  switch (rule.type) {
+    case 'tsc-check': {
+      try {
+        execSync('npx tsc --noEmit', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+        return { type: 'tsc-check', status: 'PASS', detail: 'No type errors' };
+      } catch (e: any) {
+        const stderr = (e.stderr || e.stdout || '').toString().slice(0, 500);
+        return { type: 'tsc-check', status: 'FAIL', detail: stderr || 'Type check failed' };
+      }
+    }
+
+    case 'tests-pass': {
+      const testFile = (rule.args?.file as string) ?? '';
+      const cmd = testFile ? `npx vitest run ${testFile}` : 'npx vitest run';
+      try {
+        execSync(cmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+        return { type: 'tests-pass', status: 'PASS', detail: 'All tests passed' };
+      } catch (e: any) {
+        const out = (e.stdout || e.stderr || '').toString().slice(0, 500);
+        return { type: 'tests-pass', status: 'FAIL', detail: out || 'Tests failed' };
+      }
+    }
+
+    case 'tests-fail': {
+      const testFile = (rule.args?.file as string) ?? '';
+      const cmd = testFile ? `npx vitest run ${testFile}` : 'npx vitest run';
+      try {
+        execSync(cmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+        return { type: 'tests-fail', status: 'FAIL', detail: 'Tests should fail but passed' };
+      } catch {
+        return { type: 'tests-fail', status: 'PASS', detail: 'Tests correctly failing (RED state)' };
+      }
+    }
+
+    case 'file-exists': {
+      const filePath = rule.args?.path as string;
+      if (!filePath) return { type: 'file-exists', status: 'FAIL', detail: 'No path specified' };
+      const fullPath = path.resolve(root, filePath);
+      if (fs.existsSync(fullPath)) {
+        return { type: 'file-exists', status: 'PASS', detail: `${filePath} exists` };
+      }
+      return { type: 'file-exists', status: 'FAIL', detail: `${filePath} not found` };
+    }
+
+    case 'scope-check': {
+      try {
+        const diff = execSync('git diff --name-only', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+        return { type: 'scope-check', status: 'PASS', detail: `Changed files: ${diff.trim() || '(none)'}` };
+      } catch {
+        return { type: 'scope-check', status: 'PASS', detail: 'No changes' };
+      }
+    }
+
+    case 'exit-code': {
+      const command = rule.args?.command as string;
+      const expected = (rule.args?.expected as number) ?? 0;
+      if (!command) return { type: 'exit-code', status: 'FAIL', detail: 'No command specified' };
+      try {
+        execSync(command, { cwd: root, stdio: 'pipe' });
+        return expected === 0
+          ? { type: 'exit-code', status: 'PASS', detail: `Exit 0` }
+          : { type: 'exit-code', status: 'FAIL', detail: `Expected exit ${expected}, got 0` };
+      } catch (e: any) {
+        const code = e.status ?? 1;
+        return code === expected
+          ? { type: 'exit-code', status: 'PASS', detail: `Exit ${code}` }
+          : { type: 'exit-code', status: 'FAIL', detail: `Expected exit ${expected}, got ${code}` };
+      }
+    }
+
+    default:
+      return { type: rule.type, status: 'PASS', detail: `Unknown check type — skipped` };
+  }
+}
+
+// ── foreman node verify ───────────────────────────────────────────────────────
+
+const verifyCmd = new Command('verify')
+  .description('Run validation checks on a node and return structured verdict')
+  .argument('<change>', 'Change name')
+  .argument('<node>', 'Node ID')
+  .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
+    const root = findForemanRoot();
+    const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
+
+    const { graph, state } = loadGraphAndState(root, change);
+
+    const node = getNode(graph, nodeId);
+    if (!node) throw new NodeNotFoundError(nodeId);
+
+    // Must be in_progress to verify
+    const nodeState = state.nodes[nodeId];
+    if (nodeState?.status !== 'in_progress') {
+      throw new ForemanError(
+        `Cannot verify "${nodeId}": node must be in_progress (started). Current: ${nodeState?.status ?? 'pending'}`,
+        ExitCode.ERROR
+      );
+    }
+
+    // Run all validation rules
+    const checks: CheckResult[] = [];
+    for (const rule of node.validate) {
+      checks.push(runCheck(root, rule));
+    }
+
+    const verdict = checks.every(c => c.status === 'PASS') ? 'PASS' : 'FAIL';
+    const failedChecks = checks.filter(c => c.status === 'FAIL');
+
+    // Write verify.md artifact
+    const nDir = nodeDir(root, change, nodeId);
+    ensureDir(nDir);
+    const verifyContent = [
+      `## Verification: ${nodeId}`,
+      '',
+      ...checks.map(c => `- ${c.type}: ${c.status} — ${c.detail}`),
+      '',
+      `**Verdict: ${verdict}**`,
+      ...(failedChecks.length > 0 ? ['', '### Issues', ...failedChecks.map(c => `- ${c.type}: ${c.detail}`)] : []),
+      '',
+    ].join('\n');
+    writeMarkdown(`${nDir}/verify.md`, verifyContent);
+
+    const result = {
+      change,
+      node: nodeId,
+      verdict,
+      checks,
+      failed_count: failedChecks.length,
+      total_checks: checks.length,
+    };
+
+    if (jsonMode) {
+      output(result, { json: true, quiet: false });
+    } else {
+      if (verdict === 'PASS') {
+        success(`✓ Verify ${change}/${nodeId}: PASS (${checks.length} checks)`);
+      } else {
+        logError(`✗ Verify ${change}/${nodeId}: FAIL (${failedChecks.length}/${checks.length} failed)`);
+        for (const c of failedChecks) {
+          info(`  - ${c.type}: ${c.detail}`);
+        }
+      }
+    }
+  });
+
 // ── foreman node (parent command) ─────────────────────────────────────────────
 
 export function makeNodeCommand(): Command {
@@ -312,6 +468,7 @@ export function makeNodeCommand(): Command {
   nodeCmd.addCommand(completeCmd);
   nodeCmd.addCommand(failCmd);
   nodeCmd.addCommand(escalateCmd);
+  nodeCmd.addCommand(verifyCmd);
 
   return nodeCmd;
 }

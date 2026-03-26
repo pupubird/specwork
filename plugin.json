@@ -18,10 +18,9 @@
     ".claude/agents/foreman-summarizer.md"
   ],
   "commands": [
-    ".claude/commands/foreman-run.md",
-    ".claude/commands/foreman-status.md",
-    ".claude/commands/foreman-graph.md",
-    ".claude/commands/foreman-snapshot.md"
+    ".claude/commands/foreman-plan.md",
+    ".claude/commands/foreman-go.md",
+    ".claude/commands/foreman-status.md"
   ],
   "hooks": {
     "SessionStart": [".claude/hooks/session-init.sh"],

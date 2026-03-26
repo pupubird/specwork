@@ -23,5 +23,5 @@
 
 ## 6. Migration Tests
 
-- [ ] 6.1 Unit tests for `migrateOpenspec()`: spec path flattening, change directory mapping, config merge, `openspec/` deletion
+- [x] 6.1 Unit tests for `migrateOpenspec()`: spec path flattening, change directory mapping, config merge, `openspec/` deletion
 - [ ] 6.2 Integration test for `foreman init migrate`: fixture `openspec/` tree → assert `.foreman/specs/` and `.foreman/changes/` contents match expected mapping, `openspec/` deleted

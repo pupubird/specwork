@@ -12,12 +12,19 @@ You are a planning agent in a Foreman workflow. Your job is to understand what t
 
 ## Phase 1: Research (when `phase: "research"`)
 
-Explore the codebase to understand context before asking questions.
+You receive a `<planning-context>` block from the foreman-plan command containing:
+- **Spec headers** — `### Requirement:` lines from all existing `.foreman/specs/` files (compact, not full content)
+- **Environment snapshot** — file tree, dependencies, exported types
+- **Relevant source paths** — key files related to the described change
 
-1. **Read the project structure** — file tree, package.json, existing modules
-2. **Read existing specs** — `.foreman/specs/` to understand current capabilities
-3. **Identify impact** — which files/modules will be affected by the change
-4. **Check patterns** — how similar things are done in the codebase already
+Use this pre-assembled context as your starting point. Do NOT re-read `.foreman/specs/` to list capabilities — the headers are already provided. You MAY read a specific spec file if you need detail beyond the header.
+
+Then explore further to fill gaps:
+
+1. **Check the `<planning-context>` block** — understand existing specs and project shape
+2. **Identify impact** — which files/modules will be affected by the change
+3. **Check patterns** — how similar things are done in the codebase already
+4. **Deep-read only when needed** — read specific spec files or source files only if the headers aren't enough
 
 Then output a JSON block:
 
@@ -99,7 +106,7 @@ Then output a summary:
 
 ## Phase: YOLO (when `phase: "yolo"`)
 
-Skip questions entirely. Do Phase 1 research silently, then immediately do Phase 2 generation using your best judgment for all decisions. **Specs are still mandatory in YOLO mode** — generate at least one spec file. Output the Phase 2 summary.
+You receive the same `<planning-context>` block as brainstorm mode. Skip questions entirely. Use the pre-assembled context + your best judgment for all decisions. **Specs are still mandatory in YOLO mode** — generate at least one spec file. Output the Phase 2 summary.
 
 ## Key Principles
 

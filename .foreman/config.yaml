@@ -1,0 +1,40 @@
+# Foreman unified configuration
+# Engine settings + spec system conventions in one place.
+
+# ── Models ────────────────────────────────────────────────────────────────────
+models:
+  default: sonnet
+  test_writer: opus
+  summarizer: haiku
+  verifier: haiku
+
+# ── Execution ─────────────────────────────────────────────────────────────────
+execution:
+  max_retries: 2
+  expand_limit: 1
+  parallel_mode: sequential   # or "parallel" for Agent Teams when 3+ nodes ready
+  snapshot_refresh: after_each_node
+  verify: gates              # strict = every node, gates = human gates + integration, none = skip
+
+# ── Context Assembly ──────────────────────────────────────────────────────────
+context:
+  ancestors: L0   # All completed nodes: one-line headline
+  parents: L1     # Direct deps only: ~100 token summary
+
+# ── Spec System ───────────────────────────────────────────────────────────────
+spec:
+  schema: spec-driven
+  specs_dir: .foreman/specs          # Source-of-truth specs (current behavior)
+  changes_dir: .foreman/changes      # In-flight change proposals
+  archive_dir: .foreman/changes/archive
+  templates_dir: .foreman/templates  # Starter templates for artifact types
+
+# ── Graph Engine ──────────────────────────────────────────────────────────────
+graph:
+  graphs_dir: .foreman/graph    # graph.yaml + state.yaml per change
+  nodes_dir: .foreman/nodes     # L0/L1/L2/verify artifacts per node
+
+# ── Environments ──────────────────────────────────────────────────────────────
+environments:
+  env_dir: .foreman/env
+  active: development

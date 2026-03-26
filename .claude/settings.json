@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": ".claude/hooks/session-init.sh"
+      }]
+    }],
+    "PreToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": ".claude/hooks/scope-guard.sh"
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": ".claude/hooks/type-check.sh"
+      }]
+    }],
+    "SubagentStop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": ".claude/hooks/node-complete.sh"
+      }]
+    }]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}

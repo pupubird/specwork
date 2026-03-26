@@ -1,0 +1,41 @@
+change: promote-specs
+status: complete
+started_at: 2026-03-26T16:05:41.798Z
+updated_at: 2026-03-26T16:07:49.499Z
+lock: null
+nodes:
+  snapshot:
+    status: complete
+    started_at: 2026-03-26T16:05:53.725Z
+    completed_at: 2026-03-26T16:05:55.943Z
+    retries: 0
+    error: null
+    l0: Snapshot captured
+  write-tests:
+    status: complete
+    started_at: 2026-03-26T16:06:01.165Z
+    completed_at: 2026-03-26T16:06:53.084Z
+    retries: 0
+    error: null
+    l0: "3 spec promotion tests (RED): promote, overwrite, skip-empty"
+  impl-1-1:
+    status: complete
+    started_at: 2026-03-26T16:06:58.856Z
+    completed_at: 2026-03-26T16:07:36.980Z
+    retries: 0
+    error: null
+    l0: Spec promotion added to archiveChange(), 11 tests GREEN
+  impl-1-2:
+    status: complete
+    started_at: 2026-03-26T16:07:37.729Z
+    completed_at: 2026-03-26T16:07:38.624Z
+    retries: 0
+    error: null
+    l0: 3 spec promotion tests already written and GREEN
+  integration:
+    status: complete
+    started_at: 2026-03-26T16:07:43.890Z
+    completed_at: 2026-03-26T16:07:44.794Z
+    retries: 0
+    error: null
+    l0: 317/317 tests pass, zero regressions

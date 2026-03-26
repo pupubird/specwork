@@ -169,6 +169,75 @@ describe('parallel group dependencies', () => {
   });
 });
 
+// ── Spec Input Discovery ────────────────────────────────────────────────────
+
+describe('spec input discovery', () => {
+  it('should include spec files as inputs to write-tests node', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core\n- [ ] 1.1 Do something\n`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+    // Create specs directory with spec files
+    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    ensureDir(specsDir);
+    writeFileSync(path.join(specsDir, 'auth.md'), '### Requirement: Auth\n');
+    writeFileSync(path.join(specsDir, 'rate-limit.md'), '### Requirement: Rate Limit\n');
+
+    const graph = generateGraph(root, 'test');
+    const writeTests = graph.nodes.find(n => n.id === 'write-tests');
+
+    expect(writeTests!.inputs).toContain('.foreman/changes/test/specs/auth.md');
+    expect(writeTests!.inputs).toContain('.foreman/changes/test/specs/rate-limit.md');
+  });
+
+  it('should work when specs directory is empty', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core\n- [ ] 1.1 Do something\n`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    ensureDir(specsDir);
+
+    const graph = generateGraph(root, 'test');
+    // Should still generate without error
+    expect(graph.nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should work when specs directory does not exist', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core\n- [ ] 1.1 Do something\n`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    // Should still generate without error
+    expect(graph.nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should ignore non-md files in specs directory', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core\n- [ ] 1.1 Do something\n`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+    const specsDir = path.join(root, '.foreman', 'changes', 'test', 'specs');
+    ensureDir(specsDir);
+    writeFileSync(path.join(specsDir, 'auth.md'), '### Requirement: Auth\n');
+    writeFileSync(path.join(specsDir, '.gitkeep'), '');
+    writeFileSync(path.join(specsDir, 'notes.txt'), 'not a spec');
+
+    const graph = generateGraph(root, 'test');
+    const writeTests = graph.nodes.find(n => n.id === 'write-tests');
+
+    const specInputs = writeTests!.inputs.filter(i => i.includes('specs/'));
+    expect(specInputs).toHaveLength(1);
+    expect(specInputs[0]).toContain('auth.md');
+  });
+});
+
 // ── Edge Cases ───────────────────────────────────────────────────────────────
 
 describe('edge cases', () => {

@@ -23,3 +23,9 @@ Run the workflow autonomously for change: $ARGUMENTS
 4. After each node completes, run `foreman go $ARGUMENTS --json` again to get the next batch
 5. Repeat until status is `done`
 6. Report final summary: nodes completed, tests passing, files changed
+
+### Auto-Archive
+When the workflow completes successfully (all nodes terminal, change status = complete), `foreman go` automatically archives the change:
+- Moves change artifacts to `.foreman/changes/archive/<change>/`
+- Preserves graph, state, and all node artifacts (L0/L1/L2, verify.md, qa-report.md)
+- Cleans up original directories (changes, graph, nodes)

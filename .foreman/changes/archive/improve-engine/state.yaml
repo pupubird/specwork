@@ -1,0 +1,90 @@
+change: improve-engine
+status: complete
+started_at: 2026-03-26T15:55:59.574Z
+updated_at: 2026-03-26T16:03:16.998Z
+lock: null
+nodes:
+  snapshot:
+    status: complete
+    started_at: 2026-03-26T15:56:09.769Z
+    completed_at: 2026-03-26T15:56:12.260Z
+    retries: 0
+    error: null
+    l0: "Snapshot captured: file tree, deps, types"
+  write-tests:
+    status: complete
+    started_at: 2026-03-26T15:56:26.057Z
+    completed_at: 2026-03-26T15:57:40.042Z
+    retries: 0
+    error: null
+    l0: 8 archive tests written (RED), covering move/copy/cleanup/metadata
+  impl-1-1:
+    status: complete
+    started_at: 2026-03-26T15:57:49.029Z
+    completed_at: 2026-03-26T16:01:39.228Z
+    retries: 0
+    error: null
+    l0: "archiveChange() implemented: copy+cleanup, 8 tests GREEN"
+  impl-1-2:
+    status: complete
+    started_at: 2026-03-26T16:01:59.785Z
+    completed_at: 2026-03-26T16:02:00.585Z
+    retries: 0
+    error: null
+    l0: archiveChangeDir() already added to paths.ts
+  impl-1-3:
+    status: complete
+    started_at: 2026-03-26T16:02:19.856Z
+    completed_at: 2026-03-26T16:02:20.788Z
+    retries: 0
+    error: null
+    l0: archiveChange() wired into go.ts done detection
+  impl-1-4:
+    status: complete
+    started_at: 2026-03-26T16:02:39.804Z
+    completed_at: 2026-03-26T16:02:40.702Z
+    retries: 0
+    error: null
+    l0: 8 archive tests already written and GREEN
+  impl-2-1:
+    status: complete
+    started_at: 2026-03-26T15:57:49.815Z
+    completed_at: 2026-03-26T16:02:03.298Z
+    retries: 0
+    error: null
+    l0: "Engine skill updated: QA orchestration, needs_qa(), agent teams, archive section"
+  impl-2-2:
+    status: complete
+    started_at: 2026-03-26T16:02:21.629Z
+    completed_at: 2026-03-26T16:02:22.470Z
+    retries: 0
+    error: null
+    l0: Engine skill Section 5 updated with agent team patterns
+  impl-2-3:
+    status: complete
+    started_at: 2026-03-26T16:02:41.496Z
+    completed_at: 2026-03-26T16:02:42.442Z
+    retries: 0
+    error: null
+    l0: Section 11 already updated with QA in loop
+  impl-3-1:
+    status: complete
+    started_at: 2026-03-26T15:57:50.591Z
+    completed_at: 2026-03-26T16:01:40.032Z
+    retries: 0
+    error: null
+    l0: CLAUDE.md, foreman-go.md updated with archive + agent team docs
+  impl-3-2:
+    status: complete
+    started_at: 2026-03-26T16:02:01.557Z
+    completed_at: 2026-03-26T16:02:02.503Z
+    retries: 0
+    error: null
+    l0: foreman-go.md already updated with auto-archive docs
+  integration:
+    status: complete
+    started_at: 2026-03-26T16:02:54.906Z
+    completed_at: 2026-03-26T16:03:11.637Z
+    retries: 0
+    error: null
+    l0: 314/314 tests pass, 18 files, zero regressions

@@ -57,9 +57,31 @@ Rules for questions:
 You receive the user's answers to your questions. Generate all change artifacts:
 
 1. **proposal.md** — WHY and WHAT, incorporating the user's answers
-2. **design.md** — HOW, with architectural decisions based on codebase patterns
-3. **tasks.md** — STEPS, broken into numbered groups with checkboxes
-4. **specs/** — delta specs if behavior contracts are needed
+2. **specs/** — behavioral contracts (MANDATORY — at least one spec file per change)
+3. **design.md** — HOW, with architectural decisions based on codebase patterns
+4. **tasks.md** — STEPS, broken into numbered groups with checkboxes
+
+**Specs are mandatory.** Every change introduces or modifies behavior — write specs for it. Even internal refactors need at least one spec with one requirement and one scenario.
+
+### Spec format
+
+Write to `<change-path>/specs/<capability>.md`:
+
+```markdown
+### Requirement: <Name>
+
+<Description using SHALL/MUST for requirements, SHOULD for recommendations>
+
+#### Scenario: <Name>
+Given <precondition>
+When <action>
+Then <expected outcome>
+```
+
+### What makes a good spec
+- **Behavioral** — describe WHAT the system does, not HOW (no class names, no library choices)
+- **Testable** — every requirement has at least one scenario that can be verified
+- **Delta-aware** — check `.foreman/specs/` for existing specs. Only write what's new or changed.
 
 Write files directly to the change directory at the path provided.
 
@@ -70,17 +92,18 @@ Then output a summary:
   "summary": "Created change with 3 task groups, 8 tasks total",
   "task_groups": ["Authentication middleware", "Token management", "Tests"],
   "estimated_nodes": 10,
-  "files_written": ["proposal.md", "design.md", "tasks.md"]
+  "specs_written": ["specs/auth.md", "specs/rate-limit.md"],
+  "files_written": ["proposal.md", "design.md", "tasks.md", "specs/auth.md", "specs/rate-limit.md"]
 }
 ```
 
 ## Phase: YOLO (when `phase: "yolo"`)
 
-Skip questions entirely. Do Phase 1 research silently, then immediately do Phase 2 generation using your best judgment for all decisions. Output the Phase 2 summary.
+Skip questions entirely. Do Phase 1 research silently, then immediately do Phase 2 generation using your best judgment for all decisions. **Specs are still mandatory in YOLO mode** — generate at least one spec file. Output the Phase 2 summary.
 
 ## Key Principles
 
 - **Codebase-informed** — every question and decision should reference what you actually found
 - **Respect existing patterns** — don't propose new patterns when the codebase has established ones
 - **Right-sized tasks** — each task should be completable in one session by one agent
-- **Spec-driven** — if the change introduces new behavior, write delta specs
+- **Spec-driven** — every change gets specs. Specs feed into test writing and are promoted to `.foreman/specs/` on completion

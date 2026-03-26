@@ -134,6 +134,33 @@ Returns structured JSON:
 
 Writes results to `.foreman/nodes/<change>/<node>/verify.md`.
 
+### Determining if QA is needed
+
+The engine checks `config.execution.verify` to decide when to spawn the QA agent:
+
+| Verify Mode | Rule-based (`foreman node verify`) | QA Agent (`foreman-qa`) |
+|-------------|-----------------------------------|------------------------|
+| `strict` | Every node | Every node |
+| `gates` (default) | Every node | Only at human gate nodes and integration nodes |
+| `none` | Skip | Skip |
+
+Decision logic:
+```
+needs_qa(node, config):
+  if config.execution.verify == "none": return false
+  if config.execution.verify == "strict": return true
+  # gates mode (default):
+  return node.gate == "human" OR node.id == "integration"
+```
+
+When QA is needed, spawn the `foreman-qa` agent AFTER rule-based verify passes:
+1. Assemble context: `foreman context assemble <change> <node-id>`
+2. Include verify.md results in the prompt
+3. Spawn `foreman-qa` agent (model: sonnet, tools: Read, Bash, Glob, Grep)
+4. Parse the JSON verdict from the agent's first line of output
+5. Write results to `.foreman/nodes/<change>/<node>/qa-report.md`
+6. If FAIL: `foreman node fail <change> <node-id> --reason "QA: <issues>"`
+
 ### Step 2: Adversarial QA (agent — when applicable)
 
 When verify mode is `strict`, or this is a gate/integration node:
@@ -226,12 +253,25 @@ Your scope (only modify these paths): [node.scope]
 ## 5. Parallel Execution
 
 Check `config.execution.parallel_mode`:
-- `sequential` (default): Call `foreman go <change> --json` and execute one node at a time
-- `parallel`: When 3+ nodes are ready simultaneously, use Agent Teams:
-  - Create a team with `TeamCreate`
-  - Assign one node per teammate
-  - Each teammate runs `foreman node start` → assembles context → spawns subagent → `foreman node complete`
-  - Collect results before proceeding
+
+### Sequential (default)
+Call `foreman go <change> --json` and execute one node at a time in the main loop.
+
+### Parallel (agent teams)
+When 3+ nodes are ready simultaneously, use Agent Teams:
+
+1. Create team: `TeamCreate` with team name matching the change
+2. Create tasks: One `TaskCreate` per ready node with dependencies matching the graph
+3. Spawn teammates: One `Agent` per node with `team_name` and `name` params
+   - Each teammate runs: `foreman node start` → assemble context → spawn subagent → verify → `foreman node complete`
+   - Use `subagent_type: "general-purpose"` for implementation nodes
+4. Coordinate: Teammates use `TaskUpdate` to claim and complete tasks
+5. Collect: Wait for all teammates to report back
+6. Cleanup: `SendMessage` shutdown to all teammates → `TeamDelete`
+
+**File ownership rule**: Each teammate owns distinct files. Never assign two teammates the same file to avoid conflicts.
+
+**Model selection**: Use Sonnet for implementation teammates (cost-effective), Opus for complex planning.
 
 ---
 
@@ -387,4 +427,23 @@ while true:
       foreman node fail <change> <node.id>
 
 report_final_summary()
+
+# Archive completed change
+if result.status == "done":
+  # Auto-archived by `foreman go` — change moved to .foreman/changes/archive/
 ```
+
+---
+
+## 12. Auto-Archive
+
+When `foreman go <change> --json` returns `status: "done"` and the change status is `complete`, the change is automatically archived:
+
+- Change artifacts → `.foreman/changes/archive/<change>/`
+- Graph + state → `.foreman/changes/archive/<change>/`
+- Node artifacts (L0/L1/L2, verify.md, qa-report.md) → `.foreman/changes/archive/<change>/nodes/`
+- Original directories cleaned up
+
+Archived changes are immutable — they serve as audit trail for completed work.
+
+To inspect archived changes: `ls .foreman/changes/archive/`

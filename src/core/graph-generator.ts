@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import type { Graph, GraphNode, ValidationRule } from '../types/graph.js';
 import { readMarkdown } from '../io/filesystem.js';
 import { changeDir } from '../utils/paths.js';
@@ -99,6 +100,16 @@ export function generateGraph(root: string, change: string): Graph {
   };
   nodes.push(snapshotNode);
 
+  // Discover spec files from change's specs/ directory
+  const specsDir = path.join(dir, 'specs');
+  const specInputs: string[] = [];
+  if (fs.existsSync(specsDir)) {
+    const specFiles = fs.readdirSync(specsDir).filter(f => f.endsWith('.md'));
+    for (const file of specFiles) {
+      specInputs.push(`.foreman/changes/${change}/specs/${file}`);
+    }
+  }
+
   // Second node: write-tests (llm, gate: human)
   const writeTestsNode: GraphNode = {
     id: 'write-tests',
@@ -108,7 +119,7 @@ export function generateGraph(root: string, change: string): Graph {
     gate: 'human',
     model: 'opus',
     deps: ['snapshot'],
-    inputs: ['.foreman/env/snapshot.md'],
+    inputs: ['.foreman/env/snapshot.md', ...specInputs],
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
     validate: [{ type: 'tests-fail' }],

@@ -67,3 +67,7 @@ export function lockPath(root: string, change: string): string {
 export function snapshotPath(root: string): string {
   return path.join(root, '.foreman', 'env', 'snapshot.md');
 }
+
+export function archiveChangeDir(root: string, change: string): string {
+  return path.join(root, '.foreman', 'changes', 'archive', change);
+}

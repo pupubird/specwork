@@ -1,0 +1,184 @@
+change: improve-engine
+version: "1"
+created_at: 2026-03-26T15:55:59.568Z
+nodes:
+  - id: snapshot
+    type: deterministic
+    description: Capture environment snapshot (file tree, deps, types)
+    command: foreman snapshot
+    deps: []
+    inputs: []
+    outputs:
+      - .foreman/env/snapshot.md
+    scope: []
+    validate:
+      - type: file-exists
+        args:
+          path: .foreman/env/snapshot.md
+    retry: 2
+  - id: write-tests
+    type: llm
+    description: Write tests from specs (must be RED before implementation)
+    agent: foreman-test-writer
+    gate: human
+    model: opus
+    deps:
+      - snapshot
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs:
+      - src/__tests__/
+    scope:
+      - src/__tests__/
+    validate:
+      - type: tests-fail
+    retry: 2
+  - id: impl-1-1
+    type: llm
+    description: Add `archiveChange(root, change)` function in `src/core/archive.ts` — copies change dir, graph dir, and nodes dir to `.foreman/changes/archive/<name>/`, then removes originals
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a1
+      - src/
+    scope: *a1
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-1-2
+    type: llm
+    description: Add archive path helpers to `src/utils/paths.ts` — `archiveChangeDir()`, `archiveGraphDir()`, `archiveNodesDir()`
+    agent: foreman-implementer
+    deps:
+      - impl-1-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a2
+      - src/
+    scope: *a2
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-1-3
+    type: llm
+    description: Wire archive into `foreman go` done detection in `src/cli/go.ts` — call `archiveChange()` when `allTerminal && changeStatus === 'complete'`
+    agent: foreman-implementer
+    deps:
+      - impl-1-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a3
+      - src/
+    scope: *a3
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-1-4
+    type: llm
+    description: Write tests for archive in `src/__tests__/core/archive.test.ts`
+    agent: foreman-implementer
+    deps:
+      - impl-1-3
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a4
+      - src/
+    scope: *a4
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-1
+    type: llm
+    description: Update engine skill Section 3 with concrete `needs_qa()` logic and QA agent spawning instructions in `.claude/skills/foreman-engine/SKILL.md`
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a5
+      - src/
+    scope: *a5
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-2
+    type: llm
+    description: Update engine skill Section 5 (Parallel Execution) with agent team patterns
+    agent: foreman-implementer
+    deps:
+      - impl-2-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a6
+      - src/
+    scope: *a6
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-3
+    type: llm
+    description: Update engine skill Section 11 (Quick Reference) with QA in the loop
+    agent: foreman-implementer
+    deps:
+      - impl-2-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a7
+      - src/
+    scope: *a7
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-1
+    type: llm
+    description: Update CLAUDE.md with agent team usage in foreman workflows
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a8
+      - src/
+    scope: *a8
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-2
+    type: llm
+    description: Update `.claude/commands/foreman-go.md` to mention auto-archive behavior
+    agent: foreman-implementer
+    deps:
+      - impl-3-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a9
+      - src/
+    scope: *a9
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: integration
+    type: deterministic
+    description: Run full test suite (integration verification)
+    command: npm test
+    deps:
+      - impl-1-4
+      - impl-2-3
+      - impl-3-2
+    inputs: []
+    outputs: []
+    scope: []
+    validate:
+      - type: tests-pass
+    retry: 1

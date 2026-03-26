@@ -84,6 +84,7 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 4. **Snapshot-only imports** — subagents use only types/imports visible in the environment snapshot.
 5. **Verify before commit** — the verifier agent runs after each node, before any git commit.
 6. **Human gates** — `write-tests` node requires human approval before implementation begins.
+7. **Auto-archive** — completed changes are automatically archived to `.foreman/changes/archive/` when `foreman go` detects all nodes are done.
 
 ---
 
@@ -96,7 +97,7 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 | `.foreman/templates/` | Starter templates for proposal, spec, design, tasks |
 | `.foreman/specs/` | Source-of-truth specs (current deployed behavior) |
 | `.foreman/changes/` | In-flight change proposals (proposal + specs + design + tasks) |
-| `.foreman/changes/archive/` | Completed changes (immutable history) |
+| `.foreman/changes/archive/` | Completed changes (auto-archived on workflow completion) |
 | `.foreman/graph/<change>/` | `graph.yaml` (plan) + `state.yaml` (runtime status) |
 | `.foreman/nodes/<change>/` | Node artifacts: L0/L1/L2, verify.md, output.txt |
 | `.foreman/examples/` | Example graphs for reference |
@@ -129,6 +130,10 @@ foreman status <change-name>
 | `foreman-implementer` | sonnet | Makes tests pass, minimum code, within scope |
 | `foreman-verifier` | haiku | Read-only validation, PASS/FAIL per check |
 | `foreman-summarizer` | haiku | Generates L0/L1/L2 context for completed nodes |
+
+### Agent Teams for Parallel Execution
+
+When `config.execution.parallel_mode` is set to `parallel`, the engine uses Agent Teams to execute multiple ready nodes concurrently. Each teammate handles one node independently with file ownership enforced to prevent conflicts. Use Sonnet for implementation teammates, Opus for planning.
 
 ---
 

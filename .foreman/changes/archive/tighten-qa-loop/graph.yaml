@@ -1,0 +1,108 @@
+change: tighten-qa-loop
+version: "1"
+created_at: 2026-03-26T15:43:11.406Z
+nodes:
+  - id: snapshot
+    type: deterministic
+    description: Capture environment snapshot (file tree, deps, types)
+    command: foreman snapshot
+    deps: []
+    inputs: []
+    outputs:
+      - .foreman/env/snapshot.md
+    scope: []
+    validate:
+      - type: file-exists
+        args:
+          path: .foreman/env/snapshot.md
+    retry: 2
+  - id: write-tests
+    type: llm
+    description: Write tests from specs (must be RED before implementation)
+    agent: foreman-test-writer
+    gate: human
+    model: opus
+    deps:
+      - snapshot
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs:
+      - src/__tests__/
+    scope:
+      - src/__tests__/
+    validate:
+      - type: tests-fail
+    retry: 2
+  - id: impl-1-1
+    type: llm
+    description: Add `foreman node verify` subcommand to `src/cli/node.ts` — runs tsc-check, tests-pass, scope-check deterministically, outputs structured JSON verdict
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a1
+      - src/
+    scope: *a1
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-1-2
+    type: llm
+    description: Add tests for verify command in `src/__tests__/cli/verify.test.ts`
+    agent: foreman-implementer
+    deps:
+      - impl-1-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a2
+      - src/
+    scope: *a2
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-1
+    type: llm
+    description: Update engine skill Section 3 (Verification) with the auto-retry loop using `foreman node verify`
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a3
+      - src/
+    scope: *a3
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-2
+    type: llm
+    description: Update verifier and QA agent definitions with machine-parseable verdict format
+    agent: foreman-implementer
+    deps:
+      - impl-2-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a4
+      - src/
+    scope: *a4
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: integration
+    type: deterministic
+    description: Run full test suite (integration verification)
+    command: npm test
+    deps:
+      - impl-1-2
+      - impl-2-2
+    inputs: []
+    outputs: []
+    scope: []
+    validate:
+      - type: tests-pass
+    retry: 1

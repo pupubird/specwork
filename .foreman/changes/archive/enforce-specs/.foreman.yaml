@@ -1,0 +1,6 @@
+schema: foreman-change/v1
+change: enforce-specs
+description: Add spec-writing step to foreman workflow — planner agent generates specs from proposal before tasks
+created_at: 2026-03-26T16:08:40.038Z
+status: archived
+mode: brainstorm

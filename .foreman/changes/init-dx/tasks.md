@@ -5,7 +5,7 @@
 
 ## 2. Enhanced `foreman init`
 
-- [ ] 2.1 Rewrite `makeInitCommand()` in `src/cli/init.ts`: remove `--with-claude` flag, add `execution.verify: 'gates'` to default config, write `schema.yaml`, `examples/example-graph.yaml`, `.foreman/.gitignore`, `.claude/settings.json`, and all files from `CLAUDE_FILES`
+- [x] 2.1 Rewrite `makeInitCommand()` in `src/cli/init.ts`: remove `--with-claude` flag, add `execution.verify: 'gates'` to default config, write `schema.yaml`, `examples/example-graph.yaml`, `.foreman/.gitignore`, `.claude/settings.json`, and all files from `CLAUDE_FILES`
 - [ ] 2.2 Fix post-init message (`foreman plan` not `foreman new`) and add doctor auto-run as final init step
 
 ## 3. Migration Core

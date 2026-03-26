@@ -14,7 +14,7 @@
 
 ## 4. Migration CLI
 
-- [ ] 4.1 Register `init migrate` subcommand in `src/cli/init.ts`: validate `openspec/` exists, call `migrateOpenspec()`, run doctor, display migration summary table
+- [x] 4.1 Register `init migrate` subcommand in `src/cli/init.ts`: validate `openspec/` exists, call `migrateOpenspec()`, run doctor, display migration summary table
 
 ## 5. Init Tests
 

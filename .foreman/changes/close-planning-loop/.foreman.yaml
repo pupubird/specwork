@@ -1,0 +1,6 @@
+schema: foreman-change/v1
+change: close-planning-loop
+description: "Close the planning loop: add research teammate to inject specs/codebase context into planner, and enforce TeamCreate in foreman loop"
+created_at: 2026-03-26T16:17:05.822Z
+status: planning
+mode: brainstorm

@@ -223,7 +223,7 @@ models:
 execution:
   max_retries: 2
   expand_limit: 1
-  parallel_mode: sequential  # or "parallel"
+  parallel_mode: parallel  # TeamCreate always used; controls concurrency
   snapshot_refresh: after_each_node
 
 context:

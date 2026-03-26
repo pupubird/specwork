@@ -131,9 +131,9 @@ foreman status <change-name>
 | `foreman-verifier` | haiku | Read-only validation, PASS/FAIL per check |
 | `foreman-summarizer` | haiku | Generates L0/L1/L2 context for completed nodes |
 
-### Agent Teams for Parallel Execution
+### Agent Teams (Mandatory)
 
-When `config.execution.parallel_mode` is set to `parallel`, the engine uses Agent Teams to execute multiple ready nodes concurrently. Each teammate handles one node independently with file ownership enforced to prevent conflicts. Use Sonnet for implementation teammates, Opus for planning.
+All foreman execution uses Agent Teams (TeamCreate/TeamDelete). This is mandatory for both planning (`foreman-plan`) and execution (`foreman-go`), regardless of node count or `parallel_mode` setting. The `parallel_mode` config (default: `parallel`) controls whether teammates run concurrently or sequentially within the team — it does not control whether teams are used. Use Sonnet for implementation teammates, Opus for planning.
 
 ---
 
@@ -164,7 +164,7 @@ models:
 execution:
   max_retries: 2        # Retry failed nodes up to N times
   expand_limit: 1       # Max EXPAND requests per node
-  parallel_mode: sequential   # or "parallel" for Agent Teams
+  parallel_mode: parallel      # TeamCreate always used; controls concurrency within team
   snapshot_refresh: after_each_node
 
 context:

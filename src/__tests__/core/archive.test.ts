@@ -114,22 +114,42 @@ describe('archiveChange', () => {
     expect(fs.existsSync(original)).toBe(false);
   });
 
-  it('copies graph.yaml and state.yaml to archive', () => {
+  it('generates summary.md with graph, state, and node L0s consolidated', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
-    expect(fs.existsSync(path.join(archivePath, 'graph.yaml'))).toBe(true);
-    expect(fs.existsSync(path.join(archivePath, 'state.yaml'))).toBe(true);
+    const summaryPath = path.join(archivePath, 'summary.md');
+    expect(fs.existsSync(summaryPath)).toBe(true);
 
-    // Verify state content preserved
-    const archivedState = readYaml<WorkflowState>(path.join(archivePath, 'state.yaml'));
-    expect(archivedState.status).toBe('complete');
+    const content = fs.readFileSync(summaryPath, 'utf-8');
+    // Should contain graph info
+    expect(content).toContain('## Graph');
+    expect(content).toContain('snapshot');
+    expect(content).toContain('write-tests');
+    // Should contain state info
+    expect(content).toContain('## State');
+    expect(content).toContain('complete');
+    // Should contain node summaries
+    expect(content).toContain('## Nodes');
+    expect(content).toContain('snapshot done');
   });
 
-  it('copies node artifacts (L0, verify.md) to archive', () => {
+  it('does not create separate graph.yaml, state.yaml, or nodes/ in archive', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    archiveChange(root, 'my-feature');
+
+    const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
+    expect(fs.existsSync(path.join(archivePath, 'graph.yaml'))).toBe(false);
+    expect(fs.existsSync(path.join(archivePath, 'state.yaml'))).toBe(false);
+    expect(fs.existsSync(path.join(archivePath, 'nodes'))).toBe(false);
+  });
+
+  it('includes verify.md content in summary when present', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
@@ -140,10 +160,8 @@ describe('archiveChange', () => {
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.foreman', 'changes', 'archive', 'my-feature');
-    const archivedNodes = path.join(archivePath, 'nodes');
-    expect(fs.existsSync(archivedNodes)).toBe(true);
-    expect(fs.existsSync(path.join(archivedNodes, 'snapshot', 'L0.md'))).toBe(true);
-    expect(fs.existsSync(path.join(archivedNodes, 'snapshot', 'verify.md'))).toBe(true);
+    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    expect(content).toContain('PASS');
   });
 
   it('removes original graph and nodes directories after archive', () => {

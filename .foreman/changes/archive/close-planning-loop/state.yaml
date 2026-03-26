@@ -1,0 +1,125 @@
+change: close-planning-loop
+status: complete
+started_at: 2026-03-26T16:23:35.849Z
+updated_at: 2026-03-26T16:32:31.474Z
+lock: null
+nodes:
+  snapshot:
+    status: complete
+    started_at: 2026-03-26T16:24:37.085Z
+    completed_at: 2026-03-26T16:24:38.007Z
+    retries: 0
+    error: null
+    l0: snapshot done
+  write-tests:
+    status: complete
+    started_at: 2026-03-26T16:26:03.729Z
+    completed_at: 2026-03-26T16:26:04.632Z
+    retries: 0
+    error: null
+    l0: "1 RED test: parallel_mode default"
+  impl-1-1:
+    status: complete
+    started_at: 2026-03-26T16:27:18.634Z
+    completed_at: 2026-03-26T16:27:19.536Z
+    retries: 0
+    error: null
+    l0: parallel_mode default changed to parallel in init.ts and config.yaml
+  impl-2-1:
+    status: complete
+    started_at: 2026-03-26T16:28:29.813Z
+    completed_at: 2026-03-26T16:28:30.586Z
+    retries: 0
+    error: null
+    l0: planner accepts planning-context block
+  impl-2-2:
+    status: complete
+    started_at: 2026-03-26T16:28:31.431Z
+    completed_at: 2026-03-26T16:28:32.191Z
+    retries: 0
+    error: null
+    l0: planner skips redundant spec reads
+  impl-2-3:
+    status: complete
+    started_at: 2026-03-26T16:28:33.003Z
+    completed_at: 2026-03-26T16:28:33.778Z
+    retries: 0
+    error: null
+    l0: generate and yolo phases reference planning-context
+  impl-3-1:
+    status: complete
+    started_at: 2026-03-26T16:29:18.094Z
+    completed_at: 2026-03-26T16:29:18.880Z
+    retries: 0
+    error: null
+    l0: added planning-context pre-assembly step
+  impl-3-2:
+    status: complete
+    started_at: 2026-03-26T16:29:19.673Z
+    completed_at: 2026-03-26T16:29:20.474Z
+    retries: 0
+    error: null
+    l0: brainstorm mode uses TeamCreate
+  impl-3-3:
+    status: complete
+    started_at: 2026-03-26T16:29:21.283Z
+    completed_at: 2026-03-26T16:29:22.210Z
+    retries: 0
+    error: null
+    l0: generate phase uses TeamCreate
+  impl-3-4:
+    status: complete
+    started_at: 2026-03-26T16:29:23.014Z
+    completed_at: 2026-03-26T16:29:23.898Z
+    retries: 0
+    error: null
+    l0: YOLO mode uses TeamCreate
+  impl-4-1:
+    status: complete
+    started_at: 2026-03-26T16:30:36.610Z
+    completed_at: 2026-03-26T16:30:37.408Z
+    retries: 0
+    error: null
+    l0: TeamCreate mandatory, removed conditional
+  impl-4-2:
+    status: complete
+    started_at: 2026-03-26T16:30:38.356Z
+    completed_at: 2026-03-26T16:30:39.275Z
+    retries: 0
+    error: null
+    l0: parallel_mode controls concurrency not team usage
+  impl-4-3:
+    status: complete
+    started_at: 2026-03-26T16:30:40.101Z
+    completed_at: 2026-03-26T16:30:40.937Z
+    retries: 0
+    error: null
+    l0: pseudocode wrapped in TeamCreate/TeamDelete per batch
+  impl-5-1:
+    status: complete
+    started_at: 2026-03-26T16:31:58.070Z
+    completed_at: 2026-03-26T16:31:59.066Z
+    retries: 0
+    error: null
+    l0: foreman-go uses TeamCreate per batch
+  impl-5-2:
+    status: complete
+    started_at: 2026-03-26T16:32:00.065Z
+    completed_at: 2026-03-26T16:32:00.849Z
+    retries: 0
+    error: null
+    l0: allowed-tools includes TeamCreate/TeamDelete/TaskCreate/SendMessage
+  impl-5-3:
+    status: complete
+    started_at: 2026-03-26T16:32:01.710Z
+    completed_at: 2026-03-26T16:32:02.477Z
+    retries: 0
+    error: null
+    l0: foreman-plan allowed-tools updated
+  integration:
+    status: complete
+    started_at: 2026-03-26T16:32:25.016Z
+    completed_at: 2026-03-26T16:32:25.879Z
+    retries: 0
+    error: null
+    l0: 322 tests pass, all green

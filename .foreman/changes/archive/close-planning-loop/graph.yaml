@@ -1,0 +1,263 @@
+change: close-planning-loop
+version: "1"
+created_at: 2026-03-26T16:23:35.842Z
+nodes:
+  - id: snapshot
+    type: deterministic
+    description: Capture environment snapshot (file tree, deps, types)
+    command: foreman snapshot
+    deps: []
+    inputs: []
+    outputs:
+      - .foreman/env/snapshot.md
+    scope: []
+    validate:
+      - type: file-exists
+        args:
+          path: .foreman/env/snapshot.md
+    retry: 2
+  - id: write-tests
+    type: llm
+    description: Write tests from specs (must be RED before implementation)
+    agent: foreman-test-writer
+    gate: human
+    model: opus
+    deps:
+      - snapshot
+    inputs:
+      - .foreman/env/snapshot.md
+      - .foreman/changes/close-planning-loop/specs/planning-context.md
+      - .foreman/changes/close-planning-loop/specs/team-enforcement.md
+    outputs:
+      - src/__tests__/
+    scope:
+      - src/__tests__/
+    validate:
+      - type: tests-fail
+    retry: 2
+  - id: impl-1-1
+    type: llm
+    description: "Update `.foreman/config.yaml`: change `parallel_mode` from `sequential` to `parallel` and update the inline comment"
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a1
+      - src/
+    scope: *a1
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-1
+    type: llm
+    description: "Update `.claude/agents/foreman-planner.md` Phase 1 (Research): document that agent receives a `<planning-context>` block containing spec requirement headers + file tree + snapshot"
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a2
+      - src/
+    scope: *a2
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-2
+    type: llm
+    description: 'Update Phase 1 step list: replace "Read existing specs in `.foreman/specs/`" with "Use spec headers from `<planning-context>`; only read a specific spec file if deep detail is required"'
+    agent: foreman-implementer
+    deps:
+      - impl-2-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a3
+      - src/
+    scope: *a3
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-2-3
+    type: llm
+    description: "Update Phase 2 (Generate) and YOLO phase: confirm they reference the pre-assembled context as the starting point for delta-aware spec writing"
+    agent: foreman-implementer
+    deps:
+      - impl-2-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a4
+      - src/
+    scope: *a4
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-1
+    type: llm
+    description: 'Update `.claude/commands/foreman-plan.md`: add pre-assembly step after "Create the change" — Grep `.foreman/specs/` for `### Requirement:` headers, read snapshot, bundle into `<planning-context>` block'
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a5
+      - src/
+    scope: *a5
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-2
+    type: llm
+    description: "Update brainstorm mode spawn: replace bare `Agent` call for research phase with TeamCreate → TaskCreate → teammate spawn → TeamDelete; pass `<planning-context>` block as input"
+    agent: foreman-implementer
+    deps:
+      - impl-3-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a6
+      - src/
+    scope: *a6
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-3
+    type: llm
+    description: "Update brainstorm mode spawn: replace bare `Agent` call for generate phase with same TeamCreate pattern; pass `<planning-context>` + user answers"
+    agent: foreman-implementer
+    deps:
+      - impl-3-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a7
+      - src/
+    scope: *a7
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-3-4
+    type: llm
+    description: "Update YOLO mode spawn: replace bare `Agent` call with TeamCreate pattern; pass `<planning-context>` block as input"
+    agent: foreman-implementer
+    deps:
+      - impl-3-3
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a8
+      - src/
+    scope: *a8
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-4-1
+    type: llm
+    description: 'Update `.claude/skills/foreman-engine/SKILL.md` Section 5 (Parallel Execution): remove the "When 3+ nodes ready" conditional — TeamCreate is mandatory for ALL execution batches regardless of node count'
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a9
+      - src/
+    scope: *a9
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-4-2
+    type: llm
+    description: "Update Section 5: remove the `parallel_mode` branch that allows sequential without TeamCreate; keep `parallel_mode` only as a hint for whether teammates run concurrently vs one-at-a-time"
+    agent: foreman-implementer
+    deps:
+      - impl-4-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a10
+      - src/
+    scope: *a10
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-4-3
+    type: llm
+    description: "Update Section 11 (Quick Reference pseudocode): wrap the execution loop body in TeamCreate/TeamDelete for each batch of ready nodes"
+    agent: foreman-implementer
+    deps:
+      - impl-4-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a11
+      - src/
+    scope: *a11
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-5-1
+    type: llm
+    description: "Update `.claude/commands/foreman-go.md`: replace the bare per-node `Agent` execution loop with TeamCreate-based batch execution (create team → create tasks → spawn teammates → TeamDelete)"
+    agent: foreman-implementer
+    deps:
+      - write-tests
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a12
+      - src/
+    scope: *a12
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-5-2
+    type: llm
+    description: Add `allowed-tools` frontmatter entry for `TeamCreate`, `TeamDelete`, `TaskCreate`, `TaskUpdate`, `SendMessage` to `foreman-go.md`
+    agent: foreman-implementer
+    deps:
+      - impl-5-1
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a13
+      - src/
+    scope: *a13
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: impl-5-3
+    type: llm
+    description: "Update `.claude/commands/foreman-plan.md` `allowed-tools` frontmatter: add `TeamCreate`, `TeamDelete`, `TaskCreate`, `TaskUpdate`, `SendMessage`"
+    agent: foreman-implementer
+    deps:
+      - impl-5-2
+    inputs:
+      - .foreman/env/snapshot.md
+    outputs: &a14
+      - src/
+    scope: *a14
+    validate:
+      - type: tsc-check
+      - type: tests-pass
+    retry: 2
+  - id: integration
+    type: deterministic
+    description: Run full test suite (integration verification)
+    command: npm test
+    deps:
+      - impl-1-1
+      - impl-2-3
+      - impl-3-4
+      - impl-4-3
+      - impl-5-3
+    inputs: []
+    outputs: []
+    scope: []
+    validate:
+      - type: tests-pass
+    retry: 1

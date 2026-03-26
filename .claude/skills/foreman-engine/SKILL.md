@@ -6,18 +6,30 @@ The **CLI is the control plane**. All state reads/writes, context assembly, and 
 
 ---
 
+## Human Commands vs Engine Commands
+
+Developers use 3 porcelain commands:
+- `foreman plan "<description>"` — create a new change
+- `foreman go <change>` — run the workflow
+- `foreman status` — check progress
+
+Everything below is what the engine (you) uses internally.
+
+---
+
 ## 1. Starting the Execution Loop
 
 Use the CLI to get the next ready node(s):
 
 ```bash
-foreman run <change> --json
+foreman go <change> --json
 ```
 
 This returns a JSON payload:
 - `status: "done"` — all nodes complete, workflow finished
-- `status: "ready"` — one or more nodes ready, see `nodes[]`
+- `status: "ready"` — one or more nodes ready, see `ready[]`
 - `status: "blocked"` — no ready nodes but workflow not done (cycle or failure)
+- `status: "waiting"` — nodes in progress, check back later
 
 Never read `graph.yaml` or `state.yaml` directly. The CLI handles dependency resolution.
 
@@ -25,16 +37,19 @@ Never read `graph.yaml` or `state.yaml` directly. The CLI handles dependency res
 
 ## 2. Node Types
 
-Each node returned by `foreman run` has a `type` field that determines how it executes:
+Each node in `ready[]` has a `type` field that determines how it executes:
 
 ### `deterministic` nodes
 Execute as a shell command. No LLM involved.
 
 ```bash
-# 1. Run the node's command (from node.command in the JSON)
+# 1. Mark node as started
+foreman node start <change> <node-id>
+
+# 2. Run the node's command (from node.command in the JSON)
 bash -c "<node.command>"
 
-# 2. Capture output and mark complete
+# 3. Capture output and mark complete
 foreman node complete <change> <node-id>
 # or on failure:
 foreman node fail <change> <node-id>
@@ -63,14 +78,9 @@ foreman scope set <change> <node-id>
 
 # 5. Handle EXPAND if needed (see Section 6)
 
-# 6. Verify (see Section 3.1 for verify modes)
-# Always: spawn foreman-verifier with node.validate rules
-# If verify=strict OR this is a gate/integration node:
-#   spawn foreman-qa for adversarial testing
-# If verify=none: skip verification
+# 6. Verify (see Section 3 for verify modes)
 
-# 7. Generate summaries
-# (spawn foreman-summarizer)
+# 7. Generate summaries (spawn foreman-summarizer)
 
 # 8. Mark complete — auto-commits and refreshes snapshot
 foreman node complete <change> <node-id>
@@ -161,20 +171,12 @@ This command automatically:
 Your scope (only modify these paths): [node.scope]
 ```
 
-### Getting just L0 headlines
-
-```bash
-foreman context l0 <change>
-```
-
-Returns one-line status for all completed nodes.
-
 ---
 
 ## 5. Parallel Execution
 
 Check `config.execution.parallel_mode`:
-- `sequential` (default): Call `foreman run <change> --json` and execute one node at a time
+- `sequential` (default): Call `foreman go <change> --json` and execute one node at a time
 - `parallel`: When 3+ nodes are ready simultaneously, use Agent Teams:
   - Create a team with `TeamCreate`
   - Assign one node per teammate
@@ -219,7 +221,7 @@ State is managed entirely by the CLI. You never write to `state.yaml` directly.
 | Node succeeds | `foreman node complete <change> <node-id>` |
 | Node fails | `foreman node fail <change> <node-id>` |
 | Node escalated | `foreman node escalate <change> <node-id>` |
-| Check all statuses | `foreman status <change>` |
+| Check progress | `foreman status <change>` |
 
 `foreman node complete` also:
 - Auto-generates L0/L1/L2 (or spawns summarizer)
@@ -230,7 +232,7 @@ State is managed entirely by the CLI. You never write to `state.yaml` directly.
 
 ## 9. Completion
 
-The workflow is complete when `foreman run <change> --json` returns `status: "done"`.
+The workflow is complete when `foreman go <change> --json` returns `status: "done"`.
 
 Report a final summary:
 - Nodes completed: X/Y
@@ -253,16 +255,14 @@ This pauses the workflow — all dependent nodes are automatically skipped.
 
 ### Step 2: Create a fix change
 ```bash
-foreman new fix-<description>
-# Write proposal.md, design.md, tasks.md for the fix
+foreman plan "Fix: <description>"
+# Fill in proposal.md, tasks.md
 foreman graph generate fix-<description>
 ```
 
 ### Step 3: Run the fix workflow
 ```bash
-foreman run fix-<description>
-# Execute the fix change through the full Foreman lifecycle
-# Tests first, then implementation, then integration
+foreman go fix-<description>
 ```
 
 ### Step 4: Resume the original workflow
@@ -272,7 +272,7 @@ foreman graph generate <original-change>
 
 # Or retry the escalated node
 foreman retry <original-change>/<escalated-node>
-foreman run <original-change>
+foreman go <original-change>
 ```
 
 ### Why this pattern?
@@ -281,21 +281,20 @@ foreman run <original-change>
 - **"Partial success is success"** — completed nodes are real artifacts; don't discard them
 - **"Audit everything"** — the fix has its own spec, tests, and graph — fully traceable
 
-This is analogous to how developers handle CI bugs: open a separate PR, fix CI, merge, then re-run the original PR.
-
 ---
 
 ## 11. Quick Reference: Execution Loop
 
 ```
 while true:
-  result = foreman run <change> --json
+  result = foreman go <change> --json
 
   if result.status == "done": break
   if result.status == "blocked": error("cycle or dependency failure")
 
-  for node in result.nodes:
+  for node in result.ready:
     if node.type == "deterministic":
+      foreman node start <change> <node.id>
       run_command(node.command)
       foreman node complete <change> <node.id>
 

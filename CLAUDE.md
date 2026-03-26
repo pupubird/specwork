@@ -10,69 +10,36 @@ Everything lives under `.foreman/` — one directory, one unified system.
 
 ## How to Use Foreman
 
-### Step 1 — Create a change with specs
+### Three commands to remember
 
-Create your change artifacts under `.foreman/changes/<change-name>/`:
-
-```
-.foreman/changes/<change-name>/
-├── .foreman.yaml       ← change metadata
-├── proposal.md         ← WHY (required)
-├── design.md           ← HOW (optional, for complex changes)
-├── tasks.md            ← STEPS (required)
-└── specs/
-    └── <capability>/spec.md   ← WHAT (delta specs)
-```
-
-Use templates from `.foreman/templates/` as starting points.
-
-### Step 2 — Generate the execution graph
-
-**CLI (primary):**
 ```bash
-foreman graph generate <change-name>
-foreman graph validate <change-name>
-foreman graph show <change-name>
+# 1. Plan a change — describe what you want in plain English
+foreman plan "Add JWT authentication to the API"
+
+# 2. Run the workflow — Foreman drives everything autonomously
+foreman go add-jwt-authentication
+
+# 3. Check progress anytime
+foreman status
 ```
 
-**Claude Code slash command:**
+### With Claude Code slash commands
+
 ```
-/project:foreman-graph <change-name>
-```
-
-Reads `proposal.md`, `design.md`, `tasks.md` and generates `.foreman/graph/<change-name>/graph.yaml`.
-
-### Step 3 — Run the workflow
-
-**CLI (primary):**
-```bash
-foreman run <change-name> --json   # get next ready node(s)
-foreman node start <change> <node-id>
-foreman context assemble <change> <node-id>
-foreman node complete <change> <node-id>
-# repeat until: foreman run <change> --json → status: "done"
+/project:foreman-plan "Add JWT authentication"
+/project:foreman-go add-jwt-authentication
+/project:foreman-status
 ```
 
-**Claude Code slash command:**
-```
-/project:foreman-run <change-name>
-```
+### What happens under the hood
 
-Walks the graph: snapshots environment → writes tests (RED) → implements node by node (GREEN) → verifies → generates context at each step.
+1. `foreman plan` creates `.foreman/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
+2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
+3. `foreman graph generate <name>` maps tasks to a DAG of nodes
+4. `foreman go <name>` walks the graph: snapshot → write tests (RED) → implement (GREEN) → verify → commit
+5. `foreman status` shows all active changes with progress
 
-### Step 4 — Check status anytime
-
-**CLI (primary):**
-```bash
-foreman status <change-name>
-```
-
-**Claude Code slash command:**
-```
-/project:foreman-status <change-name>
-```
-
-Shows a table of all nodes with status and L0 summaries.
+One-time setup: `foreman init` (creates `.foreman/` directory structure).
 
 ---
 
@@ -135,7 +102,7 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 | `.foreman/examples/` | Example graphs for reference |
 | `.claude/agents/` | Subagent roles (test-writer, implementer, verifier, summarizer) |
 | `.claude/skills/` | Engine logic (foreman-engine, foreman-context, foreman-conventions) |
-| `.claude/commands/` | Slash commands (foreman-run, foreman-status, foreman-graph) |
+| `.claude/commands/` | Slash commands (foreman-plan, foreman-go, foreman-status) |
 | `.claude/hooks/` | Lifecycle hooks (scope-guard, type-check, session-init, node-complete) |
 
 ---
@@ -144,7 +111,7 @@ Snapshot refreshes after each LLM node (configurable in `.foreman/config.yaml`).
 
 The `session-init.sh` hook detects active workflows when Claude Code starts:
 ```
-Foreman workflow active: <change-name>. Run /project:foreman-status <change-name> for details.
+Foreman workflow active: <change-name>. Run `foreman status` for details.
 ```
 
 Check manually:

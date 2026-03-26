@@ -516,8 +516,8 @@ describe('checkTemplates', () => {
   });
 
   it('errors when templates directory is missing', () => {
-    // Don't call initForeman — just have barebones .foreman
-    fs.mkdirSync(path.join(root, '.foreman'), { recursive: true });
+    // Remove templates dir created by initForeman to simulate missing templates
+    fs.rmSync(path.join(root, '.foreman', 'templates'), { recursive: true, force: true });
 
     const result = checkTemplates(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);

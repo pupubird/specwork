@@ -17,6 +17,14 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": ["claude-code", "workflow", "dag", "spec-driven", "test-first", "ai-agents", "specwork"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pupubird/specwork.git"
+  },
+  "homepage": "https://github.com/pupubird/specwork#readme",
+  "bugs": {
+    "url": "https://github.com/pupubird/specwork/issues"
+  },
   "license": "MIT",
   "engines": { "node": ">=18" },
   "dependencies": {

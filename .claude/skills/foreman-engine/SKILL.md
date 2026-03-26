@@ -250,28 +250,30 @@ Your scope (only modify these paths): [node.scope]
 
 ---
 
-## 5. Parallel Execution
+## 5. Execution via Agent Teams (Mandatory)
 
-Check `config.execution.parallel_mode`:
+**All foreman execution uses TeamCreate.** This applies regardless of node count, `parallel_mode` setting, or workflow complexity. Bare `Agent` tool calls (subagents without a team) are never used in the foreman loop.
 
-### Sequential (default)
-Call `foreman go <change> --json` and execute one node at a time in the main loop.
+The `config.execution.parallel_mode` setting controls **concurrency within the team**, not whether teams are used:
+- `parallel` (default): Ready nodes execute concurrently as separate teammates
+- `sequential`: Ready nodes execute one-at-a-time within the team (still uses TeamCreate)
 
-### Parallel (agent teams)
-When 3+ nodes are ready simultaneously, use Agent Teams:
+### Execution flow for every batch of ready nodes:
 
-1. Create team: `TeamCreate` with team name matching the change
-2. Create tasks: One `TaskCreate` per ready node with dependencies matching the graph
-3. Spawn teammates: One `Agent` per node with `team_name` and `name` params
-   - Each teammate runs: `foreman node start` → assemble context → spawn subagent → verify → `foreman node complete`
+1. **Create team**: `TeamCreate` with name `exec-<change>-<batch>`
+2. **Create tasks**: One `TaskCreate` per ready node
+3. **Spawn teammates**: One `Agent` per node with `team_name` and `name` params
+   - Each teammate runs: `foreman node start` → assemble context → execute → verify → `foreman node complete`
    - Use `subagent_type: "general-purpose"` for implementation nodes
-4. Coordinate: Teammates use `TaskUpdate` to claim and complete tasks
-5. Collect: Wait for all teammates to report back
-6. Cleanup: `SendMessage` shutdown to all teammates → `TeamDelete`
+4. **Coordinate**: Teammates use `TaskUpdate` to claim and complete tasks
+5. **Collect**: Wait for all teammates to report back
+6. **Cleanup**: `SendMessage` shutdown to all teammates → `TeamDelete`
 
 **File ownership rule**: Each teammate owns distinct files. Never assign two teammates the same file to avoid conflicts.
 
 **Model selection**: Use Sonnet for implementation teammates (cost-effective), Opus for complex planning.
+
+**Single-node batches**: Even when only 1 node is ready, create a team with 1 teammate. This ensures consistent lifecycle management (TeamCreate → execute → TeamDelete) across all execution paths.
 
 ---
 
@@ -376,48 +378,58 @@ foreman go <original-change>
 ## 11. Quick Reference: Execution Loop
 
 ```
+batch_num = 0
 while true:
   result = foreman go <change> --json
 
   if result.status == "done": break
   if result.status == "blocked": error("cycle or dependency failure")
 
+  batch_num += 1
+  team = TeamCreate(name=f"exec-{change}-{batch_num}")
+
   for node in result.ready:
+    TaskCreate(team, node.id, description=node.description)
+
     if node.type == "deterministic":
-      foreman node start <change> <node.id>
-      run_command(node.command)
-      foreman node complete <change> <node.id>
+      # Spawn teammate to: start → run command → complete
+      spawn_teammate(team, node.id):
+        foreman node start <change> <node.id>
+        run_command(node.command)
+        foreman node complete <change> <node.id>
 
     elif node.type == "llm":
-      foreman node start <change> <node.id>
-      ctx = foreman context assemble <change> <node.id>
-      foreman scope set <change> <node.id>
-      result = spawn_subagent(node.agent, ctx)
+      # Spawn teammate to: start → assemble → execute → verify → complete
+      spawn_teammate(team, node.id):
+        foreman node start <change> <node.id>
+        ctx = foreman context assemble <change> <node.id>
+        foreman scope set <change> <node.id>
+        result = spawn_subagent(node.agent, ctx)
 
-      if result.starts_with("EXPAND"):
-        ctx = foreman context expand <change> <node.id> <target>
-        result = spawn_subagent(node.agent, ctx)  # once only
+        if result.starts_with("EXPAND"):
+          ctx = foreman context expand <change> <node.id> <target>
+          result = spawn_subagent(node.agent, ctx)  # once only
 
-      # Verify-retry loop
-      while true:
-        verdict = foreman node verify <change> <node.id> --json
-        if verdict.verdict == "PASS":
-          if needs_qa(node):
-            qa = spawn_qa_agent(node)
-            if qa.verdict == "FAIL":
-              foreman node fail <change> <node.id> --reason qa.issues
-              # re-spawn implementer with feedback, continue loop
+        # Verify-retry loop
+        while true:
+          verdict = foreman node verify <change> <node.id> --json
+          if verdict.verdict == "PASS":
+            if needs_qa(node):
+              qa = spawn_qa_agent(node)
+              if qa.verdict == "FAIL":
+                foreman node fail <change> <node.id> --reason qa.issues
+                # re-spawn implementer with feedback, continue loop
+              else:
+                break  # all clear
             else:
-              break  # all clear
+              break  # verify passed, no QA needed
           else:
-            break  # verify passed, no QA needed
-        else:
-          foreman node fail <change> <node.id> --reason verdict.checks
-          # if exhausted → auto-escalates, stop loop
-          # else re-spawn implementer with failure context, continue loop
+            foreman node fail <change> <node.id> --reason verdict.checks
+            # if exhausted → auto-escalates, stop loop
+            # else re-spawn implementer with failure context, continue loop
 
-      spawn_summarizer(node.id)
-      foreman node complete <change> <node.id>
+        spawn_summarizer(node.id)
+        foreman node complete <change> <node.id>
 
     elif node.type == "human":
       present_to_user(node)
@@ -425,6 +437,10 @@ while true:
       foreman node complete <change> <node.id>
       # on reject:
       foreman node fail <change> <node.id>
+
+  # Wait for all teammates, then cleanup
+  wait_for_all_teammates(team)
+  SendMessage(shutdown) → TeamDelete(team)
 
 report_final_summary()
 

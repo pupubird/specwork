@@ -1,6 +1,0 @@
-schema: foreman-change/v1
-change: archive-groom
-description: "Improve archive grooming: consolidate nodes/, graph.yaml, state.yaml into a single summary.md file per archived change"
-created_at: 2026-03-26T16:35:43.193Z
-status: planning
-mode: brainstorm

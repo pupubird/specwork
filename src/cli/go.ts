@@ -1,0 +1,204 @@
+import { Command } from 'commander';
+import {
+  findForemanRoot,
+  graphPath,
+  statePath,
+  lockPath,
+} from '../utils/paths.js';
+import { readYaml, writeYaml } from '../io/filesystem.js';
+import {
+  getReadyNodes,
+  topologicalSort,
+  getBlockedNodes,
+} from '../core/graph-walker.js';
+import { acquireLock, checkLock, releaseLock, forceLock } from '../core/lock-manager.js';
+import { getChangeStatus, isTerminal } from '../core/state-machine.js';
+import { output, table } from '../utils/output.js';
+import { info, success, warn } from '../utils/logger.js';
+import {
+  ForemanError,
+  ChangeNotFoundError,
+  NodeNotFoundError,
+  LockError,
+} from '../utils/errors.js';
+import { ExitCode } from '../types/index.js';
+import type { Graph, GraphNode } from '../types/graph.js';
+import type { WorkflowState } from '../types/state.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// ── foreman go <change> ─────────────────────────────────────────────────
+
+export function makeGoCommand(): Command {
+  return new Command('go')
+    .description('Run a workflow autonomously — the engine drives all nodes to completion')
+    .argument('<change>', 'Change name')
+    .option('--from <id>', 'Skip nodes before this one in topo order')
+    .option('--force', 'Override a stale lock', false)
+    .action((change: string, opts: { from?: string; force: boolean }, cmd: Command) => {
+      const root = findForemanRoot();
+      const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
+
+      // ── validate change + graph exist ──────────────────────────────────
+      const changesDir = path.join(root, '.foreman', 'changes', change);
+      if (!fs.existsSync(changesDir)) {
+        const available = listChanges(root);
+        throw new ChangeNotFoundError(change, available);
+      }
+
+      const gp = graphPath(root, change);
+      if (!fs.existsSync(gp)) {
+        throw new ForemanError(
+          `No graph found for "${change}". Run: foreman graph generate ${change}`,
+          ExitCode.ERROR
+        );
+      }
+
+      // ── load graph + state ─────────────────────────────────────────────
+      const graph = readYaml<Graph>(gp);
+      let state = readYaml<WorkflowState>(statePath(root, change));
+
+      // ── --from: skip preceding nodes ───────────────────────────────────
+      const skipped: string[] = [];
+      if (opts.from) {
+        const sorted = topologicalSort(graph);
+        const fromIdx = sorted.indexOf(opts.from);
+        if (fromIdx === -1) throw new NodeNotFoundError(opts.from);
+
+        const toSkip = sorted.slice(0, fromIdx);
+        const ts = new Date().toISOString();
+        for (const nodeId of toSkip) {
+          const ns = state.nodes[nodeId];
+          if (ns?.status === 'pending') {
+            state = {
+              ...state,
+              updated_at: ts,
+              nodes: {
+                ...state.nodes,
+                [nodeId]: { ...ns, status: 'skipped', completed_at: ts, error: 'Skipped via --from flag' },
+              },
+            };
+            skipped.push(nodeId);
+          }
+        }
+        if (skipped.length > 0) {
+          writeYaml(statePath(root, change), state);
+        }
+      }
+
+      // ── progress metrics ───────────────────────────────────────────────
+      const allNodes = graph.nodes;
+      const total = allNodes.length;
+      const complete = allNodes.filter(n => state.nodes[n.id]?.status === 'complete').length;
+      const failed = allNodes.filter(n => {
+        const s = state.nodes[n.id]?.status;
+        return s === 'failed' || s === 'escalated';
+      }).length;
+      const inProgress = allNodes.filter(n => state.nodes[n.id]?.status === 'in_progress').length;
+
+      const progress = { complete, total, failed, in_progress: inProgress };
+
+      // ── check if already done ──────────────────────────────────────────
+      const allTerminal = allNodes.every(n => isTerminal(state.nodes[n.id]?.status ?? 'pending'));
+
+      if (allTerminal) {
+        const changeStatus = getChangeStatus(state);
+        const finalState: WorkflowState = { ...state, status: changeStatus, updated_at: new Date().toISOString() };
+        writeYaml(statePath(root, change), finalState);
+
+        if (jsonMode) {
+          output({ change, status: 'done', progress, skipped }, { json: true, quiet: false });
+        } else {
+          success(`Change "${change}" is complete (${changeStatus}).`);
+        }
+        return;
+      }
+
+      // ── get ready nodes ────────────────────────────────────────────────
+      const readyNodes = getReadyNodes(graph, state);
+
+      if (readyNodes.length === 0) {
+        if (inProgress > 0) {
+          if (jsonMode) {
+            output({ change, status: 'waiting', progress, skipped, in_progress: inProgress }, { json: true, quiet: false });
+          } else {
+            info(`Waiting — ${inProgress} node(s) still in progress.`);
+          }
+          return;
+        }
+
+        const blocked = getBlockedNodes(graph, state);
+        if (jsonMode) {
+          output({
+            change,
+            status: 'blocked',
+            progress,
+            skipped,
+            blocked_nodes: blocked.map(n => n.id),
+          }, { json: true, quiet: false });
+        } else {
+          warn(`Blocked — no ready nodes. Blocked: ${blocked.map(n => n.id).join(', ')}`);
+        }
+        process.exit(ExitCode.BLOCKED);
+      }
+
+      // ── acquire lock ───────────────────────────────────────────────────
+      const lp = lockPath(root, change);
+      const lockStatus = checkLock(lp);
+      if (lockStatus.locked) {
+        if (lockStatus.stale && opts.force) {
+          forceLock(lp);
+        } else if (lockStatus.stale) {
+          throw new ForemanError(
+            `Change "${change}" has a stale lock (PID ${lockStatus.info?.pid ?? '?'}). Use --force to override.`,
+            ExitCode.BLOCKED
+          );
+        } else {
+          throw new LockError(change, lockStatus.info?.pid ?? 0);
+        }
+      } else {
+        acquireLock(lp);
+      }
+
+      // ── build execution payload ────────────────────────────────────────
+      const ready = readyNodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        agent: n.agent ?? null,
+        description: n.description,
+        command: n.command ?? null,
+        scope: n.scope,
+        deps: n.deps,
+        validate: n.validate,
+        gate: n.gate ?? null,
+        model: n.model ?? null,
+        retry: n.retry ?? 2,
+        worktree: n.worktree ?? false,
+      }));
+
+      releaseLock(lp);
+
+      if (jsonMode) {
+        output({ change, status: 'ready', ready, progress, skipped }, { json: true, quiet: false });
+      } else {
+        success(`Workflow "${change}" ready — ${ready.length} node(s) to execute:`);
+        table(
+          ['Node', 'Type', 'Agent', 'Description'],
+          ready.map(n => [n.id, n.type, n.agent ?? '(cmd)', n.description])
+        );
+        info(`\nProgress: ${complete}/${total} complete`);
+        info(`\nThe engine skill will drive execution automatically.`);
+        info(`Run: foreman status ${change}   to check progress`);
+      }
+    });
+}
+
+// ── helper ──────────────────────────────────────────────────────────────
+
+function listChanges(root: string): string[] {
+  const changesDir = path.join(root, '.foreman', 'changes');
+  if (!fs.existsSync(changesDir)) return [];
+  return fs.readdirSync(changesDir, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name !== 'archive')
+    .map(e => e.name);
+}

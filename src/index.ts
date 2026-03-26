@@ -6,19 +6,25 @@ import { dirname, join } from 'node:path';
 import { setVerbose } from './utils/logger.js';
 import { ForemanError } from './utils/errors.js';
 import { ExitCode } from './types/index.js';
+
+// Porcelain (human-facing)
+import { makePlanCommand } from './cli/plan.js';
+import { makeGoCommand } from './cli/go.js';
+import { makeStatusCommand } from './cli/status.js';
+import { makeInitCommand } from './cli/init.js';
+
+// Plumbing (agent-facing)
+import { makeNewCommand } from './cli/new.js';
+import { makeConfigCommand } from './cli/config.js';
+import { makeRunCommand } from './cli/run.js';
+import { makeRetryCommand } from './cli/retry.js';
+import { makeReportCommand } from './cli/report.js';
+import { makeLogCommand } from './cli/log.js';
+import { makeNodeCommand } from './cli/node.js';
+import { makeScopeCommand } from './cli/scope.js';
 import { makeGraphCommand } from './cli/graph.js';
 import { makeContextCommand } from './cli/context.js';
 import { makeSnapshotCommand } from './cli/snapshot.js';
-import { makeNodeCommand } from './cli/node.js';
-import { makeScopeCommand } from './cli/scope.js';
-import { makeRunCommand } from './cli/run.js';
-import { makeRetryCommand } from './cli/retry.js';
-import { makeStatusCommand } from './cli/status.js';
-import { makeReportCommand } from './cli/report.js';
-import { makeLogCommand } from './cli/log.js';
-import { makeInitCommand } from './cli/init.js';
-import { makeNewCommand } from './cli/new.js';
-import { makeConfigCommand } from './cli/config.js';
 
 // Read version from package.json
 const __filename = fileURLToPath(import.meta.url);
@@ -45,12 +51,16 @@ program
     }
   });
 
-// Commands
+// ── Porcelain commands (human-facing — these are the ones you remember) ──
 program.addCommand(makeInitCommand());
+program.addCommand(makePlanCommand());
+program.addCommand(makeGoCommand());
+program.addCommand(makeStatusCommand());
+
+// ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());
 program.addCommand(makeConfigCommand());
 program.addCommand(makeRunCommand());
-program.addCommand(makeStatusCommand());
 program.addCommand(makeRetryCommand());
 program.addCommand(makeReportCommand());
 program.addCommand(makeLogCommand());
@@ -59,6 +69,18 @@ program.addCommand(makeScopeCommand());
 program.addCommand(makeGraphCommand());
 program.addCommand(makeContextCommand());
 program.addCommand(makeSnapshotCommand());
+
+// Custom help to show the porcelain/plumbing split
+program.addHelpText('after', `
+Workflow:
+  foreman init                 One-time project setup
+  foreman plan "<description>" Plan a new change from natural language
+  foreman go <change>          Run the workflow autonomously
+  foreman status [change]      Check progress
+
+All other commands are used by the engine internally.
+Run: foreman <command> --help  for details on any command.
+`);
 
 // Global error handler
 program.exitOverride();

@@ -87,6 +87,26 @@ describe('foreman plan', () => {
     expect(out.next_steps).toBeDefined();
     expect(out.next_steps).toContain('proposal');
   });
+
+  it('defaults to brainstorm mode', () => {
+    const result = runForeman(dir, 'plan "Add JWT authentication" --json');
+    const out = JSON.parse(result.stdout);
+    expect(out.mode).toBe('brainstorm');
+  });
+
+  it('sets yolo mode with --yolo flag', () => {
+    const result = runForeman(dir, 'plan "Add JWT authentication" --yolo --json');
+    expect(result.exitCode).toBe(0);
+    const out = JSON.parse(result.stdout);
+    expect(out.mode).toBe('yolo');
+  });
+
+  it('sets .foreman.yaml mode field in yolo mode', () => {
+    runForeman(dir, 'plan "Add JWT authentication" --yolo --json');
+    const metaPath = path.join(dir, '.foreman', 'changes', 'add-jwt-authentication', '.foreman.yaml');
+    const meta = parseYaml(fs.readFileSync(metaPath, 'utf-8')) as Record<string, unknown>;
+    expect(meta.mode).toBe('yolo');
+  });
 });
 
 describe('foreman go', () => {
@@ -123,11 +143,23 @@ describe('foreman go', () => {
     expect(result.stderr).toContain('not found');
   });
 
-  it('fails if graph has not been generated', () => {
+  it('auto-generates graph if tasks.md exists but no graph', () => {
+    runForeman(dir, 'new my-change');
+    writeTasksFile(dir, 'my-change', `## 1. Setup\n\n- [ ] 1.1 Initialize the module\n`);
+
+    // No explicit graph generate — go should auto-generate
+    const result = runForeman(dir, 'go my-change --json');
+    expect(result.exitCode).toBe(0);
+    const out = JSON.parse(result.stdout);
+    expect(out.status).toBe('ready');
+    expect(out.auto_generated_graph).toBe(true);
+  });
+
+  it('fails if no tasks.md and no graph', () => {
     runForeman(dir, 'new my-change');
     const result = runForeman(dir, 'go my-change --json');
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain('graph');
+    expect(result.stderr).toMatch(/graph|tasks/i);
   });
 
   it('reports done when all nodes are complete', () => {

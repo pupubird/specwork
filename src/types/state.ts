@@ -31,3 +31,12 @@ export interface WorkflowState {
   lock: LockInfo | null;
   nodes: Record<string, NodeState>;
 }
+
+export interface NextAction {
+  command: string;
+  description: string;
+  context: string;
+  on_pass?: string;
+  on_fail?: string;
+  suggest_to_user?: string[];
+}

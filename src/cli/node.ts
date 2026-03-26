@@ -28,6 +28,7 @@ import {
   ChangeNotFoundError,
 } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
+import { buildNextAction, readChangeContext } from '../core/next-action.js';
 import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
@@ -104,6 +105,9 @@ const startCmd = new Command('start')
 
     saveState(root, change, updated);
 
+    const ctx = readChangeContext(root, change);
+    const next_action = buildNextAction('node:start', ctx, { change, nodeId });
+
     const nodeInfo = {
       change,
       node: nodeId,
@@ -111,6 +115,7 @@ const startCmd = new Command('start')
       status: 'in_progress',
       scope: node.scope,
       deps: node.deps,
+      next_action,
     };
 
     if (jsonMode) {
@@ -226,12 +231,16 @@ const completeCmd = new Command('complete')
       }
     }
 
+    const ctx = readChangeContext(root, change);
+    const next_action = buildNextAction('node:complete', ctx, { change, nodeId });
+
     const result = {
       change,
       node: nodeId,
       status: 'complete',
       l0: l0Summary,
       change_status: changeStatus,
+      next_action,
     };
 
     if (jsonMode) {
@@ -286,14 +295,20 @@ const failCmd = new Command('fail')
     const finalState = { ...updated, status: changeStatus };
     saveState(root, change, finalState);
 
+    const ctx = readChangeContext(root, change);
+    const retriesUsed = updated.nodes[nodeId]?.retries ?? 0;
+    const retriesLeft = Math.max(0, maxRetries - retriesUsed);
+    const next_action = buildNextAction('node:fail', ctx, { change, nodeId, retriesLeft });
+
     const result = {
       change,
       node: nodeId,
       status: finalStatus,
       reason: opts.reason ?? null,
-      retries: updated.nodes[nodeId]?.retries ?? 0,
+      retries: retriesUsed,
       max_retries: maxRetries,
       change_status: changeStatus,
+      next_action,
     };
 
     if (jsonMode) {
@@ -334,6 +349,9 @@ const escalateCmd = new Command('escalate')
       .filter(n => updated.nodes[n.id]?.status === 'skipped')
       .map(n => n.id);
 
+    const ctx = readChangeContext(root, change);
+    const next_action = buildNextAction('node:escalate', ctx, { change, nodeId });
+
     const result = {
       change,
       node: nodeId,
@@ -341,6 +359,7 @@ const escalateCmd = new Command('escalate')
       reason: opts.reason ?? null,
       skipped_nodes: skipped,
       change_status: changeStatus,
+      next_action,
     };
 
     if (jsonMode) {
@@ -483,6 +502,10 @@ const verifyCmd = new Command('verify')
     ].join('\n');
     writeMarkdown(`${nDir}/verify.md`, verifyContent);
 
+    const ctx = readChangeContext(root, change);
+    const verifyStatus = verdict === 'PASS' ? 'node:verify:pass' : 'node:verify:fail';
+    const next_action = buildNextAction(verifyStatus, ctx, { change, nodeId });
+
     const result = {
       change,
       node: nodeId,
@@ -490,6 +513,7 @@ const verifyCmd = new Command('verify')
       checks,
       failed_count: failedChecks.length,
       total_checks: checks.length,
+      next_action,
     };
 
     if (jsonMode) {

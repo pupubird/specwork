@@ -2,5 +2,5 @@ schema: foreman-change/v1
 change: init-dx
 description: Improve foreman init DX and add foreman init migrate for openspec migration
 created_at: 2026-03-26T18:52:35.129Z
-status: planning
+status: archived
 mode: brainstorm

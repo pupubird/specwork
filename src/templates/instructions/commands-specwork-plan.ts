@@ -52,8 +52,12 @@ Keep the context block compact — under ~500 tokens. Headers only, not full spe
 3. Spawn \`specwork-planner\` teammate with \`phase: "research"\`:
    - Pass the description, change path, AND the \`<planning-context>\` block
    - Agent uses the pre-assembled context, fills gaps, returns findings + 3-5 clarifying questions
-4. Present the questions to the user with the agent's findings
-5. Collect user answers
+4. For EACH question from the planner agent, use \`AskUserQuestion\` to ask the user:
+   - Include the agent's finding/context as part of the question text
+   - Provide the agent's suggested options as the \`options\` array
+   - Wait for the user's answer before asking the next question
+   - Collect all answers
+5. Once all questions are answered, compile the answers
 6. Create generate task: \`TaskCreate\` for generate phase
 7. Spawn \`specwork-planner\` teammate with \`phase: "generate"\`:
    - Pass the description, answers, change path, AND the \`<planning-context>\` block

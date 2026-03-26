@@ -1,0 +1,6 @@
+schema: specwork-change/v1
+change: add-specwork-update-command-for-safe-version-migration
+description: Add specwork update command for safe version migration
+created_at: 2026-03-26T21:12:51.347Z
+status: planning
+mode: brainstorm

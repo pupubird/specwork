@@ -87,46 +87,40 @@ Proposal → Specs → Design → Tasks → Graph → Execute → Verify
 npm install -g @pupubird/foreman
 ```
 
-Or use directly with Claude Code — Foreman runs as a set of slash commands:
-
-```
-/project:foreman-graph <change-name>
-/project:foreman-run <change-name>
-/project:foreman-status <change-name>
-```
-
-### Create a change
+### Three commands to remember
 
 ```bash
-mkdir -p .foreman/changes/add-auth
-cp .foreman/templates/proposal.md .foreman/changes/add-auth/proposal.md
-# Edit proposal.md: why are you making this change?
+# 1. Initialize (one-time per project)
+foreman init
 
-cp .foreman/templates/tasks.md .foreman/changes/add-auth/tasks.md
-# Edit tasks.md: what are the implementation steps?
+# 2. Plan a change — describe what you want in plain English
+foreman plan "Add JWT authentication to the API"
+
+# 3. Run the workflow — Foreman drives everything autonomously
+foreman go add-jwt-authentication
+
+# Check progress anytime
+foreman status
 ```
 
-### Generate the execution graph
+That's it. `plan` creates the change structure and scaffolds all artifacts. `go` runs the full workflow: snapshot → write tests (RED) → implement node by node (GREEN) → verify at each step. `status` shows all active changes with progress.
+
+### With Claude Code slash commands
 
 ```
-/project:foreman-graph add-auth
+/project:foreman-plan "Add JWT authentication"
+/project:foreman-go add-jwt-authentication
+/project:foreman-status
 ```
 
-Reads `proposal.md`, `design.md`, `tasks.md` → generates `.foreman/graph/add-auth/graph.yaml`.
+### What happens under the hood
 
-### Run the workflow
+1. `foreman plan` creates `.foreman/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
+2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
+3. `foreman graph generate <name>` maps tasks to a DAG of nodes
+4. `foreman go <name>` walks the graph: environment snapshot → tests (must fail first) → implementation → verification → commit
 
-```
-/project:foreman-run add-auth
-```
-
-Foreman walks the graph: environment snapshot → tests (red) → [await human gate] → implementation nodes → verification.
-
-### Check status
-
-```
-/project:foreman-status add-auth
-```
+All the plumbing commands (`node start`, `context assemble`, `scope set`, etc.) are used by the engine internally — you never need to type them.
 
 ---
 

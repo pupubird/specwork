@@ -15,6 +15,7 @@ import { makeStatusCommand } from './cli/status.js';
 import { makeInitCommand } from './cli/init.js';
 import { makeDoctorCommand } from './cli/doctor.js';
 import { makeUpdateCommand } from './cli/update.js';
+import { makeArchiveCommand } from './cli/archive.js';
 
 // Plumbing (agent-facing)
 import { makeNewCommand } from './cli/new.js';
@@ -65,6 +66,7 @@ program.addCommand(makeGoCommand());
 program.addCommand(makeStatusCommand());
 program.addCommand(makeDoctorCommand());
 program.addCommand(makeUpdateCommand());
+program.addCommand(makeArchiveCommand());
 
 // ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());
@@ -85,6 +87,7 @@ Workflow:
   specwork plan "<description>" Plan a new change from natural language
   specwork go <change>          Run the workflow autonomously
   specwork update                Update project files to current version
+  specwork archive <change>     Archive a completed change
   specwork status [change]      Check progress
 
 All other commands are used by the engine internally.

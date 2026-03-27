@@ -11,13 +11,57 @@ import {
   statePath,
 } from '../utils/paths.js';
 import { readYaml, writeYaml } from '../io/filesystem.js';
-import type { Graph, GraphNode } from '../types/graph.js';
+import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 
-function buildDigest(root: string, change: string): string {
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface ArchiveResult {
+  change: string;
+  archivePath: string;
+  specsPromoted: string[];
+  nodesCleaned: boolean;
+  forced: boolean;
+}
+
+// ── Completion Guard ─────────────────────────────────────────────────────────
+
+export function checkCompletion(root: string, change: string): { ok: boolean; blocking: string[] } {
+  const sp = statePath(root, change);
+
+  // If state.yaml exists, check node statuses
+  if (fs.existsSync(sp)) {
+    const state = readYaml<WorkflowState>(sp);
+    const blocking: string[] = [];
+
+    for (const [nodeId, ns] of Object.entries(state.nodes)) {
+      const status = ns.status;
+      if (status !== 'complete' && status !== 'skipped') {
+        blocking.push(nodeId);
+      }
+    }
+
+    return { ok: blocking.length === 0, blocking };
+  }
+
+  // Fallback: check tasks.md for unchecked items
+  const tasksPath = path.join(changeDir(root, change), 'tasks.md');
+  if (fs.existsSync(tasksPath)) {
+    const content = fs.readFileSync(tasksPath, 'utf-8');
+    const unchecked = content.split('\n').filter(l => /^- \[ \]/.test(l));
+    if (unchecked.length > 0) {
+      return { ok: false, blocking: unchecked.map(l => l.trim()) };
+    }
+  }
+
+  return { ok: true, blocking: [] };
+}
+
+// ── Summary Builder (renamed from buildDigest) ──────────────────────────────
+
+function buildSummary(root: string, change: string): string {
   const lines: string[] = [];
 
-  // Header
   const sp = statePath(root, change);
   const state = fs.existsSync(sp) ? readYaml<WorkflowState>(sp) : null;
   const gp = graphPath(root, change);
@@ -35,7 +79,7 @@ function buildDigest(root: string, change: string): string {
   const status = state?.status ?? 'unknown';
   const archivedDate = new Date().toISOString().split('T')[0];
 
-  lines.push(`# Digest: ${change}`);
+  lines.push(`# Summary: ${change}`);
   lines.push('');
   lines.push(`**Archived:** ${archivedDate} | **Nodes:** ${nodeCount} | **Status:** ${status}`);
   lines.push('');
@@ -58,7 +102,6 @@ function buildDigest(root: string, change: string): string {
     const l0Path = path.join(nd, nodeId, 'L0.md');
     if (fs.existsSync(l0Path)) {
       const l0Content = fs.readFileSync(l0Path, 'utf-8').trim();
-      // L0 format: "- nodeId: headline" — extract headline
       const match = l0Content.match(/^-\s*\S+:\s*(.+)$/m);
       const headline = match ? match[1].trim() : l0Content;
       lines.push(`- **${nodeId}**: ${headline}`);
@@ -68,7 +111,7 @@ function buildDigest(root: string, change: string): string {
   }
   lines.push('');
 
-  // Node Details (L1) — only nodes with L1.md
+  // Node Details (L1)
   const nodesWithL1: { nodeId: string; content: string }[] = [];
   for (const nodeId of nodeDirNames) {
     const l1Path = path.join(nd, nodeId, 'L1.md');
@@ -112,7 +155,9 @@ function buildDigest(root: string, change: string): string {
   return lines.join('\n');
 }
 
-export function archiveChange(root: string, change: string): void {
+// ── Archive Change ───────────────────────────────────────────────────────────
+
+export function archiveChange(root: string, change: string, opts?: { force?: boolean }): ArchiveResult {
   const src = changeDir(root, change);
   if (!fs.existsSync(src)) {
     throw new SpecworkError(
@@ -121,30 +166,40 @@ export function archiveChange(root: string, change: string): void {
     );
   }
 
-  // Validate all tasks are checked off before archiving
-  const tasksPath = path.join(src, 'tasks.md');
-  if (fs.existsSync(tasksPath)) {
-    const content = fs.readFileSync(tasksPath, 'utf-8');
-    const unchecked = content.split('\n').filter(l => /^- \[ \]/.test(l));
-    if (unchecked.length > 0) {
+  const forced = opts?.force ?? false;
+
+  // Check completion guard (unless forced)
+  if (!forced) {
+    const completion = checkCompletion(root, change);
+    if (!completion.ok) {
       throw new SpecworkError(
-        `Cannot archive "${change}": ${unchecked.length} unchecked task(s) remain in tasks.md. Complete all tasks before archiving.`,
+        `Cannot archive "${change}": blocking nodes: ${completion.blocking.join(', ')}. Complete all nodes or use --force.`,
         ExitCode.ERROR
       );
     }
   }
 
   const dest = archiveChangeDir(root, change);
+
+  // Check destination doesn't already exist
+  if (fs.existsSync(dest)) {
+    throw new SpecworkError(
+      `Cannot archive "${change}": already archived at ${dest}`,
+      ExitCode.ERROR
+    );
+  }
+
   fs.mkdirSync(dest, { recursive: true });
 
-  // 1. Copy change dir contents to archive (proposal, design, tasks, specs)
+  // 1. Copy change dir contents to archive
   fs.cpSync(src, dest, { recursive: true });
 
-  // 2. Build consolidated digest.md from L0, L1, and verification artifacts
-  const digest = buildDigest(root, change);
-  fs.writeFileSync(path.join(dest, 'digest.md'), digest, 'utf-8');
+  // 2. Build summary.md
+  const summary = buildSummary(root, change);
+  fs.writeFileSync(path.join(dest, 'summary.md'), summary, 'utf-8');
 
-  // 3. Promote specs to .specwork/specs/ (source of truth)
+  // 3. Promote specs to .specwork/specs/
+  const specsPromoted: string[] = [];
   const specsDir = path.join(src, 'specs');
   if (fs.existsSync(specsDir)) {
     const specFiles = fs.readdirSync(specsDir).filter(f => !f.startsWith('.'));
@@ -153,28 +208,41 @@ export function archiveChange(root: string, change: string): void {
       fs.mkdirSync(targetSpecsDir, { recursive: true });
       for (const file of specFiles) {
         fs.cpSync(path.join(specsDir, file), path.join(targetSpecsDir, file), { recursive: true });
+        specsPromoted.push(file);
       }
     }
   }
 
-  // 4. Update .specwork.yaml status to 'archived' (in archive copy)
+  // 4. Update .specwork.yaml status and archived_at
   const metaPath = path.join(dest, '.specwork.yaml');
   if (fs.existsSync(metaPath)) {
     const meta = readYaml<Record<string, unknown>>(metaPath);
     meta.status = 'archived';
+    meta.archived_at = new Date().toISOString();
     writeYaml(metaPath, meta);
   }
 
   // 5. Remove originals
   fs.rmSync(src, { recursive: true, force: true });
 
+  let nodesCleaned = false;
   const gd = graphDir(root, change);
   if (fs.existsSync(gd)) {
     fs.rmSync(gd, { recursive: true, force: true });
+    nodesCleaned = true;
   }
 
   const nd = nodesDir(root, change);
   if (fs.existsSync(nd)) {
     fs.rmSync(nd, { recursive: true, force: true });
+    nodesCleaned = true;
   }
+
+  return {
+    change,
+    archivePath: dest,
+    specsPromoted,
+    nodesCleaned,
+    forced,
+  };
 }

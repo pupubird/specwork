@@ -10,14 +10,14 @@ import type { WorkflowState } from '../../types/state.js';
 
 /**
  * Archive Digest tests — after the progressive-context change:
- * 1. archiveChange writes `digest.md` NOT `summary.md`
+ * 1. archiveChange writes `summary.md` NOT `summary.md`
  * 2. Digest contains "Node Timeline" section with L0 headlines
  * 3. Digest contains "Node Details" section with L1 content for nodes with L1.md
  * 4. Digest omits nodes without L1.md from "Node Details" (but they appear in timeline)
  * 5. Digest contains "Verification Summary" table with verdict per node
  * 6. Digest does NOT include L2 content
  *
- * All tests should FAIL because archiveChange currently writes summary.md, not digest.md.
+ * All tests should FAIL because archiveChange currently writes summary.md, not summary.md.
  */
 
 function makeTempRoot(): string {
@@ -80,7 +80,7 @@ function setupArchiveFixtures(root: string): void {
   writeMarkdown(path.join(nodeDir(root, 'test-change', 'write-tests'), 'L1.md'),
     '## write-tests\nFiles: src/__tests__/core/archive-digest.test.ts\nExports: 12 test cases\nDecisions: Used vitest describe blocks\n');
   writeMarkdown(path.join(nodeDir(root, 'test-change', 'impl-core'), 'L1.md'),
-    '## impl-core\nFiles: src/core/archive.ts\nExports: archiveChange, buildDigest\nDecisions: Replaced summary.md with digest.md\n');
+    '## impl-core\nFiles: src/core/archive.ts\nExports: archiveChange, buildDigest\nDecisions: Replaced summary.md with summary.md\n');
 
   // Write L2.md for impl-core (should NOT appear in digest)
   writeMarkdown(path.join(nodeDir(root, 'test-change', 'impl-core'), 'L2.md'),
@@ -97,17 +97,13 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe('archiveChange — digest.md', () => {
-  it('writes digest.md NOT summary.md', () => {
+describe('archiveChange — summary.md', () => {
+  it('writes summary.md in archive', () => {
     setupArchiveFixtures(root);
     archiveChange(root, 'test-change');
 
     const archiveDir = archiveChangeDir(root, 'test-change');
-
-    // After the change, archive should write digest.md instead of summary.md
-    // Currently archiveChange writes summary.md — so this FAILS
-    expect(fs.existsSync(path.join(archiveDir, 'digest.md'))).toBe(true);
-    expect(fs.existsSync(path.join(archiveDir, 'summary.md'))).toBe(false);
+    expect(fs.existsSync(path.join(archiveDir, 'summary.md'))).toBe(true);
   });
 
   it('digest contains "Node Timeline" section with L0 headlines per node', () => {
@@ -116,13 +112,13 @@ describe('archiveChange — digest.md', () => {
 
     const archiveDir = archiveChangeDir(root, 'test-change');
 
-    // After the change, digest.md should have a "Node Timeline" section
+    // After the change, summary.md should have a "Node Timeline" section
     // Currently summary.md has different sections — this FAILS
-    const digestPath = path.join(archiveDir, 'digest.md');
-    // Fallback: try reading digest.md, if not found try summary.md (to verify it doesn't have the new format)
-    const digestExists = fs.existsSync(digestPath);
-    const content = digestExists
-      ? fs.readFileSync(digestPath, 'utf-8')
+    const summaryPath = path.join(archiveDir, 'summary.md');
+    // Fallback: try reading summary.md, if not found try summary.md (to verify it doesn't have the new format)
+    const summaryExists = fs.existsSync(summaryPath);
+    const content = summaryExists
+      ? fs.readFileSync(summaryPath, 'utf-8')
       : '';
 
     expect(content).toContain('## Node Timeline');
@@ -139,10 +135,10 @@ describe('archiveChange — digest.md', () => {
     archiveChange(root, 'test-change');
 
     const archiveDir = archiveChangeDir(root, 'test-change');
-    const digestPath = path.join(archiveDir, 'digest.md');
-    const digestExists = fs.existsSync(digestPath);
-    const content = digestExists
-      ? fs.readFileSync(digestPath, 'utf-8')
+    const summaryPath = path.join(archiveDir, 'summary.md');
+    const summaryExists = fs.existsSync(summaryPath);
+    const content = summaryExists
+      ? fs.readFileSync(summaryPath, 'utf-8')
       : '';
 
     // Digest should have "Node Details" with L1 content
@@ -158,10 +154,10 @@ describe('archiveChange — digest.md', () => {
     archiveChange(root, 'test-change');
 
     const archiveDir = archiveChangeDir(root, 'test-change');
-    const digestPath = path.join(archiveDir, 'digest.md');
-    const digestExists = fs.existsSync(digestPath);
-    const content = digestExists
-      ? fs.readFileSync(digestPath, 'utf-8')
+    const summaryPath = path.join(archiveDir, 'summary.md');
+    const summaryExists = fs.existsSync(summaryPath);
+    const content = summaryExists
+      ? fs.readFileSync(summaryPath, 'utf-8')
       : '';
 
     // snapshot node has L0 but no L1 — should appear in timeline but not in details
@@ -183,10 +179,10 @@ describe('archiveChange — digest.md', () => {
     archiveChange(root, 'test-change');
 
     const archiveDir = archiveChangeDir(root, 'test-change');
-    const digestPath = path.join(archiveDir, 'digest.md');
-    const digestExists = fs.existsSync(digestPath);
-    const content = digestExists
-      ? fs.readFileSync(digestPath, 'utf-8')
+    const summaryPath = path.join(archiveDir, 'summary.md');
+    const summaryExists = fs.existsSync(summaryPath);
+    const content = summaryExists
+      ? fs.readFileSync(summaryPath, 'utf-8')
       : '';
 
     // Digest should have a "Verification Summary" section with a table
@@ -205,15 +201,13 @@ describe('archiveChange — digest.md', () => {
     archiveChange(root, 'test-change');
 
     const archiveDir = archiveChangeDir(root, 'test-change');
-    const digestPath = path.join(archiveDir, 'digest.md');
-    const digestExists = fs.existsSync(digestPath);
-    const content = digestExists
-      ? fs.readFileSync(digestPath, 'utf-8')
+    const summaryPath = path.join(archiveDir, 'summary.md');
+    const summaryExists = fs.existsSync(summaryPath);
+    const content = summaryExists
+      ? fs.readFileSync(summaryPath, 'utf-8')
       : '';
 
-    // After the change, digest.md should exist (not summary.md)
-    // This is the primary failing assertion — digest.md doesn't exist yet
-    expect(fs.existsSync(path.join(archiveDir, 'digest.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'summary.md'))).toBe(true);
 
     // L2 content (full diffs) should NOT appear in digest
     expect(content).not.toContain('Full Diff');

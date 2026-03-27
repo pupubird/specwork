@@ -115,17 +115,17 @@ describe('archiveChange', () => {
     expect(fs.existsSync(original)).toBe(false);
   });
 
-  it('generates digest.md with node timeline and L0 headlines', () => {
+  it('generates summary.md with node timeline and L0 headlines', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const digestPath = path.join(archivePath, 'digest.md');
-    expect(fs.existsSync(digestPath)).toBe(true);
+    const summaryPath = path.join(archivePath, 'summary.md');
+    expect(fs.existsSync(summaryPath)).toBe(true);
 
-    const content = fs.readFileSync(digestPath, 'utf-8');
+    const content = fs.readFileSync(summaryPath, 'utf-8');
     // Should contain node timeline with L0 headlines
     expect(content).toContain('## Node Timeline');
     expect(content).toContain('snapshot');
@@ -145,7 +145,7 @@ describe('archiveChange', () => {
     expect(fs.existsSync(path.join(archivePath, 'nodes'))).toBe(false);
   });
 
-  it('includes verification verdict in digest when state has last_verdict', () => {
+  it('includes verification verdict in summary when state has last_verdict', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
@@ -158,7 +158,7 @@ describe('archiveChange', () => {
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
     expect(content).toContain('PASS');
     expect(content).toContain('## Verification Summary');
   });
@@ -188,13 +188,12 @@ describe('archiveChange', () => {
     expect(() => archiveChange(root, 'nonexistent')).toThrow();
   });
 
-  it('throws if tasks.md has unchecked tasks', () => {
+  it('throws if tasks.md has unchecked tasks and no state.yaml', () => {
     createChange(root, 'my-feature');
-    // Overwrite tasks with unchecked items
+    // Overwrite tasks with unchecked items — no graph/state generated
     writeMarkdown(path.join(changeDir(root, 'my-feature'), 'tasks.md'), '## 1. Core\n\n- [ ] 1.1 Not done yet\n');
-    generateAndCompleteAll(root, 'my-feature');
 
-    expect(() => archiveChange(root, 'my-feature')).toThrow(/unchecked/);
+    expect(() => archiveChange(root, 'my-feature')).toThrow(/blocking/);
   });
 
   it('preserves specs subdirectory in archive', () => {

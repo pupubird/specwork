@@ -14,6 +14,7 @@ import { makeGoCommand } from './cli/go.js';
 import { makeStatusCommand } from './cli/status.js';
 import { makeInitCommand } from './cli/init.js';
 import { makeDoctorCommand } from './cli/doctor.js';
+import { makeUpdateCommand } from './cli/update.js';
 
 // Plumbing (agent-facing)
 import { makeNewCommand } from './cli/new.js';
@@ -53,7 +54,7 @@ program
     }
     // Validate config if .specwork exists (skip for init)
     const cmdName = thisCommand.args?.[0] ?? thisCommand.name();
-    if (cmdName !== 'init') {
+    if (cmdName !== 'init' && cmdName !== 'update') {
       validateConfig();
     }
   });
@@ -64,6 +65,7 @@ program.addCommand(makePlanCommand());
 program.addCommand(makeGoCommand());
 program.addCommand(makeStatusCommand());
 program.addCommand(makeDoctorCommand());
+program.addCommand(makeUpdateCommand());
 
 // ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());
@@ -84,6 +86,7 @@ Workflow:
   specwork init                 One-time project setup
   specwork plan "<description>" Plan a new change from natural language
   specwork go <change>          Run the workflow autonomously
+  specwork update                Update project files to current version
   specwork status [change]      Check progress
 
 All other commands are used by the engine internally.

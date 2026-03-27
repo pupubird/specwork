@@ -22,3 +22,19 @@ export interface MigrateResult {
   filesTotal: number;
   openspecRemoved: boolean;
 }
+
+export interface FileClassification {
+  path: string;
+  status: 'new' | 'unmodified' | 'modified';
+}
+
+export interface UpdateResult {
+  previousVersion: string | null;
+  newVersion: string;
+  filesUpdated: number;
+  filesBackedUp: number;
+  configFieldsAdded: string[];
+  deprecated: string[];
+  backupPath: string | null;
+  dryRun: boolean;
+}

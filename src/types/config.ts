@@ -1,4 +1,5 @@
 export interface SpecworkConfig {
+  specwork_version?: string;
   models: {
     default: string;
     test_writer: string;
@@ -10,6 +11,7 @@ export interface SpecworkConfig {
     expand_limit: number;
     parallel_mode: 'sequential' | 'parallel';
     snapshot_refresh: 'after_each_node' | 'once' | 'never';
+    verify?: string;
   };
   context: {
     ancestors: 'L0';
@@ -19,13 +21,18 @@ export interface SpecworkConfig {
     schema: string;
     specs_dir: string;
     changes_dir: string;
+    archive_dir?: string;
     templates_dir: string;
   };
   graph: {
     graphs_dir: string;
     nodes_dir: string;
   };
-  env: {
+  environments?: {
+    env_dir: string;
+    active: string;
+  };
+  env?: {
     env_dir: string;
     active: string;
   };

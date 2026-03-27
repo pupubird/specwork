@@ -7,12 +7,17 @@ import { ExitCode } from '../types/index.js';
 import { CLAUDE_FILES, CLAUDE_SETTINGS, SCHEMA_YAML, EXAMPLE_GRAPH, SPECWORK_GITIGNORE } from '../templates/claude-files.js';
 import { migrateOpenspec } from '../core/migrate.js';
 import { runDoctor } from '../core/doctor.js';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { stringifyYaml } from '../io/yaml.js';
 
 // ── Default config.yaml content ────────────────────────────────────────────
 
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
   models: {
     default: 'sonnet',
     test_writer: 'opus',
@@ -49,7 +54,7 @@ const DEFAULT_CONFIG = {
 
 // ── Embedded templates ─────────────────────────────────────────────────────
 
-const TEMPLATES: Record<string, string> = {
+export const TEMPLATES: Record<string, string> = {
   'proposal.md': `# Proposal: <!-- Change Name -->
 
 ## Problem
@@ -137,8 +142,20 @@ function initializeProject(cwd: string): string[] {
     ensureDir(path.join(cwd, dir));
   }
 
+  // ── read package version ──────────────────────────────────────────
+  const __fn = fileURLToPath(import.meta.url);
+  const __dn = dirname(__fn);
+  let pkgVersion = '0.0.0';
+  for (const rel of [join(__dn, '..', 'package.json'), join(__dn, '..', '..', 'package.json')]) {
+    if (fs.existsSync(rel)) {
+      pkgVersion = (JSON.parse(readFileSync(rel, 'utf8')) as { version: string }).version;
+      break;
+    }
+  }
+
   // ── write config.yaml ────────────────────────────────────────────
-  writeYaml(path.join(specworkDir, 'config.yaml'), DEFAULT_CONFIG);
+  const configWithVersion = { ...DEFAULT_CONFIG, specwork_version: pkgVersion };
+  writeYaml(path.join(specworkDir, 'config.yaml'), configWithVersion);
 
   // ── write schema.yaml ────────────────────────────────────────────
   fs.writeFileSync(path.join(specworkDir, 'schema.yaml'), SCHEMA_YAML, 'utf-8');
@@ -169,6 +186,35 @@ function initializeProject(cwd: string): string[] {
   const settingsPath = path.join(cwd, '.claude', 'settings.json');
   ensureDir(path.dirname(settingsPath));
   fs.writeFileSync(settingsPath, JSON.stringify(CLAUDE_SETTINGS, null, 2) + '\n', 'utf-8');
+
+  // ── generate manifest ────────────────────────────────────────────
+  const managedFiles: Record<string, string> = {};
+  for (const [filename, content] of Object.entries(TEMPLATES)) {
+    managedFiles[`.specwork/templates/${filename}`] = content;
+  }
+  for (const [relPath, content] of Object.entries(CLAUDE_FILES)) {
+    managedFiles[relPath] = content;
+  }
+  managedFiles['.claude/settings.json'] = JSON.stringify(CLAUDE_SETTINGS, null, 2) + '\n';
+  managedFiles['.specwork/schema.yaml'] = SCHEMA_YAML;
+  managedFiles['.specwork/examples/example-graph.yaml'] = EXAMPLE_GRAPH;
+  managedFiles['.specwork/.gitignore'] = SPECWORK_GITIGNORE;
+  managedFiles['.specwork/config.yaml'] = fs.readFileSync(path.join(specworkDir, 'config.yaml'), 'utf-8');
+
+  // Compute checksums inline (avoid circular dependency with updater.ts)
+  const checksums: Record<string, string> = {};
+  for (const [relPath, content] of Object.entries(managedFiles)) {
+    checksums[relPath] = crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
+  }
+
+  // Write manifest
+  const manifestPath = path.join(specworkDir, 'manifest.yaml');
+  const manifestData = {
+    specwork_version: pkgVersion,
+    generated_at: new Date().toISOString(),
+    files: checksums,
+  };
+  fs.writeFileSync(manifestPath, stringifyYaml(manifestData), 'utf-8');
 
   return dirs;
 }

@@ -1,5 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { parseYaml } from '../io/yaml.js';
 import { validateGraph } from './graph-validator.js';
 import type { Graph } from '../types/graph.js';
@@ -476,12 +479,74 @@ export function checkCrossRefs(root: string): CheckResult {
   return { category, results };
 }
 
+// ── checkVersion ─────────────────────────────────────────────────────────
+
+export function checkVersion(root: string): CheckResult {
+  const category = 'Version';
+  const results: DiagnosticResult[] = [];
+
+  const __fn = fileURLToPath(import.meta.url);
+  const __dn = dirname(__fn);
+  let installedVersion = '0.0.0';
+  for (const rel of [join(__dn, '..', 'package.json'), join(__dn, '..', '..', 'package.json')]) {
+    if (fs.existsSync(rel)) {
+      installedVersion = (JSON.parse(readFileSync(rel, 'utf8')) as { version: string }).version;
+      break;
+    }
+  }
+
+  const configPath = path.join(root, '.specwork', 'config.yaml');
+  if (!fs.existsSync(configPath)) {
+    results.push(fail(category, 'specwork version is current', 'No config.yaml found', true));
+    return { category, results };
+  }
+
+  const config = readYamlSafe<Record<string, unknown>>(configPath);
+  if (!config) {
+    results.push(fail(category, 'specwork version is current', 'Failed to parse config.yaml', false));
+    return { category, results };
+  }
+
+  const projectVersion = config.specwork_version as string | undefined;
+  if (!projectVersion) {
+    // Check if this is a modern project (has manifest) or legacy
+    const manifestExists = fs.existsSync(path.join(root, '.specwork', 'manifest.yaml'));
+    if (manifestExists) {
+      // Modern project with manifest but missing version — likely deleted
+      results.push(fail(
+        category,
+        'specwork version is current',
+        `No specwork_version found — run \`specwork update\``,
+        true,
+      ));
+    } else {
+      // Legacy project without version tracking — not a failure
+      results.push(pass(category, 'specwork version tracking not yet enabled'));
+    }
+    return { category, results };
+  }
+
+  if (projectVersion === installedVersion) {
+    results.push(pass(category, 'specwork version is current'));
+  } else {
+    results.push(fail(
+      category,
+      'specwork version is current',
+      `Project version ${projectVersion}, installed ${installedVersion} — run \`specwork update\``,
+      true,
+    ));
+  }
+
+  return { category, results };
+}
+
 // ── Orchestrator ─────────────────────────────────────────────────────────────
 
 export function runDoctor(options: DoctorOptions): DoctorReport {
   const { root, category } = options;
 
   const allCheckers: Array<[string, () => CheckResult]> = [
+    ['Version', () => checkVersion(root)],
     ['Config', () => checkConfig(root)],
     ['Specs', () => checkSpecs(root)],
     ['Archives', () => checkArchives(root)],

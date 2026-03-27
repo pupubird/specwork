@@ -46,6 +46,7 @@ export interface CustomCheckDef {
 export interface RunChecksOptions {
   failFast: boolean;
   scope: string[];
+  startSha?: string | null;
 }
 
 // ── Built-in check type set ──────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export function runChecks(
       }
     }
 
-    const result = runSingleCheck(root, rule, { scope: opts.scope });
+    const result = runSingleCheck(root, rule, { scope: opts.scope, startSha: opts.startSha });
     checks.push(result);
 
     if (result.status === 'FAIL') {
@@ -182,7 +183,7 @@ export function runChecks(
 export function runSingleCheck(
   root: string,
   rule: ValidationRule,
-  context?: { scope?: string[] },
+  context?: { scope?: string[]; startSha?: string | null },
 ): CheckResult {
   const start = Date.now();
   const scope = context?.scope ?? [];
@@ -201,7 +202,7 @@ export function runSingleCheck(
       return runFileExists(root, rule, start);
 
     case 'scope-check':
-      return runScopeCheck(root, scope, start);
+      return runScopeCheck(root, scope, start, context?.startSha ?? null);
 
     case 'files-unchanged':
       return runFilesUnchanged(root, rule, start);
@@ -410,9 +411,11 @@ function runFileExists(root: string, rule: ValidationRule, start: number): Check
   };
 }
 
-function runScopeCheck(root: string, scope: string[], start: number): CheckResult {
+function runScopeCheck(root: string, scope: string[], start: number, startSha?: string | null): CheckResult {
   try {
-    const diff = execSync('git diff --name-only', { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
+    // Use node's start SHA as baseline when available — only shows changes made by this node
+    const diffCmd = startSha ? `git diff --name-only ${startSha}` : 'git diff --name-only';
+    const diff = execSync(diffCmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
     if (!diff) {
       return {
         type: 'scope-check',

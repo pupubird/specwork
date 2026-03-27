@@ -135,8 +135,9 @@ export function generateGraph(root: string, change: string): Graph {
   const groupLastTask = new Map<number, string>(); // groupIndex → last task id
 
   for (const task of tasks) {
-    const scope = extractFilePaths(task.rawLine + '\n' + allContext.slice(0, 2000));
-    const implScope = scope.length > 0 ? scope : ['src/'];
+    // Extract scope from task line ONLY (not shared context) to avoid cross-node conflicts
+    const scope = extractFilePaths(task.rawLine);
+    const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
 
     const validate: ValidationRule[] = [
       { type: 'scope-check' },

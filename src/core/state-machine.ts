@@ -33,6 +33,7 @@ function defaultNodeState(): NodeState {
     verified: false,
     last_verdict: null,
     verify_history: [],
+    start_sha: null,
   };
 }
 
@@ -56,7 +57,7 @@ export function transitionNode(
   state: WorkflowState,
   nodeId: string,
   newStatus: NodeStatus,
-  opts?: { error?: string; l0?: string }
+  opts?: { error?: string; l0?: string; start_sha?: string }
 ): WorkflowState {
   const nodeState = state.nodes[nodeId];
   if (!nodeState) {
@@ -82,6 +83,10 @@ export function transitionNode(
   if (newStatus === 'in_progress') {
     updatedNode.started_at = ts;
     updatedNode.completed_at = null;
+    // Record start_sha only on first start (not on retry)
+    if (!nodeState.start_sha && opts?.start_sha) {
+      updatedNode.start_sha = opts.start_sha;
+    }
   } else if (isTerminal(newStatus)) {
     updatedNode.completed_at = ts;
   }

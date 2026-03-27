@@ -34,6 +34,7 @@ export interface NodeState {
   verified: boolean;
   last_verdict: 'PASS' | 'FAIL' | null;
   verify_history: VerifyHistoryEntry[];
+  start_sha: string | null;
 }
 
 export interface LockInfo {

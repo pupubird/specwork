@@ -90,8 +90,8 @@ export function buildNextAction(
 
     case 'node:start':
       return {
-        command: `specwork context assemble ${change} ${nodeId}`,
-        description: `Assemble context and spawn the appropriate subagent for node ${nodeId}. After the subagent finishes, run verification — the implementer never grades its own homework.`,
+        command: 'subagent:spawn',
+        description: `Context is assembled and included in this response. Spawn the appropriate subagent for node ${nodeId} using the context field. After the subagent finishes, run verification — the implementer never grades its own homework.`,
         context,
         on_pass: `specwork node verify ${change} ${nodeId} --json`,
         on_fail: `specwork node fail ${change} ${nodeId} --reason '<error>'`,
@@ -137,10 +137,10 @@ export function buildNextAction(
 
     case 'node:verify:pass':
       return {
-        command: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
-        description: `Verification passed for ${nodeId}. Complete the node with an L0 summary.`,
+        command: 'subagent:spawn',
+        description: `Verification passed for ${nodeId}. Spawn specwork-summarizer (haiku) to write L0/L1/L2 context artifacts, then complete the node.`,
         context,
-        on_pass: `specwork node complete ${change} ${nodeId} --l0 '<summary>'`,
+        on_pass: `specwork node complete ${change} ${nodeId}`,
       };
 
     case 'node:verify:fail':

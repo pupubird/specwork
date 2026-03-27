@@ -114,26 +114,21 @@ describe('archiveChange', () => {
     expect(fs.existsSync(original)).toBe(false);
   });
 
-  it('generates summary.md with graph, state, and node L0s consolidated', () => {
+  it('generates digest.md with node timeline and L0 headlines', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const summaryPath = path.join(archivePath, 'summary.md');
-    expect(fs.existsSync(summaryPath)).toBe(true);
+    const digestPath = path.join(archivePath, 'digest.md');
+    expect(fs.existsSync(digestPath)).toBe(true);
 
-    const content = fs.readFileSync(summaryPath, 'utf-8');
-    // Should contain graph info
-    expect(content).toContain('## Graph');
+    const content = fs.readFileSync(digestPath, 'utf-8');
+    // Should contain node timeline with L0 headlines
+    expect(content).toContain('## Node Timeline');
     expect(content).toContain('snapshot');
     expect(content).toContain('write-tests');
-    // Should contain state info
-    expect(content).toContain('## State');
-    expect(content).toContain('complete');
-    // Should contain node summaries
-    expect(content).toContain('## Nodes');
     expect(content).toContain('snapshot done');
   });
 
@@ -149,19 +144,22 @@ describe('archiveChange', () => {
     expect(fs.existsSync(path.join(archivePath, 'nodes'))).toBe(false);
   });
 
-  it('includes verify.md content in summary when present', () => {
+  it('includes verification verdict in digest when state has last_verdict', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
-    // Add a verify.md to one node
-    const snapshotDir = nodeDir(root, 'my-feature', 'snapshot');
-    writeMarkdown(path.join(snapshotDir, 'verify.md'), '## Verify\n\nPASS');
+    // Add last_verdict to state for snapshot node
+    const sp = statePath(root, 'my-feature');
+    const state = readYaml<WorkflowState>(sp);
+    state.nodes['snapshot'] = { ...state.nodes['snapshot'], last_verdict: 'PASS' } as any;
+    writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
     expect(content).toContain('PASS');
+    expect(content).toContain('## Verification Summary');
   });
 
   it('removes original graph and nodes directories after archive', () => {

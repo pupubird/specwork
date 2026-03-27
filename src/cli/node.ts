@@ -18,8 +18,8 @@ import {
   getChangeStatus,
 } from '../core/state-machine.js';
 import { getNode } from '../core/graph-walker.js';
-import { setScope, clearScope } from '../core/scope-manager.js';
 import { releaseLock } from '../core/lock-manager.js';
+import { assembleContext, renderContext } from '../core/context-assembler.js';
 import { output, table } from '../utils/output.js';
 import { info, success, error as logError, warn } from '../utils/logger.js';
 import {
@@ -98,11 +98,6 @@ const startCmd = new Command('start')
     // Transition to in_progress
     const updated = transitionNode(state, nodeId, 'in_progress');
 
-    // Write scope
-    if (node.scope.length > 0) {
-      setScope(root, node.scope);
-    }
-
     // Write .current-node
     const cnp = currentNodePath(root);
     fs.writeFileSync(cnp, `${change}/${nodeId}`, 'utf8');
@@ -111,6 +106,10 @@ const startCmd = new Command('start')
     ensureDir(nodeDir(root, change, nodeId));
 
     saveState(root, change, updated);
+
+    // Assemble context for the subagent
+    const bundle = assembleContext(root, change, nodeId);
+    const contextStr = renderContext(bundle);
 
     const ctx = readChangeContext(root, change);
     const next_action = buildNextAction('node:start', ctx, { change, nodeId });
@@ -122,6 +121,7 @@ const startCmd = new Command('start')
       status: 'in_progress',
       scope: node.scope,
       deps: node.deps,
+      context: contextStr,
       next_action,
     };
 
@@ -226,24 +226,35 @@ const completeCmd = new Command('complete')
       );
     }
 
-    // Transition to complete
-    const l0Summary = opts.l0 ?? null;
+    // Resolve L0: flag > file > null
+    let l0Summary = opts.l0 ?? null;
+    const nDir = nodeDir(root, change, nodeId);
+    ensureDir(nDir);
+
+    if (!l0Summary) {
+      // Read from L0.md on disk (written by summarizer agent)
+      const l0FilePath = path.join(nDir, 'L0.md');
+      if (fs.existsSync(l0FilePath)) {
+        const raw = fs.readFileSync(l0FilePath, 'utf8').trim();
+        // Strip leading "- nodeId: " prefix written by summarizer
+        const match = raw.match(/^-\s*\S+:\s*(.+)$/m);
+        l0Summary = match ? match[1].trim() : raw;
+      }
+    }
+
     const updated = transitionNode(state, nodeId, 'complete', {
       l0: l0Summary ?? undefined,
     });
 
-    // Write L0 artifact if provided
+    // Write L0 artifact (always sync file with resolved value)
     if (l0Summary) {
-      const nDir = nodeDir(root, change, nodeId);
-      ensureDir(nDir);
       writeMarkdown(`${nDir}/L0.md`, `- ${nodeId}: ${l0Summary}\n`);
     }
 
     // Check off corresponding task in tasks.md
     checkOffTask(root, change, nodeId);
 
-    // Clear scope and current-node tracking
-    clearScope(root);
+    // Clear current-node tracking
     clearNodeTracking(root);
 
     // Update change status
@@ -317,8 +328,7 @@ const failCmd = new Command('fail')
       warn(`⚠ Node failed (retry ${retries}/${maxRetries}): ${change}/${nodeId}`);
     }
 
-    // Clear scope and current-node tracking
-    clearScope(root);
+    // Clear current-node tracking
     clearNodeTracking(root);
 
     const changeStatus = getChangeStatus(updated);
@@ -368,7 +378,6 @@ const escalateCmd = new Command('escalate')
     let updated = transitionNode(state, nodeId, 'escalated', { error: opts.reason });
     updated = skipDependents(updated, graph, nodeId);
 
-    clearScope(root);
     clearNodeTracking(root);
 
     const changeStatus = getChangeStatus(updated);

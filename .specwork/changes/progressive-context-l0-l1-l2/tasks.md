@@ -14,7 +14,7 @@
 - [x] 3.1 Update `node:verify:pass` case in `src/core/next-action.ts`: command becomes `subagent:spawn` for `specwork-summarizer`; `on_pass` becomes `specwork node complete <change> <node>` without `--l0`
 - [ ] 3.2 Update `.claude/skills/specwork-engine/SKILL.md`: document verify PASS → spawn summarizer → node complete flow
 - [x] 3.3 Update `.claude/agents/specwork-summarizer.md`: clarify inputs (change, nodeId, root), L0 format (no leading dash, format is `nodeId: headline`), output files (L0.md, L1.md, L2.md), and git diff source
-- [ ] 3.4 Simplify `.claude/hooks/node-complete.sh`: remove L0-writing logic (summarizer owns it now)
+- [x] 3.4 Simplify `.claude/hooks/node-complete.sh`: remove L0-writing logic (summarizer owns it now)
 
 ## 4. Archive Digest
 
@@ -29,6 +29,6 @@
 
 - [x] 6.1 Write spec for checkOffTask behavior in `specs/task-auto-update.md` (covers existing checkOffTask impl + new uncheckTask + convention lines + idempotency)
 - [ ] 6.2 Add `uncheckTask()` function to `src/cli/node.ts` — reverse of checkOffTask, changes `- [x]` → `- [ ]` for impl-N-M nodes
-- [ ] 6.3 Call `uncheckTask()` in `failCmd` and `escalateCmd` in `src/cli/node.ts` for impl-N-M nodes
+- [x] 6.3 Call `uncheckTask()` in `failCmd` and `escalateCmd` in `src/cli/node.ts` for impl-N-M nodes
 - [ ] 6.4 Extend `checkOffTask()` in `src/cli/node.ts` to match `write-tests:` and `integration:` convention lines; update `parseTasks()` in `src/core/graph-generator.ts` to skip convention lines
 - [ ] 6.5 Write tests for `checkOffTask`, `uncheckTask`, and convention-line behavior in `src/__tests__/`

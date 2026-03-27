@@ -12,7 +12,8 @@ import path from 'node:path';
 import { writeYaml, readYaml, writeMarkdown, ensureDir } from '../../io/filesystem.js';
 import { generateGraph } from '../../core/graph-generator.js';
 import { initializeState, transitionNode } from '../../core/state-machine.js';
-import { archiveChange } from '../../core/archive.js';
+import { archiveChange, checkCompletion } from '../../core/archive.js';
+import type { ArchiveResult } from '../../core/archive.js';
 import {
   graphPath,
   statePath,
@@ -252,5 +253,240 @@ describe('archiveChange', () => {
     // .specwork/specs/ should still only have .gitkeep
     const specs = fs.readdirSync(path.join(root, '.specwork', 'specs'));
     expect(specs.filter(f => f !== '.gitkeep')).toHaveLength(0);
+  });
+});
+
+// ── NEW: checkCompletion tests ──────────────────────────────────────────────
+
+describe('checkCompletion', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-archive-'));
+    initSpecwork(root);
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('returns ok:true when all nodes in state.yaml are complete', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    const result = checkCompletion(root, 'my-feature');
+    expect(result.ok).toBe(true);
+    expect(result.blocking).toEqual([]);
+  });
+
+  it('returns ok:false with blocking node names when pending nodes exist', () => {
+    createChange(root, 'my-feature');
+    const graph = generateGraph(root, 'my-feature');
+    writeYaml(graphPath(root, 'my-feature'), graph);
+    let state = initializeState(graph);
+
+    // Leave first node pending, complete the rest
+    const [first, ...rest] = graph.nodes;
+    for (const node of rest) {
+      state = transitionNode(state, node.id, 'in_progress');
+      state = transitionNode(state, node.id, 'complete', { l0: `${node.id} done` });
+    }
+    writeYaml(statePath(root, 'my-feature'), state);
+
+    const result = checkCompletion(root, 'my-feature');
+    expect(result.ok).toBe(false);
+    expect(result.blocking).toContain(first.id);
+  });
+
+  it('returns ok:false with blocking node names when failed nodes exist', () => {
+    createChange(root, 'my-feature');
+    const graph = generateGraph(root, 'my-feature');
+    writeYaml(graphPath(root, 'my-feature'), graph);
+    let state = initializeState(graph);
+
+    // Mark first node as failed
+    const [first, ...rest] = graph.nodes;
+    state = transitionNode(state, first.id, 'in_progress');
+    state = transitionNode(state, first.id, 'failed');
+    for (const node of rest) {
+      state = transitionNode(state, node.id, 'in_progress');
+      state = transitionNode(state, node.id, 'complete', { l0: `${node.id} done` });
+    }
+    writeYaml(statePath(root, 'my-feature'), state);
+
+    const result = checkCompletion(root, 'my-feature');
+    expect(result.ok).toBe(false);
+    expect(result.blocking).toContain(first.id);
+  });
+
+  it('falls back to tasks.md when no state.yaml — passes if all checked', () => {
+    createChange(root, 'my-feature');
+    // tasks.md already has all items checked via createChange helper
+    // Do NOT generate graph or state.yaml
+
+    const result = checkCompletion(root, 'my-feature');
+    expect(result.ok).toBe(true);
+    expect(result.blocking).toEqual([]);
+  });
+
+  it('falls back to tasks.md when no state.yaml — blocks if unchecked', () => {
+    createChange(root, 'my-feature');
+    writeMarkdown(
+      path.join(changeDir(root, 'my-feature'), 'tasks.md'),
+      '## 1. Core\n\n- [ ] 1.1 Not done yet\n- [x] 1.2 Done\n'
+    );
+    // No state.yaml generated
+
+    const result = checkCompletion(root, 'my-feature');
+    expect(result.ok).toBe(false);
+    expect(result.blocking.length).toBeGreaterThan(0);
+  });
+});
+
+// ── NEW: summary.md tests (replaces digest.md) ─────────────────────────────
+
+describe('archiveChange — summary.md', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-archive-'));
+    initSpecwork(root);
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('creates summary.md (not digest.md) in archive', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    archiveChange(root, 'my-feature');
+
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
+    expect(fs.existsSync(path.join(archivePath, 'summary.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archivePath, 'digest.md'))).toBe(false);
+  });
+
+  it('summary.md contains node timeline section', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    archiveChange(root, 'my-feature');
+
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
+    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    expect(content).toContain('## Node Timeline');
+    expect(content).toContain('snapshot');
+  });
+
+  it('summary.md contains verification summary table when verdicts exist', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    // Add verdict to state
+    const sp = statePath(root, 'my-feature');
+    const state = readYaml<WorkflowState>(sp);
+    state.nodes['snapshot'] = { ...state.nodes['snapshot'], last_verdict: 'PASS' } as any;
+    writeYaml(sp, state);
+
+    archiveChange(root, 'my-feature');
+
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
+    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    expect(content).toContain('## Verification Summary');
+    expect(content).toContain('PASS');
+  });
+});
+
+// ── NEW: ArchiveResult return type tests ────────────────────────────────────
+
+describe('archiveChange — ArchiveResult', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-archive-'));
+    initSpecwork(root);
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('returns ArchiveResult with correct fields', () => {
+    createChange(root, 'my-feature');
+    writeMarkdown(path.join(changeDir(root, 'my-feature'), 'specs', 'auth.md'), '# Auth Spec\n');
+    generateAndCompleteAll(root, 'my-feature');
+
+    const result: ArchiveResult = archiveChange(root, 'my-feature');
+
+    expect(result).toBeDefined();
+    expect(result.change).toBe('my-feature');
+    expect(result.archivePath).toContain('archive/my-feature');
+    expect(Array.isArray(result.specsPromoted)).toBe(true);
+    expect(result.specsPromoted).toContain('auth.md');
+    expect(typeof result.nodesCleaned).toBe('boolean');
+    expect(result.nodesCleaned).toBe(true);
+    expect(typeof result.forced).toBe('boolean');
+    expect(result.forced).toBe(false);
+  });
+
+  it('sets archived_at in .specwork.yaml', () => {
+    createChange(root, 'my-feature');
+    generateAndCompleteAll(root, 'my-feature');
+
+    archiveChange(root, 'my-feature');
+
+    const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
+    const meta = readYaml<{ status: string; archived_at?: string }>(
+      path.join(archivePath, '.specwork.yaml')
+    );
+    expect(meta.archived_at).toBeDefined();
+    // Should be a valid ISO date string
+    expect(new Date(meta.archived_at!).toISOString()).toBe(meta.archived_at);
+  });
+});
+
+// ── NEW: force mode test ────────────────────────────────────────────────────
+
+describe('archiveChange — force mode', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-archive-'));
+    initSpecwork(root);
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('archiveChange with force:true bypasses failed-node guard', () => {
+    createChange(root, 'my-feature');
+    const graph = generateGraph(root, 'my-feature');
+    writeYaml(graphPath(root, 'my-feature'), graph);
+    let state = initializeState(graph);
+
+    // Mark first node as failed
+    const [first, ...rest] = graph.nodes;
+    state = transitionNode(state, first.id, 'in_progress');
+    state = transitionNode(state, first.id, 'failed');
+    for (const node of rest) {
+      state = transitionNode(state, node.id, 'in_progress');
+      state = transitionNode(state, node.id, 'complete', { l0: `${node.id} done` });
+      const nd = nodeDir(root, 'my-feature', node.id);
+      ensureDir(nd);
+      writeMarkdown(path.join(nd, 'L0.md'), `- ${node.id}: done\n`);
+    }
+    writeYaml(statePath(root, 'my-feature'), state);
+
+    // Without force, should throw
+    expect(() => archiveChange(root, 'my-feature')).toThrow();
+
+    // Re-create change (was not archived due to throw)
+    // With force, should succeed
+    const result = archiveChange(root, 'my-feature', { force: true });
+    expect(result).toBeDefined();
+    expect(result.forced).toBe(true);
   });
 });

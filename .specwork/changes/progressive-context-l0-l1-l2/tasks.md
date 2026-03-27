@@ -24,3 +24,11 @@
 ## 5. Context Skill Docs
 
 - [x] 5.1 Update `.claude/skills/specwork-context/SKILL.md`: note that `node start --json` includes `context` field; `specwork context assemble` remains available for manual/EXPAND use
+
+## 6. Tasks.md Auto-Update
+
+- [ ] 6.1 Write spec for checkOffTask behavior in `specs/task-auto-update.md` (covers existing checkOffTask impl + new uncheckTask + convention lines + idempotency)
+- [ ] 6.2 Add `uncheckTask()` function to `src/cli/node.ts` — reverse of checkOffTask, changes `- [x]` → `- [ ]` for impl-N-M nodes
+- [ ] 6.3 Call `uncheckTask()` in `failCmd` and `escalateCmd` in `src/cli/node.ts` for impl-N-M nodes
+- [ ] 6.4 Extend `checkOffTask()` in `src/cli/node.ts` to match `write-tests:` and `integration:` convention lines; update `parseTasks()` in `src/core/graph-generator.ts` to skip convention lines
+- [ ] 6.5 Write tests for `checkOffTask`, `uncheckTask`, and convention-line behavior in `src/__tests__/`

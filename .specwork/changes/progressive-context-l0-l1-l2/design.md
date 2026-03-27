@@ -146,6 +146,83 @@ Clarify:
 
 Remove L0-writing logic. The summarizer now owns all L0/L1/L2 writes. Simplify to a no-op or empty the hook body.
 
+### `src/cli/node.ts` — uncheckTask()
+
+Mirror of `checkOffTask()`. Reads `tasks.md`, finds the matching group/task position, and reverts `- [x]` → `- [ ]`. Called in `failCmd` and `escalateCmd` for `impl-N-M` nodes:
+
+```ts
+function uncheckTask(root: string, change: string, nodeId: string): void {
+  const tasksPath = path.join(changeDir(root, change), 'tasks.md');
+  if (!fs.existsSync(tasksPath)) return;
+
+  const match = /^impl-(\d+)-(\d+)$/.exec(nodeId);
+  if (!match) return;
+
+  const targetGroup = parseInt(match[1], 10);
+  const targetTask = parseInt(match[2], 10);
+
+  const content = fs.readFileSync(tasksPath, 'utf-8');
+  const lines = content.split('\n');
+
+  let currentGroup = 0;
+  let taskInGroup = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^##\s+/.test(lines[i])) {
+      currentGroup++;
+      taskInGroup = 0;
+      continue;
+    }
+    if (/^- \[x\]/.test(lines[i])) {
+      taskInGroup++;
+      if (currentGroup === targetGroup && taskInGroup === targetTask) {
+        lines[i] = lines[i].replace('- [x]', '- [ ]');
+        fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
+        return;
+      }
+    }
+  }
+}
+```
+
+**Note on task counter parity**: `uncheckTask` increments the task counter on `- [x]` lines while `checkOffTask` increments on `- [ ]` lines. This means if a mix of checked and unchecked lines exists within a group, the counters diverge. This is acceptable: the expected workflow is that tasks within a group complete sequentially, so a fail on `impl-N-M` means `impl-N-M` was the last one checked — the earlier ones (`impl-N-1` through `impl-N-(M-1)`) are `- [x]` and their counter contribution is correct.
+
+### `src/cli/node.ts` — Convention line matching for write-tests/integration
+
+`checkOffTask` is extended to also match convention lines when nodeId is `write-tests` or `integration`:
+
+```ts
+// In checkOffTask, add before the impl-N-M guard:
+const conventionPrefixes: Record<string, string> = {
+  'write-tests': 'write-tests:',
+  'integration': 'integration:',
+};
+const prefix = conventionPrefixes[nodeId];
+if (prefix) {
+  // Scan for - [ ] write-tests: ... or - [ ] integration: ...
+  for (let i = 0; i < lines.length; i++) {
+    const conventionMatch = new RegExp(`^- \\[ \\] ${prefix}`).exec(lines[i]);
+    if (conventionMatch) {
+      lines[i] = lines[i].replace('- [ ]', '- [x]');
+      fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
+      return;
+    }
+  }
+  return; // not found, no-op
+}
+```
+
+### `src/core/graph-generator.ts` — Skip convention lines in parseTasks
+
+`parseTasks` must not create `impl-N-M` nodes for convention lines. Add a guard in the checkbox regex branch:
+
+```ts
+// Skip write-tests and integration convention lines
+if (/^- \[\s*[ x]?\s*\]\s+(?:write-tests|integration):/.test(line)) {
+  continue; // not an impl task
+}
+```
+
 ## Risks / Trade-offs
 
 - [Summarizer failure] → `node complete` still works (reads whatever L0.md exists; null if absent). No blocking dependency.

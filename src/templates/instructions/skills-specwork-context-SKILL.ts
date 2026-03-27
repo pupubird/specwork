@@ -19,11 +19,14 @@ This keeps token budgets small while preserving decision-making context.
 
 ## CLI Commands for Context
 
-### Assemble full context for a subagent
+### Auto-injected on node start
+\`specwork node start --json\` automatically includes a \`context\` field in its JSON response containing the fully assembled context bundle (snapshot + L0 + L1 + inputs + prompt). No separate assembly step needed.
+
+### Assemble full context manually
 \`\`\`bash
 specwork context assemble <change> <node-id>
 \`\`\`
-Returns the complete prompt block: L0 (all nodes) + L1 (parents) + snapshot + inputs + task. This is the primary command — use it before spawning any LLM subagent.
+Returns the complete prompt block: L0 (all nodes) + L1 (parents) + snapshot + inputs + task. Available for manual use and EXPAND flows. Not needed during normal workflow — \`node start\` handles this automatically.
 
 ### Get L0 headlines only
 \`\`\`bash

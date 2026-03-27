@@ -14,98 +14,72 @@ import { readYaml, writeYaml } from '../io/filesystem.js';
 import type { Graph, GraphNode } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 
-function buildDigest(root: string, change: string): string {
-  const lines: string[] = [];
+function buildSummary(root: string, change: string): string {
+  const lines: string[] = [`# Archive: ${change}\n`];
 
-  // Header
-  const sp = statePath(root, change);
-  const state = fs.existsSync(sp) ? readYaml<WorkflowState>(sp) : null;
+  // Graph section
   const gp = graphPath(root, change);
-  const graph = fs.existsSync(gp) ? readYaml<Graph>(gp) : null;
-
-  // Read change description
-  let description = '';
-  const metaPath = path.join(root, '.specwork', 'changes', change, '.specwork.yaml');
-  if (fs.existsSync(metaPath)) {
-    const meta = readYaml<Record<string, unknown>>(metaPath);
-    description = typeof meta.description === 'string' ? meta.description : '';
-  }
-
-  const nodeCount = graph?.nodes.length ?? 0;
-  const status = state?.status ?? 'unknown';
-  const archivedDate = new Date().toISOString().split('T')[0];
-
-  lines.push(`# Digest: ${change}`);
-  lines.push('');
-  lines.push(`**Archived:** ${archivedDate} | **Nodes:** ${nodeCount} | **Status:** ${status}`);
-  lines.push('');
-  if (description) {
-    lines.push('## Summary');
-    lines.push('');
-    lines.push(description);
+  if (fs.existsSync(gp)) {
+    const graph = readYaml<Graph>(gp);
+    lines.push('## Graph\n');
+    lines.push(`Nodes: ${graph.nodes.length} | Created: ${graph.created_at}\n`);
+    lines.push('| ID | Type | Deps |');
+    lines.push('|----|------|------|');
+    for (const node of graph.nodes) {
+      lines.push(`| ${node.id} | ${node.type} | ${node.deps.join(', ') || '-'} |`);
+    }
     lines.push('');
   }
 
-  // Node Timeline (L0)
+  // State section
+  const sp = statePath(root, change);
+  if (fs.existsSync(sp)) {
+    const state = readYaml<WorkflowState>(sp);
+    lines.push('## State\n');
+    lines.push(`Status: ${state.status}`);
+    lines.push(`Updated: ${state.updated_at}\n`);
+    for (const [id, ns] of Object.entries(state.nodes)) {
+      lines.push(`- **${id}**: ${ns.status}${ns.retries ? ` (retries: ${ns.retries})` : ''}`);
+    }
+    lines.push('');
+  }
+
+  // Nodes section — consolidate L0s, verify, qa-report
   const nd = nodesDir(root, change);
-  const nodeDirNames = fs.existsSync(nd)
-    ? fs.readdirSync(nd).filter(d => fs.statSync(path.join(nd, d)).isDirectory())
-    : [];
-
-  lines.push('## Node Timeline');
-  lines.push('');
-  for (const nodeId of nodeDirNames) {
-    const l0Path = path.join(nd, nodeId, 'L0.md');
-    if (fs.existsSync(l0Path)) {
-      const l0Content = fs.readFileSync(l0Path, 'utf-8').trim();
-      // L0 format: "- nodeId: headline" — extract headline
-      const match = l0Content.match(/^-\s*\S+:\s*(.+)$/m);
-      const headline = match ? match[1].trim() : l0Content;
-      lines.push(`- **${nodeId}**: ${headline}`);
-    } else {
-      lines.push(`- **${nodeId}**: (no L0)`);
-    }
-  }
-  lines.push('');
-
-  // Node Details (L1) — only nodes with L1.md
-  const nodesWithL1: { nodeId: string; content: string }[] = [];
-  for (const nodeId of nodeDirNames) {
-    const l1Path = path.join(nd, nodeId, 'L1.md');
-    if (fs.existsSync(l1Path)) {
-      const l1Content = fs.readFileSync(l1Path, 'utf-8').trim();
-      if (l1Content) {
-        nodesWithL1.push({ nodeId, content: l1Content });
-      }
-    }
-  }
-
-  if (nodesWithL1.length > 0) {
-    lines.push('## Node Details');
-    lines.push('');
-    for (const { nodeId, content } of nodesWithL1) {
-      lines.push(`### ${nodeId}`);
-      lines.push('');
-      lines.push(content);
-      lines.push('');
-    }
-  }
-
-  // Verification Summary
-  if (state) {
-    const verifiedNodes = Object.entries(state.nodes).filter(
-      ([, ns]) => ns.last_verdict !== null && ns.last_verdict !== undefined
+  if (fs.existsSync(nd)) {
+    const nodeDirs = fs.readdirSync(nd).filter(d =>
+      fs.statSync(path.join(nd, d)).isDirectory()
     );
+    if (nodeDirs.length > 0) {
+      lines.push('## Nodes\n');
+      for (const nodeId of nodeDirs) {
+        const nodeBase = path.join(nd, nodeId);
+        lines.push(`### ${nodeId}\n`);
 
-    if (verifiedNodes.length > 0) {
-      lines.push('## Verification Summary');
-      lines.push('');
-      lines.push('| Node | Verdict |');
-      lines.push('|------|---------|');
-      for (const [nodeId, ns] of verifiedNodes) {
-        lines.push(`| ${nodeId} | ${ns.last_verdict} |`);
+        // L0
+        const l0Path = path.join(nodeBase, 'L0.md');
+        if (fs.existsSync(l0Path)) {
+          lines.push(fs.readFileSync(l0Path, 'utf-8').trim());
+        }
+
+        // verify.md
+        const verifyPath = path.join(nodeBase, 'verify.md');
+        if (fs.existsSync(verifyPath)) {
+          lines.push('');
+          lines.push('**Verify:**');
+          lines.push(fs.readFileSync(verifyPath, 'utf-8').trim());
+        }
+
+        // qa-report.md
+        const qaPath = path.join(nodeBase, 'qa-report.md');
+        if (fs.existsSync(qaPath)) {
+          lines.push('');
+          lines.push('**QA:**');
+          lines.push(fs.readFileSync(qaPath, 'utf-8').trim());
+        }
+
+        lines.push('');
       }
-      lines.push('');
     }
   }
 
@@ -140,9 +114,9 @@ export function archiveChange(root: string, change: string): void {
   // 1. Copy change dir contents to archive (proposal, design, tasks, specs)
   fs.cpSync(src, dest, { recursive: true });
 
-  // 2. Build consolidated digest.md from L0, L1, and verification artifacts
-  const digest = buildDigest(root, change);
-  fs.writeFileSync(path.join(dest, 'digest.md'), digest, 'utf-8');
+  // 2. Build consolidated summary.md from graph, state, and node artifacts
+  const summary = buildSummary(root, change);
+  fs.writeFileSync(path.join(dest, 'summary.md'), summary, 'utf-8');
 
   // 3. Promote specs to .specwork/specs/ (source of truth)
   const specsDir = path.join(src, 'specs');

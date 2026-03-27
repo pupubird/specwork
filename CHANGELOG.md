@@ -7,6 +7,30 @@ Specwork uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.2] - 2026-03-27
+
+### Removed
+
+- Scope guard hook (`scope-guard.sh`) and all scope enforcement references — LLM agents are dynamic by nature and pre-defining file scope was too restrictive
+- `PreToolUse` hook entry from `plugin.json`
+- `.specwork/.current-scope` runtime file
+
+### Changed
+
+- README rewritten with storytelling narrative, Mermaid diagrams, and collapsible technical sections
+- Implementer agent rules simplified (no scope-guard dependency)
+- CLAUDE.md rules renumbered after scope enforcement removal
+
+### Migration
+
+The `0.1.2` migration automatically cleans up existing projects:
+- Removes `.claude/hooks/scope-guard.sh`
+- Removes `.specwork/.current-scope`
+- Removes `PreToolUse` scope-guard entry from `plugin.json`
+- Cleans scope-guard references from implementer agent
+
+[0.1.2]: https://github.com/pupubird/specwork/releases/tag/v0.1.2
+
 ## [0.1.0] - 2026-03-26
 
 ### Added

@@ -77,7 +77,7 @@ describe('getPendingMigrations', () => {
 
   it('returns empty array when no migrations are pending', () => {
     // When all in-range migrations are already applied
-    const result = getPendingMigrations('0.1.0', '0.3.0', ['0.2.0', '0.3.0']);
+    const result = getPendingMigrations('0.1.0', '0.3.0', ['0.1.1', '0.1.2', '0.2.0', '0.3.0']);
     expect(result).toEqual([]);
   });
 

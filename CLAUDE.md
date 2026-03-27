@@ -79,12 +79,11 @@ Snapshot refreshes after each LLM node (configurable in `.specwork/config.yaml`)
 ## Rules
 
 1. **Tests before implementation** — `write-tests` node always runs before any `impl-*` node. Tests must fail (red state) first.
-2. **Scope enforcement** — each LLM node declares `scope: [paths]`. The `scope-guard.sh` hook blocks writes outside declared scope.
-3. **Immutable tests** — implementer agents cannot modify test files (enforced by scope).
-4. **Snapshot-only imports** — subagents use only types/imports visible in the environment snapshot.
-5. **Verify before commit** — the verifier agent runs after each node, before any git commit.
-6. **Human gates** — `write-tests` node requires human approval before implementation begins.
-7. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
+2. **Immutable tests** — implementer agents cannot modify test files.
+3. **Snapshot-only imports** — subagents use only types/imports visible in the environment snapshot.
+4. **Verify before commit** — the verifier agent runs after each node, before any git commit.
+5. **Human gates** — `write-tests` node requires human approval before implementation begins.
+6. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
 
 ---
 
@@ -104,7 +103,7 @@ Snapshot refreshes after each LLM node (configurable in `.specwork/config.yaml`)
 | `.claude/agents/` | Subagent roles (test-writer, implementer, verifier, summarizer) |
 | `.claude/skills/` | Engine logic (specwork-engine, specwork-context, specwork-conventions) |
 | `.claude/commands/` | Slash commands (specwork-plan, specwork-go, specwork-status) |
-| `.claude/hooks/` | Lifecycle hooks (scope-guard, type-check, session-init, node-complete) |
+| `.claude/hooks/` | Lifecycle hooks (type-check, session-init, node-complete) |
 
 ---
 

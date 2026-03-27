@@ -24,7 +24,6 @@
   ],
   "hooks": {
     "SessionStart": [".claude/hooks/session-init.sh"],
-    "PreToolUse": [".claude/hooks/scope-guard.sh"],
     "PostToolUse": [".claude/hooks/type-check.sh"],
     "SubagentStop": [".claude/hooks/node-complete.sh"]
   },

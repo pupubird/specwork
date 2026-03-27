@@ -149,19 +149,36 @@ const startCmd = new Command('start')
  * Node IDs follow the pattern impl-{group}-{task} which maps to the
  * N-th checkbox in the M-th ## group in tasks.md.
  */
-function checkOffTask(root: string, change: string, nodeId: string): void {
+export function checkOffTask(root: string, change: string, nodeId: string): void {
   const tasksPath = path.join(changeDir(root, change), 'tasks.md');
   if (!fs.existsSync(tasksPath)) return;
 
+  const content = fs.readFileSync(tasksPath, 'utf-8');
+  const lines = content.split('\n');
+
+  // Convention lines: write-tests and integration nodes match prefixed lines
+  const conventionPrefixes: Record<string, string> = {
+    'write-tests': 'write-tests:',
+    'integration': 'integration:',
+  };
+  const prefix = conventionPrefixes[nodeId];
+  if (prefix) {
+    for (let i = 0; i < lines.length; i++) {
+      if (new RegExp(`^- \\[ \\] ${prefix}`).test(lines[i])) {
+        lines[i] = lines[i].replace('- [ ]', '- [x]');
+        fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
+        return;
+      }
+    }
+    return; // no convention line found — silently skip
+  }
+
   // Parse node ID to get group/task indices
   const match = /^impl-(\d+)-(\d+)$/.exec(nodeId);
-  if (!match) return; // non-impl nodes (snapshot, write-tests, integration) don't map to tasks
+  if (!match) return; // non-impl nodes don't map to tasks
 
   const targetGroup = parseInt(match[1], 10);
   const targetTask = parseInt(match[2], 10);
-
-  const content = fs.readFileSync(tasksPath, 'utf-8');
-  const lines = content.split('\n');
 
   let currentGroup = 0;
   let taskInGroup = 0;
@@ -174,11 +191,44 @@ function checkOffTask(root: string, change: string, nodeId: string): void {
       continue;
     }
 
-    // Checkbox task
-    if (/^- \[ \]/.test(lines[i])) {
+    // Checkbox task (skip convention lines)
+    if (/^- \[ \]/.test(lines[i]) && !/^- \[ \] (?:write-tests|integration):/.test(lines[i])) {
       taskInGroup++;
       if (currentGroup === targetGroup && taskInGroup === targetTask) {
         lines[i] = lines[i].replace('- [ ]', '- [x]');
+        fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
+        return;
+      }
+    }
+  }
+}
+
+export function uncheckTask(root: string, change: string, nodeId: string): void {
+  const tasksPath = path.join(changeDir(root, change), 'tasks.md');
+  if (!fs.existsSync(tasksPath)) return;
+
+  const match = /^impl-(\d+)-(\d+)$/.exec(nodeId);
+  if (!match) return;
+
+  const targetGroup = parseInt(match[1], 10);
+  const targetTask = parseInt(match[2], 10);
+
+  const content = fs.readFileSync(tasksPath, 'utf-8');
+  const lines = content.split('\n');
+
+  let currentGroup = 0;
+  let taskInGroup = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^##\s+/.test(lines[i])) {
+      currentGroup++;
+      taskInGroup = 0;
+      continue;
+    }
+    if (/^- \[x\]/i.test(lines[i])) {
+      taskInGroup++;
+      if (currentGroup === targetGroup && taskInGroup === targetTask) {
+        lines[i] = lines[i].replace(/^- \[x\]/i, '- [ ]');
         fs.writeFileSync(tasksPath, lines.join('\n'), 'utf-8');
         return;
       }
@@ -328,6 +378,9 @@ const failCmd = new Command('fail')
       warn(`⚠ Node failed (retry ${retries}/${maxRetries}): ${change}/${nodeId}`);
     }
 
+    // Revert task checkbox on fail/escalate
+    uncheckTask(root, change, nodeId);
+
     // Clear current-node tracking
     clearNodeTracking(root);
 
@@ -377,6 +430,9 @@ const escalateCmd = new Command('escalate')
 
     let updated = transitionNode(state, nodeId, 'escalated', { error: opts.reason });
     updated = skipDependents(updated, graph, nodeId);
+
+    // Revert task checkbox on escalate
+    uncheckTask(root, change, nodeId);
 
     clearNodeTracking(root);
 

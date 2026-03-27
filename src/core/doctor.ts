@@ -224,7 +224,7 @@ export function checkArchives(root: string): CheckResult {
     }
 
     // Check required files
-    const requiredFiles = ['proposal.md', 'design.md', 'tasks.md', 'summary.md'];
+    const requiredFiles = ['proposal.md', 'design.md', 'tasks.md', 'digest.md'];
     for (const file of requiredFiles) {
       if (fs.existsSync(path.join(dir, file))) {
         results.push(pass(category, `${name}: ${file} exists`));
@@ -262,7 +262,7 @@ export function checkArchives(root: string): CheckResult {
         results.push(fail(
           category,
           `${name}: no loose ${file}`,
-          `Archive has loose ${file} (should be in summary.md)`,
+          `Archive has loose ${file} (should be in digest.md)`,
           true,
           async () => { fs.unlinkSync(filePath); }
         ));
@@ -275,7 +275,7 @@ export function checkArchives(root: string): CheckResult {
       results.push(fail(
         category,
         `${name}: no loose nodes/`,
-        `Archive has loose nodes/ directory (should be in summary.md)`,
+        `Archive has loose nodes/ directory (should be in digest.md)`,
         true,
         async () => { fs.rmSync(nodesPath, { recursive: true, force: true }); }
       ));

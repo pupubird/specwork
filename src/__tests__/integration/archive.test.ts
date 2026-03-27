@@ -41,7 +41,7 @@ function markAllNodesComplete(dir: string, change: string): void {
   for (const nodeId of Object.keys(nodes)) {
     nodes[nodeId] = { ...nodes[nodeId], status: 'complete', completed_at: ts };
 
-    // Write L0 artifacts so summary.md can be generated
+    // Write L0 artifacts so digest.md can be generated
     const nodeDir = path.join(dir, '.specwork', 'nodes', change, nodeId);
     fs.mkdirSync(nodeDir, { recursive: true });
     fs.writeFileSync(path.join(nodeDir, 'L0.md'), `- ${nodeId}: done\n`, 'utf-8');
@@ -86,7 +86,7 @@ describe('specwork archive', () => {
     // Archive directory should exist
     const archivePath = path.join(dir, '.specwork', 'changes', 'archive', 'my-change');
     expect(fs.existsSync(archivePath)).toBe(true);
-    expect(fs.existsSync(path.join(archivePath, 'summary.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archivePath, 'digest.md'))).toBe(true);
 
     // Original should be removed
     expect(fs.existsSync(path.join(dir, '.specwork', 'changes', 'my-change'))).toBe(false);

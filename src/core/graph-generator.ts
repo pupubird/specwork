@@ -51,6 +51,11 @@ function parseTasks(tasksContent: string): ParsedTask[] {
       continue;
     }
 
+    // Skip convention lines (write-tests: and integration: prefixed)
+    if (/^-\s+\[\s*[ x]?\s*\]\s+(?:write-tests|integration):/.test(line)) {
+      continue;
+    }
+
     // Checkbox task: - [ ] 1.1 Task description or - [ ] Task description
     const taskMatch = /^-\s+\[\s*[ x]?\s*\]\s+(?:\d+(?:\.\d+)?\s+)?(.+)/.exec(line);
     if (taskMatch) {

@@ -194,9 +194,9 @@ export function archiveChange(root: string, change: string, opts?: { force?: boo
   // 1. Copy change dir contents to archive
   fs.cpSync(src, dest, { recursive: true });
 
-  // 2. Build summary.md
-  const summary = buildSummary(root, change);
-  fs.writeFileSync(path.join(dest, 'summary.md'), summary, 'utf-8');
+  // 2. Build digest.md
+  const digest = buildSummary(root, change);
+  fs.writeFileSync(path.join(dest, 'digest.md'), digest, 'utf-8');
 
   // 3. Promote specs to .specwork/specs/
   const specsPromoted: string[] = [];

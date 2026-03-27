@@ -92,7 +92,7 @@ function createArchive(root: string, name: string, opts: { missingFiles?: string
     'proposal.md': '# Proposal\n',
     'design.md': '# Design\n',
     'tasks.md': '## 1. Core\n\n- [x] 1.1 Done\n',
-    'summary.md': '# Summary\n\nCompleted.',
+    'digest.md': '# Summary\n\nCompleted.',
   };
 
   for (const [file, content] of Object.entries(requiredFiles)) {
@@ -327,8 +327,8 @@ describe('checkArchives', () => {
     expect(failing).toHaveLength(0);
   });
 
-  it('errors when archive is missing summary.md', () => {
-    createArchive(root, 'no-summary', { missingFiles: ['summary.md'] });
+  it('errors when archive is missing digest.md', () => {
+    createArchive(root, 'no-summary', { missingFiles: ['digest.md'] });
 
     const result = checkArchives(root);
     const failing = result.results.filter((r: DiagnosticResult) => !r.pass);

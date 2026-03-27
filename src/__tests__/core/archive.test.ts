@@ -115,14 +115,14 @@ describe('archiveChange', () => {
     expect(fs.existsSync(original)).toBe(false);
   });
 
-  it('generates summary.md with node timeline and L0 headlines', () => {
+  it('generates digest.md with node timeline and L0 headlines', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const summaryPath = path.join(archivePath, 'summary.md');
+    const summaryPath = path.join(archivePath, 'digest.md');
     expect(fs.existsSync(summaryPath)).toBe(true);
 
     const content = fs.readFileSync(summaryPath, 'utf-8');
@@ -158,7 +158,7 @@ describe('archiveChange', () => {
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
     expect(content).toContain('PASS');
     expect(content).toContain('## Verification Summary');
   });
@@ -342,9 +342,9 @@ describe('checkCompletion', () => {
   });
 });
 
-// ── NEW: summary.md tests (replaces digest.md) ─────────────────────────────
+// ── NEW: digest.md tests (replaces digest.md) ─────────────────────────────
 
-describe('archiveChange — summary.md', () => {
+describe('archiveChange — digest.md', () => {
   let root: string;
 
   beforeEach(() => {
@@ -356,30 +356,30 @@ describe('archiveChange — summary.md', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it('creates summary.md (not digest.md) in archive', () => {
+  it('creates digest.md (not summary.md) in archive', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    expect(fs.existsSync(path.join(archivePath, 'summary.md'))).toBe(true);
-    expect(fs.existsSync(path.join(archivePath, 'digest.md'))).toBe(false);
+    expect(fs.existsSync(path.join(archivePath, 'digest.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archivePath, 'summary.md'))).toBe(false);
   });
 
-  it('summary.md contains node timeline section', () => {
+  it('digest.md contains node timeline section', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
     expect(content).toContain('## Node Timeline');
     expect(content).toContain('snapshot');
   });
 
-  it('summary.md contains verification summary table when verdicts exist', () => {
+  it('digest.md contains verification summary table when verdicts exist', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
@@ -392,7 +392,7 @@ describe('archiveChange — summary.md', () => {
     archiveChange(root, 'my-feature');
 
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
-    const content = fs.readFileSync(path.join(archivePath, 'summary.md'), 'utf-8');
+    const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
     expect(content).toContain('## Verification Summary');
     expect(content).toContain('PASS');
   });

@@ -3,12 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { initializeState, transitionNode } from '../../core/state-machine.js';
-import { setScope } from '../../core/scope-manager.js';
 import {
   findSpecworkRoot,
   graphPath,
   statePath,
-  scopePath,
   currentNodePath,
   nodeDir,
 } from '../../utils/paths.js';
@@ -111,14 +109,6 @@ describe('node start — core logic', () => {
     expect(blockedDeps).toContain('snapshot');
   });
 
-  it('sets scope when node has scope paths', () => {
-    setScope(root, testGraph.nodes.find(n => n.id === 'write-tests')!.scope);
-    const file = scopePath(root);
-    expect(fs.existsSync(file)).toBe(true);
-    const content = fs.readFileSync(file, 'utf8');
-    expect(content).toContain('src/__tests__/');
-  });
-
   it('writes .current-node tracking file', () => {
     const cnp = currentNodePath(root);
     fs.writeFileSync(cnp, 'test-change/snapshot', 'utf8');
@@ -157,15 +147,12 @@ describe('node complete — core logic', () => {
     expect(l0).toContain('snapshot: complete');
   });
 
-  it('clears scope and current-node after complete', () => {
-    setScope(root, ['src/__tests__/']);
+  it('clears current-node after complete', () => {
     fs.writeFileSync(currentNodePath(root), 'test-change/snapshot', 'utf8');
 
     // Simulate clear
-    if (fs.existsSync(scopePath(root))) fs.unlinkSync(scopePath(root));
     if (fs.existsSync(currentNodePath(root))) fs.unlinkSync(currentNodePath(root));
 
-    expect(fs.existsSync(scopePath(root))).toBe(false);
     expect(fs.existsSync(currentNodePath(root))).toBe(false);
   });
 });

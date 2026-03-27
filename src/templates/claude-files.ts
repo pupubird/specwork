@@ -18,7 +18,6 @@ import { COMMANDS_SPECWORK_GO } from "./instructions/commands-specwork-go.js";
 import { COMMANDS_SPECWORK_PLAN } from "./instructions/commands-specwork-plan.js";
 import { COMMANDS_SPECWORK_STATUS } from "./instructions/commands-specwork-status.js";
 import { HOOKS_NODE_COMPLETE_SH } from "./instructions/hooks-node-complete-sh.js";
-import { HOOKS_SCOPE_GUARD_SH } from "./instructions/hooks-scope-guard-sh.js";
 import { HOOKS_SESSION_INIT_SH } from "./instructions/hooks-session-init-sh.js";
 import { HOOKS_TYPE_CHECK_SH } from "./instructions/hooks-type-check-sh.js";
 
@@ -40,7 +39,6 @@ export const CLAUDE_FILES: Record<string, string> = {
   ".claude/commands/specwork-plan.md": COMMANDS_SPECWORK_PLAN,
   ".claude/commands/specwork-status.md": COMMANDS_SPECWORK_STATUS,
   ".claude/hooks/node-complete.sh": HOOKS_NODE_COMPLETE_SH,
-  ".claude/hooks/scope-guard.sh": HOOKS_SCOPE_GUARD_SH,
   ".claude/hooks/session-init.sh": HOOKS_SESSION_INIT_SH,
   ".claude/hooks/type-check.sh": HOOKS_TYPE_CHECK_SH,
 };
@@ -52,12 +50,6 @@ export const CLAUDE_SETTINGS = {
       {
         matcher: "",
         hooks: [{ type: "command", command: ".claude/hooks/session-init.sh" }],
-      },
-    ],
-    PreToolUse: [
-      {
-        matcher: "Write|Edit",
-        hooks: [{ type: "command", command: ".claude/hooks/scope-guard.sh" }],
       },
     ],
     PostToolUse: [
@@ -339,7 +331,6 @@ nodes:
 `;
 
 // .specwork/.gitignore content
-export const SPECWORK_GITIGNORE = `.current-scope
-.current-node
+export const SPECWORK_GITIGNORE = `.current-node
 *.lock
 `;

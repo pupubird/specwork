@@ -52,10 +52,6 @@ export function graphPath(root: string, change: string): string {
   return path.join(root, '.specwork', 'graph', change, 'graph.yaml');
 }
 
-export function scopePath(root: string): string {
-  return path.join(root, '.specwork', '.current-scope');
-}
-
 export function currentNodePath(root: string): string {
   return path.join(root, '.specwork', '.current-node');
 }

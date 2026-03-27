@@ -70,7 +70,6 @@ describe('specwork init (enhanced / batteries-included)', () => {
     const gitignorePath = path.join(dir, '.specwork', '.gitignore');
     expect(fs.existsSync(gitignorePath)).toBe(true);
     const content = fs.readFileSync(gitignorePath, 'utf-8');
-    expect(content).toContain('.current-scope');
     expect(content).toContain('.current-node');
     expect(content).toContain('*.lock');
   });
@@ -127,7 +126,6 @@ describe('specwork init (enhanced / batteries-included)', () => {
     runSpecwork(dir, 'init');
     const hooks = [
       'node-complete.sh',
-      'scope-guard.sh',
       'session-init.sh',
       'type-check.sh',
     ];
@@ -148,7 +146,6 @@ describe('specwork init (enhanced / batteries-included)', () => {
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
     expect(settings.hooks).toBeDefined();
     expect(settings.hooks.SessionStart).toBeDefined();
-    expect(settings.hooks.PreToolUse).toBeDefined();
     expect(settings.hooks.PostToolUse).toBeDefined();
   });
 

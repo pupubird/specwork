@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 
-_A spec-driven workflow engine that keeps AI agents focused, scoped, and honest — from first test to final commit._
+*A spec-driven workflow engine that keeps AI agents focused, verified, and honest — from first test to final commit.*
 
 </div>
 
@@ -20,120 +20,222 @@ You ask your AI agent to add authentication to your API. It starts strong — wr
 
 You re-explain the goal. It apologizes. It drifts again.
 
-**The bigger the task, the worse this gets.** Context fades. Scope creeps. Tests get skipped "to save time." You end up doing more work managing the agent than you would have writing the code yourself.
+**The bigger the task, the worse this gets.** Context fades. Tests get skipped "to save time." You end up doing more work managing the agent than you would have writing the code yourself.
 
 This is the problem Specwork was built to solve.
 
 ---
 
-## What if the agent couldn't drift?
+## The core idea: a workflow engine for AI agents
 
-Specwork breaks your change into a graph of small, verifiable steps. At every step, the agent knows exactly what to do and exactly what "done" looks like.
-
-```
-  "Add JWT authentication to the API"
-                  │
-                  ▼
-    ┌─────────────────────────┐
-    │    specwork plan         │   You describe the change in plain English.
-    │                         │   Specwork creates specs, design, and tasks.
-    └────────────┬────────────┘
-                 ▼
-    ┌─────────────────────────┐
-    │    specwork go           │   The engine takes over:
-    │                         │
-    │    📸 snapshot           │   Captures project state
-    │    🔴 write tests       │   Tests first — they MUST fail
-    │    🟢 implement         │   Make tests pass, nothing more
-    │    ✅ verify            │   Type-check + test-pass every step
-    │    📦 commit            │   Atomic commits per node
-    └─────────────────────────┘
-```
-
-The agent never sees the full workflow. It gets one instruction at a time — with a reminder of the original goal baked into every step. It can't skip ahead. It can't wander off.
-
----
-
-## A real example
-
-Let's say you run:
-
-```bash
-specwork plan "Add rate limiting to the /api/upload endpoint"
-```
-
-Specwork creates a change proposal, then generates a graph like this:
+Specwork doesn't give the agent a plan and hope for the best. It runs a **state machine** — each unit of work is a node that transitions through a strict lifecycle. The agent never sees the full workflow. It receives one instruction at a time, embedded in the output of each CLI command.
 
 ```mermaid
-graph TD
-    S[snapshot<br/><i>capture project state</i>] --> T1[write-tests-1<br/><i>rate limit unit tests</i>]
-    S --> T2[write-tests-2<br/><i>integration tests</i>]
-    T1 --> I1[impl-1<br/><i>rate limiter module</i>]
-    T2 --> I2[impl-2<br/><i>middleware integration</i>]
-    I1 --> I2
-    I2 --> V[verify<br/><i>all tests pass, types check</i>]
+stateDiagram-v2
+    [*] --> pending
+    pending --> in_progress : start
+    pending --> skipped : upstream failed
 
-    style S fill:#374151,stroke:#9CA3AF,color:#F9FAFB
-    style T1 fill:#991B1B,stroke:#F87171,color:#FCA5A5
-    style T2 fill:#991B1B,stroke:#F87171,color:#FCA5A5
-    style I1 fill:#166534,stroke:#4ADE80,color:#BBF7D0
-    style I2 fill:#166534,stroke:#4ADE80,color:#BBF7D0
-    style V fill:#1E40AF,stroke:#60A5FA,color:#BFDBFE
+    in_progress --> complete : verify passes
+    in_progress --> failed : verify fails
+
+    failed --> in_progress : retry (auto)
+    failed --> escalated : retries exhausted
+
+    escalated --> in_progress : manual retry
+
+    complete --> [*]
+    skipped --> [*]
+    escalated --> [*]
 ```
 
-Each node has:
-
-- **Validation rules** — what must be true when it's done
-- **Context tier** — just enough info from previous nodes, never a full dump
-
-Now run `specwork go add-rate-limiting` and watch it execute — node by node, test-first, verified.
+Every transition produces a **`next_action`** — a concrete instruction telling the agent exactly what to do next. The agent doesn't plan. It doesn't improvise. It follows `next_action`.
 
 ---
 
-## Three things that make it work
+## How `next_action` drives everything
 
-### 1. Gradual reveal — one step at a time
+When the agent runs any `specwork` command, the JSON response includes a `next_action` field. This is the engine's steering wheel. The agent reads it, executes it, and the cycle repeats.
 
-Instead of front-loading a 500-line instruction manual (which the agent will forget by step 3), Specwork feeds the next instruction embedded in each CLI response:
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   Agent runs command  ──►  Engine returns next_action            │
+│          ▲                          │                            │
+│          │                          ▼                            │
+│          └────────  Agent executes next_action                   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Here's what that looks like in practice. The agent runs `specwork go`:
 
 ```json
 {
   "status": "ready",
+  "ready": ["write-tests", "impl-types"],
+  "progress": { "complete": 1, "total": 6, "failed": 0 },
   "next_action": {
     "command": "team:spawn",
-    "description": "Spawn teammates for ready nodes",
-    "context": "Add rate limiting to /api/upload"
+    "description": "Spawn one teammate per ready node: write-tests, impl-types",
+    "context": "Add JWT authentication to the API"
   }
 }
 ```
 
-The agent doesn't need to remember the full plan. It follows `next_action`. That's it.
+The agent doesn't need memory of the overall plan. It reads `command`, sees `"team:spawn"`, spawns the teammates. Done. When a teammate finishes, it runs verify:
 
-### 2. Context reinforcement — the goal never fades
-
-Every `next_action` carries a `context` field pulled from your original description. At every state transition, the agent is reminded _why_ it's doing what it's doing. No more "wait, what was I building again?"
-
-### 3. Progressive context — no information overload
-
-```mermaid
-graph LR
-    subgraph "What each subagent sees"
-        A["L0 — All nodes<br/><b>~10 tokens each</b><br/>One-line headline"]
-        B["L1 — Parent nodes<br/><b>~100 tokens each</b><br/>Files, exports, decisions"]
-        C["L2 — On demand<br/><b>~1000+ tokens</b><br/>Full diff + output"]
-    end
-
-    A -->|always loaded| Agent((Agent))
-    B -->|direct deps only| Agent
-    C -->|EXPAND request| Agent
-
-    style A fill:#374151,stroke:#9CA3AF,color:#F9FAFB
-    style B fill:#1E3A5F,stroke:#60A5FA,color:#BFDBFE
-    style C fill:#3B1F6E,stroke:#A78BFA,color:#DDD6FE
-    style Agent fill:#92400E,stroke:#FBBF24,color:#FEF3C7
+```json
+{
+  "verdict": "PASS",
+  "next_action": {
+    "command": "subagent:spawn",
+    "description": "Spawn summarizer to write L0/L1/L2 context, then complete the node.",
+    "on_pass": "specwork node complete add-jwt-auth impl-types",
+    "on_fail": "specwork node fail add-jwt-auth impl-types --reason '<error>'"
+  }
+}
 ```
 
-Subagents get exactly what they need. Not a conversation dump. Not "here's everything that happened." Just the relevant facts, at the right granularity. If they need more, they ask with `EXPAND(node-id)` — once.
+And when verification fails:
+
+```json
+{
+  "verdict": "FAIL",
+  "checks": [
+    { "type": "tests-pass", "status": "FAIL", "detail": "3 of 12 tests failing" }
+  ],
+  "next_action": {
+    "command": "subagent:respawn",
+    "description": "1 retry remaining. Re-spawn with failure feedback.",
+    "context": "Add JWT authentication to the API"
+  }
+}
+```
+
+Notice: every response carries `context` — the original goal, pulled from your description. At every state transition, the agent is reminded *why* it's doing what it's doing. The goal never fades.
+
+---
+
+## The node lifecycle
+
+Every node — whether it's writing tests, implementing code, or running a shell command — follows the same lifecycle:
+
+```mermaid
+sequenceDiagram
+    participant E as Engine
+    participant A as Agent
+    participant V as Verifier
+    participant S as Summarizer
+
+    E->>A: next_action: start node<br/>(with assembled context)
+    A->>A: Execute work
+    A->>E: Done (or failed)
+    E->>V: next_action: verify<br/>(agent never grades itself)
+    V->>E: PASS / FAIL
+
+    alt PASS
+        E->>S: next_action: summarize<br/>(write L0/L1/L2 context)
+        S->>E: Context artifacts written
+        E->>E: Mark complete ✅
+        E->>A: next_action: run specwork go<br/>(find next ready nodes)
+    else FAIL (retries left)
+        E->>A: next_action: respawn<br/>(with failure feedback injected)
+    else FAIL (exhausted)
+        E->>E: Escalate to user<br/>(with actionable suggestions)
+    end
+```
+
+Two critical rules:
+
+1. **The implementer never grades its own homework.** After every node, a separate verifier agent checks the work — type errors, test results, file existence.
+2. **Tests before implementation.** The `write-tests` node always runs first. Tests must fail (red state) before any implementation begins.
+
+---
+
+## Progressive context: how nodes share knowledge
+
+When a subagent starts working on a node, it doesn't receive the full conversation history. It gets exactly what it needs — through a three-tier context system:
+
+```mermaid
+graph TB
+    subgraph "Context assembled for each node"
+        L0["<b>L0 — All completed nodes</b><br/>~10 tokens each<br/><i>snapshot: complete, 47 files indexed</i><br/><i>write-tests: complete, 23 tests (all red)</i><br/><i>impl-types: complete, 2 interfaces exported</i>"]
+        L1["<b>L1 — Direct parent nodes only</b><br/>~100 tokens each<br/><i>Files modified, exports added,</i><br/><i>key decisions, test results</i>"]
+        L2["<b>L2 — On demand (EXPAND)</b><br/>~1000+ tokens<br/><i>Full git diff + verification output</i><br/><i>+ complete subagent output</i>"]
+    end
+
+    L0 -->|always included| Bundle((Context<br/>Bundle))
+    L1 -->|parent deps only| Bundle
+    L2 -.->|"agent outputs EXPAND(node-id)"| Bundle
+
+    style L0 fill:#374151,stroke:#9CA3AF,color:#F9FAFB
+    style L1 fill:#1E3A5F,stroke:#60A5FA,color:#BFDBFE
+    style L2 fill:#3B1F6E,stroke:#A78BFA,color:#DDD6FE
+    style Bundle fill:#92400E,stroke:#FBBF24,color:#FEF3C7
+```
+
+**Why this matters:** A 10-node workflow could easily consume 50K+ tokens of context if you dump everything. With L0/L1/L2, the same workflow uses ~2K tokens per node — and the agent can pull in L2 for a specific node if it genuinely needs the full details.
+
+Here's what the assembled context looks like when `impl-service` starts:
+
+```
+## Completed Nodes (L0)
+- snapshot: complete, 47 files indexed
+- write-tests: complete, 23 tests written (all red)
+- impl-types: complete, 2 interfaces exported
+
+## Parent Context (L1)
+
+### write-tests
+Files: src/__tests__/auth.test.ts
+Tests: 0/23 passing (all red as expected)
+
+### impl-types
+Files: src/types/auth.ts
+Exports: JwtPayload, AuthConfig
+Decision: Used discriminated union for token types
+
+## Your Task
+Implement the auth service. Make all tests in auth.test.ts pass.
+```
+
+The subagent knows what exists, what was decided, and what to build — without wading through thousands of lines of diff output.
+
+---
+
+## Walking the graph
+
+Specwork models your change as a DAG (directed acyclic graph). The engine walks it automatically — finding nodes whose dependencies are all complete, spawning agents in parallel when possible.
+
+```mermaid
+graph TD
+    S["snapshot<br/><small>deterministic</small>"]:::done --> T["write-tests<br/><small>opus</small>"]:::done
+    T --> I1["impl-types<br/><small>sonnet</small>"]:::active
+    T --> I2["impl-service<br/><small>sonnet</small>"]:::blocked
+    I1 --> I2
+    I2 --> I3["impl-middleware<br/><small>sonnet</small>"]:::pending
+    I3 --> V["verify-all<br/><small>haiku</small>"]:::pending
+
+    classDef done fill:#166534,stroke:#4ADE80,color:#BBF7D0
+    classDef active fill:#1E40AF,stroke:#60A5FA,color:#BFDBFE
+    classDef blocked fill:#374151,stroke:#6B7280,color:#9CA3AF
+    classDef pending fill:#374151,stroke:#9CA3AF,color:#D1D5DB
+```
+
+```
+specwork go add-jwt-auth --json
+```
+
+The engine scans all nodes:
+- **`snapshot`**, **`write-tests`** — complete, skip
+- **`impl-types`** — in progress, wait
+- **`impl-service`** — pending, but `impl-types` isn't done yet — **blocked**
+- **`impl-middleware`**, **`verify-all`** — deeper in the graph — **blocked**
+
+Response: `"status": "waiting"` with `next_action: "wait"`. When `impl-types` completes, the next `specwork go` call finds `impl-service` ready and spawns it.
+
+If a node fails and exhausts its retries, the engine **cascades skip** — all downstream nodes that depend on the failed node are marked `skipped`, so the agent doesn't waste time on work that can't succeed.
 
 ---
 
@@ -165,31 +267,6 @@ Or use Claude Code slash commands:
 /specwork-go add-jwt-authentication
 /specwork-status
 ```
-
-> **Note:** Specwork currently requires Claude Code with Agent Teams support. It uses `TeamCreate`/`TeamDelete`, subagent spawning, hooks, and skills — all Claude Code primitives.
-
----
-
-## What happens when things fail
-
-```mermaid
-flowchart TD
-    F[Node fails] --> R{Retries left?}
-    R -->|Yes| RE[Re-spawn agent<br/>with error context]
-    RE --> V{Passes now?}
-    V -->|Yes| D[Mark complete ✅]
-    V -->|No| R
-    R -->|No| ESC[Escalate to user<br/>with actionable suggestions]
-
-    style F fill:#991B1B,stroke:#F87171,color:#FCA5A5
-    style D fill:#166534,stroke:#4ADE80,color:#BBF7D0
-    style ESC fill:#92400E,stroke:#FBBF24,color:#FEF3C7
-    style RE fill:#1E3A5F,stroke:#60A5FA,color:#BFDBFE
-    style V fill:#374151,stroke:#9CA3AF,color:#F9FAFB
-    style R fill:#374151,stroke:#9CA3AF,color:#F9FAFB
-```
-
-Every failure path has a `next_action`. The agent never spirals. It either fixes the problem or hands it to you with context about what went wrong and what to try.
 
 ---
 
@@ -225,7 +302,7 @@ All commands support `--json` for machine-readable output with `next_action` gui
 ├── changes/                 # In-flight changes (proposal + specs + design + tasks)
 │   └── <change-name>/
 ├── graph/<change>/
-│   ├── graph.yaml           # Node DAG (dependencies, scope, validation)
+│   ├── graph.yaml           # Node DAG (dependencies, validation rules)
 │   └── state.yaml           # Runtime state (status per node)
 ├── nodes/<change>/          # Per-node artifacts (L0/L1/L2, verify output)
 └── templates/               # Starter templates for proposals, specs, design, tasks
@@ -251,6 +328,12 @@ All commands support `--json` for machine-readable output with `next_action` gui
 - **`deterministic`** — Runs a shell command. Captures stdout/stderr, validates exit code.
 - **`llm`** — Spawns a subagent with validation rules.
 - **`human`** — Pauses execution for manual approval.
+
+### State machine
+
+Every node tracks: `status`, `retries`, `verified`, `l0` (headline), `start_sha` (git ref), and a full `verify_history` with regression detection.
+
+Terminal states: `complete`, `skipped`, `rejected`. Retryable: `failed` → `in_progress`. Escalatable: `escalated` → `in_progress` (manual).
 
 </details>
 

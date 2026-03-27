@@ -1,6 +1,6 @@
 {
   "name": "specwork",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Spec-driven, test-first, graph-based workflow engine for Claude Code",
   "type": "module",
   "bin": { "specwork": "./dist/index.js" },

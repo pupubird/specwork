@@ -4,9 +4,11 @@ import type { MigrationEntry, MigrationResult } from '../types/migration.js';
 // Each migration is explicitly imported and registered here.
 // The postversion script auto-appends new entries.
 
+import { migrate as migrate_0_1_1, description as desc_0_1_1 } from './0.1.1.js';
 import { migrate as migrate_0_2_0, description as desc_0_2_0 } from './0.2.0.js';
 
 export const migrations: MigrationEntry[] = [
+  { version: '0.1.1', description: desc_0_1_1, migrate: migrate_0_1_1 },
   { version: '0.2.0', description: desc_0_2_0, migrate: migrate_0_2_0 },
 ];
 

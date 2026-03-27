@@ -31,6 +31,7 @@ export function makeUpdateCommand(): Command {
           newVersion: result.newVersion,
           backupPath: result.backupPath,
           dryRun: result.dryRun,
+          migrationsRun: result.migrationsRun,
         }, { json: true, quiet: quietMode });
         return;
       }
@@ -95,6 +96,9 @@ export function makeUpdateCommand(): Command {
       }
       if (result.deprecated.length > 0) {
         warn(`  Deprecated config fields: ${result.deprecated.join(', ')}`);
+      }
+      if (result.migrationsRun.length > 0) {
+        info(`  Migrations executed: ${result.migrationsRun.join(', ')}`);
       }
 
       // Auto-run doctor

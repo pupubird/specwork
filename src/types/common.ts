@@ -37,4 +37,5 @@ export interface UpdateResult {
   deprecated: string[];
   backupPath: string | null;
   dryRun: boolean;
+  migrationsRun: string[];
 }

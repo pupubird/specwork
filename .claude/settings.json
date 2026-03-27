@@ -7,13 +7,6 @@
         "command": ".claude/hooks/session-init.sh"
       }]
     }],
-    "PreToolUse": [{
-      "matcher": "Write|Edit",
-      "hooks": [{
-        "type": "command",
-        "command": ".claude/hooks/scope-guard.sh"
-      }]
-    }],
     "PostToolUse": [{
       "matcher": "Write|Edit",
       "hooks": [{

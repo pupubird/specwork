@@ -12,6 +12,7 @@ import type { FileClassification, UpdateResult } from '../types/common.js';
 import type { SpecworkConfig } from '../types/config.js';
 import { CLAUDE_FILES, CLAUDE_SETTINGS, SCHEMA_YAML, EXAMPLE_GRAPH, SPECWORK_GITIGNORE } from '../templates/claude-files.js';
 import { DEFAULT_CONFIG, TEMPLATES } from '../cli/init.js';
+import { getPendingMigrations, runMigrations } from '../migrations/index.js';
 
 // ── Version helper ──────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export interface ManifestData {
   specwork_version: string;
   generated_at: string;
   files: Record<string, string>;
+  migrations_applied?: string[];
 }
 
 export function generateManifest(_root: string, files: Record<string, string>): Record<string, string> {
@@ -60,13 +62,14 @@ export function loadManifest(root: string): ManifestData | null {
   return parseYaml<ManifestData>(content, manifestPath);
 }
 
-export function writeManifest(root: string, manifest: { specwork_version: string; files: Record<string, string> }): void {
+export function writeManifest(root: string, manifest: { specwork_version: string; files: Record<string, string>; migrations_applied?: string[] }): void {
   const manifestPath = path.join(root, '.specwork', 'manifest.yaml');
   ensureDir(path.dirname(manifestPath));
   const data: ManifestData = {
     specwork_version: manifest.specwork_version,
     generated_at: new Date().toISOString(),
     files: manifest.files,
+    migrations_applied: manifest.migrations_applied,
   };
   fs.writeFileSync(manifestPath, stringifyYaml(data), 'utf-8');
 }
@@ -225,9 +228,15 @@ export function runUpdate(
   const manifestFiles = manifestData?.files ?? null;
   const classifications = classifyFiles(manifestFiles, Object.keys(managedFiles), root);
 
-  // Already up to date: versions match, manifest exists, no files have drifted
+  // Determine pending migrations
+  const appliedMigrations = manifestData?.migrations_applied ?? [];
+  const pendingMigrations = previousVersion
+    ? getPendingMigrations(previousVersion, installedVersion, appliedMigrations)
+    : [];
+
+  // Already up to date: versions match, manifest exists, no files have drifted, no pending migrations
   const hasDrift = classifications.some((f) => f.status !== 'unmodified');
-  if (previousVersion === installedVersion && manifestFiles && !hasDrift && !opts.force) {
+  if (previousVersion === installedVersion && manifestFiles && !hasDrift && pendingMigrations.length === 0 && !opts.force) {
     return {
       previousVersion,
       newVersion: installedVersion,
@@ -237,6 +246,7 @@ export function runUpdate(
       deprecated: [],
       backupPath: null,
       dryRun: opts.dryRun ?? false,
+      migrationsRun: [],
     };
   }
 
@@ -257,6 +267,7 @@ export function runUpdate(
       deprecated: configMerge.deprecated,
       backupPath: previousVersion ? path.join('.specwork', 'backups', previousVersion) : null,
       dryRun: true,
+      migrationsRun: pendingMigrations.map((m) => m.version),
     };
   }
 
@@ -268,6 +279,19 @@ export function runUpdate(
   const backupPath = backedUpFiles.length > 0
     ? path.join('.specwork', 'backups', previousVersion ?? 'unknown')
     : null;
+
+  // Run migrations (after backup, before file overwrite)
+  const migrationResult = runMigrations(
+    root,
+    configMerge.merged as Record<string, unknown>,
+    pendingMigrations,
+  );
+  if (migrationResult.error) {
+    throw new SpecworkError(
+      `Migration ${migrationResult.error.version} failed: ${migrationResult.error.message}`,
+      ExitCode.ERROR,
+    );
+  }
 
   // Write all managed files
   let filesUpdated = 0;
@@ -286,10 +310,15 @@ export function runUpdate(
   mergedConfig.specwork_version = installedVersion;
   fs.writeFileSync(configPath, stringifyYaml(mergedConfig), 'utf-8');
 
-  // Generate and write new manifest
+  // Generate and write new manifest (with migrations_applied)
   const newManifestFiles = generateManifest(root, managedFiles);
   newManifestFiles['.specwork/config.yaml'] = computeFileChecksum(configPath);
-  writeManifest(root, { specwork_version: installedVersion, files: newManifestFiles });
+  const allApplied = [...appliedMigrations, ...migrationResult.executed];
+  writeManifest(root, {
+    specwork_version: installedVersion,
+    files: newManifestFiles,
+    migrations_applied: allApplied.length > 0 ? allApplied : undefined,
+  });
 
   return {
     previousVersion,
@@ -300,5 +329,6 @@ export function runUpdate(
     deprecated: configMerge.deprecated,
     backupPath,
     dryRun: false,
+    migrationsRun: migrationResult.executed,
   };
 }

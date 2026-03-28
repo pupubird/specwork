@@ -29,6 +29,7 @@ export interface GraphNode {
   scope: string[];
   validate: ValidationRule[];
   prompt?: string;
+  specs?: string[];
   command?: string;
   gate?: 'human';
   model?: string;

@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add `StructuredL1` interface to `src/types/context.ts`: `{ decisions: string[], contracts: string[], enables: string[], changed: string[] }`
 - [ ] 1.2 Add `MicroSpecBundle` interface to `src/types/context.ts`: `{ objective, specScenarios, parentDecisions, outOfScope, relevantFiles, successCriteria }`
-- [ ] 1.3 Add optional `specs?: string[]` field to `GraphNode` in `src/types/graph.ts`
+- [x] 1.3 Add optional `specs?: string[]` field to `GraphNode` in `src/types/graph.ts`
 
 ## 2. Graph Walker Extension
 
@@ -20,7 +20,7 @@
 
 - [x] 5.1 Implement `getStructuredL1(root, change, nodeId): StructuredL1 | null` in `src/core/context-assembler.ts` — reads `L1-structured.json`, returns null if absent
 - [ ] 5.2 Implement `writeStructuredL1(root, change, nodeId, data: StructuredL1): void` in `src/core/summarizer.ts` (new module) — writes `L1-structured.json` to node artifact dir
-- [ ] 5.3 Add `expandValidate(rules: ValidationRule[]): string[]` in `src/core/context-assembler.ts` — maps each rule type to human-readable success criterion text
+- [x] 5.3 Add `expandValidate(rules: ValidationRule[]): string[]` in `src/core/context-assembler.ts` — maps each rule type to human-readable success criterion text
 
 ## 6. Micro-Spec Composer
 
@@ -33,8 +33,8 @@
 
 ## 8. Tests
 
-- [ ] 8.1 Add unit tests for `getSiblings` in `src/__tests__/core/graph-walker.test.ts` — cover shared parent, no siblings, ancestor exclusion, diamond graph
+- [x] 8.1 Add unit tests for `getSiblings` in `src/__tests__/core/graph-walker.test.ts` — cover shared parent, no siblings, ancestor exclusion, diamond graph
 - [ ] 8.2 Add unit tests for `filterSnapshot` in `src/__tests__/core/context-assembler.test.ts` — cover scope match, empty scope, multi-glob, non-tree preservation, empty result
-- [ ] 8.3 Add unit tests for `sliceSpecs` in `src/__tests__/core/context-assembler.test.ts` — cover single scenario, full file, multiple refs, missing file, missing anchor
+- [x] 8.3 Add unit tests for `sliceSpecs` in `src/__tests__/core/context-assembler.test.ts` — cover single scenario, full file, multiple refs, missing file, missing anchor
 - [ ] 8.4 Add unit tests for `getStructuredL1` and `expandValidate` in `src/__tests__/core/context-assembler.test.ts`
-- [ ] 8.5 Add unit tests for `composeMicroSpec` in `src/__tests__/core/context-assembler.test.ts` — cover full composition, missing optional data, backward compat with no specs/scope/structured-L1
+- [x] 8.5 Add unit tests for `composeMicroSpec` in `src/__tests__/core/context-assembler.test.ts` — cover full composition, missing optional data, backward compat with no specs/scope/structured-L1

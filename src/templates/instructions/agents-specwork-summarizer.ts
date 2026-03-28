@@ -31,6 +31,26 @@ Concatenate:
 
 This is raw artifacts — no summarization needed.
 
+## L1-structured.json (write to .specwork/nodes/[change]/[node]/L1-structured.json)
+Machine-readable version of L1, written alongside L1.md. Format:
+
+\`\`\`json
+{
+  "decisions": ["Used discriminated union for Token types"],
+  "contracts": ["Exports: JwtPayload, AuthConfig from src/types/auth.ts"],
+  "enables": ["Downstream can pattern-match on Token.type"],
+  "changed": ["src/types/auth.ts"]
+}
+\`\`\`
+
+Fields:
+- \`decisions\` — Key choices/tradeoffs made (becomes constraints for downstream nodes)
+- \`contracts\` — Exports, APIs, schemas created (becomes interface contracts for downstream)
+- \`enables\` — What downstream nodes can now do (hints)
+- \`changed\` — Files modified
+
+All fields are arrays of strings. Keep each string concise (one fact per entry).
+
 ## Note on \`specwork node complete\`
 The lead engine calls \`specwork node complete <change> <node-id>\` after you finish. This CLI command auto-commits the node's changes with \`git add -A && git commit -m "specwork: complete <node-id>"\`. You do not need to handle commits — just write the L0/L1/L2 files.
 `;

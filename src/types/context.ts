@@ -15,6 +15,15 @@ export interface StructuredL1 {
   changed: string[];
 }
 
+export interface MicroSpecBundle {
+  objective: string;
+  specScenarios: string;
+  parentDecisions: string[];
+  outOfScope: string[];
+  relevantFiles: string[];
+  successCriteria: string[];
+}
+
 export interface ContextBundle {
   snapshot: string;
   l0: L0Entry[];

@@ -1,24 +1,24 @@
 ## 1. Types and Interfaces
 
-- [ ] 1.1 Add `StructuredL1` interface to `src/types/context.ts`: `{ decisions: string[], contracts: string[], enables: string[], changed: string[] }`
+- [x] 1.1 Add `StructuredL1` interface to `src/types/context.ts`: `{ decisions: string[], contracts: string[], enables: string[], changed: string[] }`
 - [ ] 1.2 Add `MicroSpecBundle` interface to `src/types/context.ts`: `{ objective, specScenarios, parentDecisions, outOfScope, relevantFiles, successCriteria }`
 - [ ] 1.3 Add optional `specs?: string[]` field to `GraphNode` in `src/types/graph.ts`
 
 ## 2. Graph Walker Extension
 
-- [ ] 2.1 Implement `getSiblings(graph, nodeId): string[]` in `src/core/graph-walker.ts` — returns nodes sharing ≥1 common parent, excluding self and ancestors
+- [x] 2.1 Implement `getSiblings(graph, nodeId): string[]` in `src/core/graph-walker.ts` — returns nodes sharing ≥1 common parent, excluding self and ancestors
 
 ## 3. Spec Slicing
 
-- [ ] 3.1 Implement `sliceSpecs(root, change, refs): string` in `src/core/context-assembler.ts` — resolves `"file.md#ScenarioName"` references, returns concatenated scenario blocks with warning comments for missing refs
+- [x] 3.1 Implement `sliceSpecs(root, change, refs): string` in `src/core/context-assembler.ts` — resolves `"file.md#ScenarioName"` references, returns concatenated scenario blocks with warning comments for missing refs
 
 ## 4. Snapshot Filtering
 
-- [ ] 4.1 Implement `filterSnapshot(snapshot, scope): string` in `src/core/context-assembler.ts` — parses snapshot markdown, filters file-tree lines by scope globs using minimatch, preserves non-tree sections
+- [x] 4.1 Implement `filterSnapshot(snapshot, scope): string` in `src/core/context-assembler.ts` — parses snapshot markdown, filters file-tree lines by scope globs using minimatch, preserves non-tree sections
 
 ## 5. Structured L1 Read/Write
 
-- [ ] 5.1 Implement `getStructuredL1(root, change, nodeId): StructuredL1 | null` in `src/core/context-assembler.ts` — reads `L1-structured.json`, returns null if absent
+- [x] 5.1 Implement `getStructuredL1(root, change, nodeId): StructuredL1 | null` in `src/core/context-assembler.ts` — reads `L1-structured.json`, returns null if absent
 - [ ] 5.2 Implement `writeStructuredL1(root, change, nodeId, data: StructuredL1): void` in `src/core/summarizer.ts` (new module) — writes `L1-structured.json` to node artifact dir
 - [ ] 5.3 Add `expandValidate(rules: ValidationRule[]): string[]` in `src/core/context-assembler.ts` — maps each rule type to human-readable success criterion text
 
@@ -28,7 +28,7 @@
 
 ## 7. Summarizer Agent Update
 
-- [ ] 7.1 Update `.claude/agents/specwork-summarizer.md` to include instructions for writing `L1-structured.json` with `decisions`, `contracts`, `enables`, and `changed` arrays
+- [x] 7.1 Update `.claude/agents/specwork-summarizer.md` to include instructions for writing `L1-structured.json` with `decisions`, `contracts`, `enables`, and `changed` arrays
 - [ ] 7.2 Update `src/templates/instructions/agents-specwork-summarizer.ts` to mirror the updated agent definition
 
 ## 8. Tests

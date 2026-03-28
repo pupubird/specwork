@@ -97,6 +97,37 @@ export function detectCycles(graph: Graph): string[][] {
   return cycles;
 }
 
+export function getSiblings(graph: Graph, nodeId: string): string[] {
+  const node = graph.nodes.find(n => n.id === nodeId);
+  if (!node) throw new NodeNotFoundError(nodeId);
+
+  // Collect all ancestors (transitive parents) of nodeId
+  const ancestors = new Set<string>();
+  function collectAncestors(id: string): void {
+    const n = graph.nodes.find(n => n.id === id);
+    if (!n) return;
+    for (const dep of n.deps) {
+      if (!ancestors.has(dep)) {
+        ancestors.add(dep);
+        collectAncestors(dep);
+      }
+    }
+  }
+  collectAncestors(nodeId);
+
+  // For each parent of nodeId, find all nodes sharing that parent
+  const result = new Set<string>();
+  for (const parentId of node.deps) {
+    for (const candidate of graph.nodes) {
+      if (candidate.id !== nodeId && candidate.deps.includes(parentId) && !ancestors.has(candidate.id)) {
+        result.add(candidate.id);
+      }
+    }
+  }
+
+  return [...result];
+}
+
 export function topologicalSort(graph: Graph): string[] {
   const cycles = detectCycles(graph);
   if (cycles.length > 0) {

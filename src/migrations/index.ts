@@ -6,11 +6,13 @@ import type { MigrationEntry, MigrationResult } from '../types/migration.js';
 
 import { migrate as migrate_0_1_1, description as desc_0_1_1 } from './0.1.1.js';
 import { migrate as migrate_0_1_2, description as desc_0_1_2 } from './0.1.2.js';
+import { migrate as migrate_0_1_3, description as desc_0_1_3 } from './0.1.3.js';
 import { migrate as migrate_0_2_0, description as desc_0_2_0 } from './0.2.0.js';
 
 export const migrations: MigrationEntry[] = [
   { version: '0.1.1', description: desc_0_1_1, migrate: migrate_0_1_1 },
   { version: '0.1.2', description: desc_0_1_2, migrate: migrate_0_1_2 },
+  { version: '0.1.3', description: desc_0_1_3, migrate: migrate_0_1_3 },
   { version: '0.2.0', description: desc_0_2_0, migrate: migrate_0_2_0 },
 ];
 

@@ -8,6 +8,13 @@ export interface L1Entry {
   content: string;
 }
 
+export interface StructuredL1 {
+  decisions: string[];
+  contracts: string[];
+  enables: string[];
+  changed: string[];
+}
+
 export interface ContextBundle {
   snapshot: string;
   l0: L0Entry[];

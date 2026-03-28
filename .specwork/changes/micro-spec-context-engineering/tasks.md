@@ -24,7 +24,7 @@
 
 ## 6. Micro-Spec Composer
 
-- [ ] 6.1 Implement `composeMicroSpec(root, change, nodeId): string` in `src/core/context-assembler.ts` — orchestrates all prior functions into a rendered micro-spec document, omitting empty sections
+- [x] 6.1 Implement `composeMicroSpec(root, change, nodeId): string` in `src/core/context-assembler.ts` — orchestrates all prior functions into a rendered micro-spec document, omitting empty sections
 
 ## 7. Summarizer Agent Update
 

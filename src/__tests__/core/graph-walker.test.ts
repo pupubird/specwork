@@ -7,6 +7,7 @@ import {
   getDescendants,
   detectCycles,
   getNode,
+  getSiblings,
 } from '../../core/graph-walker.js';
 import { initializeState, transitionNode } from '../../core/state-machine.js';
 import type { Graph } from '../../types/graph.js';
@@ -341,5 +342,72 @@ describe('topologicalSort', () => {
     const order = topologicalSort(graph);
     expect(order).toHaveLength(graph.nodes.length);
     expect(order.sort()).toEqual(graph.nodes.map(n => n.id).sort());
+  });
+});
+
+// ── getSiblings ──────────────────────────────────────────────────────────────
+
+describe('getSiblings', () => {
+  it('returns nodes sharing a common parent, excluding self', () => {
+    const graph = diamondGraph();
+    // impl-a and impl-b both depend on snapshot
+    const siblings = getSiblings(graph, 'impl-a');
+    expect(siblings).toContain('impl-b');
+    expect(siblings).not.toContain('impl-a');
+  });
+
+  it('returns empty array when no siblings exist', () => {
+    const graph = linearGraph();
+    // write-tests is the only child of snapshot
+    const siblings = getSiblings(graph, 'write-tests');
+    expect(siblings).toEqual([]);
+  });
+
+  it('excludes ancestors from siblings', () => {
+    const graph = diamondGraph();
+    // snapshot is the parent, not a sibling
+    const siblings = getSiblings(graph, 'impl-a');
+    expect(siblings).not.toContain('snapshot');
+  });
+
+  it('returns empty array for root node with no parents', () => {
+    const graph = linearGraph();
+    const siblings = getSiblings(graph, 'snapshot');
+    expect(siblings).toEqual([]);
+  });
+
+  it('works with diamond graphs — integration node siblings', () => {
+    // Build a graph where two nodes share the same two parents
+    const graph: Graph = {
+      change: 'multi-parent',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        { id: 'root', type: 'deterministic', description: 'root', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
+        { id: 'a', type: 'llm', description: 'a', agent: 'specwork-implementer', deps: ['root'], inputs: [], outputs: [], scope: [], validate: [] },
+        { id: 'b', type: 'llm', description: 'b', agent: 'specwork-implementer', deps: ['root'], inputs: [], outputs: [], scope: [], validate: [] },
+        { id: 'c', type: 'llm', description: 'c', agent: 'specwork-implementer', deps: ['root'], inputs: [], outputs: [], scope: [], validate: [] },
+      ],
+    };
+    const siblings = getSiblings(graph, 'a');
+    expect(siblings.sort()).toEqual(['b', 'c'].sort());
+    expect(siblings).not.toContain('root');
+  });
+
+  it('does not return duplicates when sharing multiple parents', () => {
+    const graph: Graph = {
+      change: 'shared-parents',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        { id: 'p1', type: 'deterministic', description: 'p1', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
+        { id: 'p2', type: 'deterministic', description: 'p2', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
+        { id: 'child-a', type: 'llm', description: 'a', agent: 'specwork-implementer', deps: ['p1', 'p2'], inputs: [], outputs: [], scope: [], validate: [] },
+        { id: 'child-b', type: 'llm', description: 'b', agent: 'specwork-implementer', deps: ['p1', 'p2'], inputs: [], outputs: [], scope: [], validate: [] },
+      ],
+    };
+    const siblings = getSiblings(graph, 'child-a');
+    // child-b shares both p1 and p2, but should appear only once
+    expect(siblings).toEqual(['child-b']);
   });
 });

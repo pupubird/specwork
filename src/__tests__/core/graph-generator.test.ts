@@ -260,7 +260,7 @@ describe('edge cases', () => {
     });
 
     const graph = generateGraph(root, 'test');
-    // Should have snapshot, write-tests, integration (no impl nodes)
-    expect(graph.nodes).toHaveLength(3);
+    // Should have write-tests, integration (no impl nodes)
+    expect(graph.nodes).toHaveLength(2);
   });
 });

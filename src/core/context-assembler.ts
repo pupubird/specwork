@@ -1,8 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { minimatch } from 'minimatch';
 import { readYaml, readMarkdown } from '../io/filesystem.js';
-import { graphPath, statePath, nodeDir, snapshotPath } from '../utils/paths.js';
+import { graphPath, statePath, nodeDir } from '../utils/paths.js';
 import { getParents } from './graph-walker.js';
 import { debug } from '../utils/logger.js';
 import type { Graph, ValidationRule } from '../types/graph.js';
@@ -136,9 +135,6 @@ export function assembleContext(
     }
   }
 
-  // Snapshot
-  const snapshot = readMarkdown(snapshotPath(root));
-
   // Node inputs (files listed in graph node's inputs array)
   const graphNode = graph.nodes.find(n => n.id === nodeId);
   const inputs: Record<string, string> = {};
@@ -154,15 +150,11 @@ export function assembleContext(
   // Node prompt
   const prompt = graphNode?.prompt ?? '';
 
-  return { snapshot, l0, l1, inputs, prompt };
+  return { l0, l1, inputs, prompt };
 }
 
 export function renderContext(bundle: ContextBundle): string {
   const sections: string[] = [];
-
-  if (bundle.snapshot) {
-    sections.push('## Environment Snapshot\n\n' + bundle.snapshot);
-  }
 
   if (bundle.l0.length > 0) {
     const headlines = bundle.l0.map(e => `- **${e.nodeId}**: ${e.headline}`).join('\n');
@@ -188,59 +180,6 @@ export function renderContext(bundle: ContextBundle): string {
   }
 
   return sections.join('\n\n---\n\n');
-}
-
-export function filterSnapshot(snapshot: string, scope: string[]): string {
-  if (scope.length === 0) return snapshot;
-
-  const lines = snapshot.split('\n');
-  const result: string[] = [];
-  let inFileTree = false;
-  let treeLines: string[] = [];
-  let treeSectionHeaderIdx = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('## File Tree')) {
-      inFileTree = true;
-      treeSectionHeaderIdx = result.length;
-      result.push(line); // placeholder, may be removed
-      continue;
-    }
-    if (inFileTree && line.startsWith('## ')) {
-      inFileTree = false;
-      // Emit filtered tree lines before this section
-      const matched = treeLines.filter(l => l === '' || scope.some(g => minimatch(l, g)));
-      const nonEmpty = matched.filter(l => l !== '');
-      if (nonEmpty.length === 0) {
-        // Remove the ## File Tree header we added and skip tree lines
-        result.splice(treeSectionHeaderIdx, 1);
-      } else {
-        for (const tl of matched) result.push(tl);
-      }
-      treeLines = [];
-      result.push(line);
-      continue;
-    }
-    if (inFileTree) {
-      treeLines.push(line);
-    } else {
-      result.push(line);
-    }
-  }
-
-  // Handle tree section at end of file
-  if (inFileTree && treeLines.length > 0) {
-    const matched = treeLines.filter(l => l === '' || scope.some(g => minimatch(l, g)));
-    const nonEmpty = matched.filter(l => l !== '');
-    if (nonEmpty.length === 0) {
-      result.splice(treeSectionHeaderIdx, 1);
-    } else {
-      for (const tl of matched) result.push(tl);
-    }
-  }
-
-  return result.join('\n');
 }
 
 export function expandValidate(rules: ValidationRule[]): string[] {
@@ -288,13 +227,6 @@ export function composeMicroSpec(root: string, change: string, nodeId: string): 
   if (nodeSpecs && nodeSpecs.length > 0) {
     const specContent = sliceSpecs(root, change, nodeSpecs);
     if (specContent) sections.push(`## Specs\n\n${specContent}`);
-  }
-
-  // Snapshot (filtered by scope)
-  const rawSnapshot = readMarkdown(snapshotPath(root));
-  if (rawSnapshot) {
-    const filtered = filterSnapshot(rawSnapshot, graphNode.scope ?? []);
-    if (filtered) sections.push(`## Environment Snapshot\n\n${filtered}`);
   }
 
   // L0 for all completed nodes

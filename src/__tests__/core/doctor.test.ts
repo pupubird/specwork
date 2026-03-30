@@ -51,7 +51,7 @@ function initSpecwork(root: string): void {
   // Valid config with all required sections
   const config = {
     models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
-    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
+    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel' },
     spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes' },
     graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
   };
@@ -120,7 +120,7 @@ function createGraph(root: string, change: string, nodeIds: string[], opts: { cy
     outputs: [],
     scope: i === 0 ? [] : ['src/'],
     validate: [{ type: 'tsc-check' }],
-    ...(i === 0 ? { command: 'specwork snapshot' } : { agent: 'specwork-implementer' }),
+    ...(i === 0 ? { command: 'echo' } : { agent: 'specwork-implementer' }),
   }));
 
   // Add cycle: first node depends on last
@@ -456,7 +456,7 @@ describe('checkGraphs', () => {
   });
 
   it('passes for a valid graph', () => {
-    createGraph(root, 'my-change', ['snapshot', 'write-tests', 'impl-core']);
+    createGraph(root, 'my-change', ['write-tests', 'impl-core']);
 
     const result = checkGraphs(root);
     expect(result.category).toBe('Graphs');
@@ -542,7 +542,7 @@ describe('checkCrossRefs', () => {
   });
 
   it('passes when graph node IDs match node directories', () => {
-    const nodeIds = ['snapshot', 'write-tests', 'impl-core'];
+    const nodeIds = ['write-tests', 'impl-core'];
     createGraph(root, 'my-change', nodeIds);
     createNodeDirs(root, 'my-change', nodeIds);
 
@@ -553,7 +553,7 @@ describe('checkCrossRefs', () => {
   });
 
   it('warns on orphaned node directory not in graph', () => {
-    const graphNodeIds = ['snapshot', 'write-tests'];
+    const graphNodeIds = ['write-tests', 'impl-core'];
     createGraph(root, 'my-change', graphNodeIds);
     createNodeDirs(root, 'my-change', [...graphNodeIds, 'orphaned-node']);
 

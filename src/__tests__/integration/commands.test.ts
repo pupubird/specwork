@@ -212,10 +212,10 @@ describe('specwork run', () => {
     expect((parsed.ready as unknown[]).length).toBeGreaterThan(0);
   });
 
-  it('first ready node is the snapshot node', () => {
+  it('first ready node is the write-tests node', () => {
     const result = runSpecwork(dir, '--json run my-change');
     const parsed = JSON.parse(result.stdout) as { ready: Array<{ id: string }> };
-    expect(parsed.ready[0].id).toBe('snapshot');
+    expect(parsed.ready[0].id).toBe('write-tests');
   });
 
   it('reports done when all nodes are complete', () => {
@@ -276,7 +276,7 @@ describe('specwork status', () => {
     const result = runSpecwork(dir, 'status my-change');
     expect(result.exitCode).toBe(0);
     // table() writes to stdout — verify node IDs and status appear
-    expect(result.stdout).toMatch(/snapshot/);
+    expect(result.stdout).toMatch(/write-tests/);
     // status icons (○ for pending) appear in table rows
     expect(result.stdout).toMatch(/○/);
   });
@@ -373,43 +373,3 @@ describe('specwork config', () => {
   });
 });
 
-// ══════════════════════════════════════════════════════════════════════════════
-// specwork snapshot
-// ══════════════════════════════════════════════════════════════════════════════
-
-describe('specwork snapshot', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = createTestProject();
-    runSpecwork(dir, 'init');
-  });
-
-  afterEach(() => {
-    cleanup(dir);
-  });
-
-  it('generates snapshot.md in .specwork/env/', () => {
-    const result = runSpecwork(dir, 'snapshot');
-    expect(result.exitCode).toBe(0);
-
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    expect(fs.existsSync(snapshotPath)).toBe(true);
-  });
-
-  it('snapshot.md contains file tree content', () => {
-    runSpecwork(dir, 'snapshot');
-
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    const content = fs.readFileSync(snapshotPath, 'utf-8');
-    // Snapshot should be a non-empty markdown file
-    expect(content.length).toBeGreaterThan(0);
-    expect(content).toMatch(/snapshot|file|project/i);
-  });
-
-  it('exits with code 0 on completion', () => {
-    // success/info messages go to stderr; exitCode 0 confirms completion
-    const result = runSpecwork(dir, 'snapshot');
-    expect(result.exitCode).toBe(0);
-  });
-});

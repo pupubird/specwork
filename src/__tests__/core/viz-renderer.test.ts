@@ -35,40 +35,28 @@ function makeGraph(nodes: GraphNode[], change = 'test-change'): Graph {
 
 describe('buildMermaidDiagram', () => {
   it('outputs Mermaid TD flowchart direction', () => {
-    const graph = makeGraph([makeNode({ id: 'snapshot' })]);
+    const graph = makeGraph([makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer' })]);
     const diagram = buildMermaidDiagram(graph);
     expect(diagram).toContain('graph TD');
   });
 
   it('includes all node IDs in the output', () => {
     const graph = makeGraph([
-      makeNode({ id: 'snapshot' }),
-      makeNode({ id: 'write-tests', deps: ['snapshot'] }),
-      makeNode({ id: 'impl-auth', deps: ['write-tests'] }),
+      makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer' }),
+      makeNode({ id: 'impl-auth', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'] }),
     ]);
     const diagram = buildMermaidDiagram(graph);
-    expect(diagram).toContain('snapshot');
     expect(diagram).toContain('write-tests');
     expect(diagram).toContain('impl-auth');
   });
 
   it('draws edges from deps', () => {
     const graph = makeGraph([
-      makeNode({ id: 'snapshot' }),
-      makeNode({ id: 'write-tests', deps: ['snapshot'] }),
-      makeNode({ id: 'impl-auth', deps: ['write-tests'] }),
+      makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer' }),
+      makeNode({ id: 'impl-auth', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'] }),
     ]);
     const diagram = buildMermaidDiagram(graph);
-    expect(diagram).toContain('snapshot --> write-tests');
     expect(diagram).toContain('write-tests --> impl-auth');
-  });
-
-  it('applies distinct style for snapshot nodes (gray)', () => {
-    const graph = makeGraph([
-      makeNode({ id: 'snapshot', command: 'specwork snapshot' }),
-    ]);
-    const diagram = buildMermaidDiagram(graph);
-    expect(diagram).toMatch(/snapshot.*gray|style snapshot.*#[0-9a-fA-F]*|classDef.*snapshot/i);
   });
 
   it('applies distinct style for write-tests nodes (blue)', () => {
@@ -255,8 +243,8 @@ More detail.
 describe('renderHTML', () => {
   const minimalData = {
     graph: makeGraph([
-      makeNode({ id: 'snapshot', command: 'specwork snapshot' }),
-      makeNode({ id: 'write-tests', deps: ['snapshot'], agent: 'specwork-test-writer' }),
+      makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer' }),
+      makeNode({ id: 'impl-auth', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'] }),
     ]),
     proposalSummary: 'We need this feature for security.',
     specRequirements: [
@@ -304,7 +292,7 @@ describe('renderHTML', () => {
 
   it('contains node references in slide 5', () => {
     const html = renderHTML(minimalData);
-    expect(html).toContain('snapshot');
+    expect(html).toContain('write-tests');
     expect(html).toContain('specwork-test-writer');
   });
 
@@ -322,7 +310,7 @@ describe('renderHTML', () => {
   it('handles optional state data', () => {
     const dataWithState = {
       ...minimalData,
-      state: { nodes: { snapshot: { status: 'complete' } } },
+      state: { nodes: { 'write-tests': { status: 'complete' } } },
     };
     const html = renderHTML(dataWithState);
     expect(html).toBeDefined();

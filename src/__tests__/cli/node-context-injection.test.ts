@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { writeYaml, writeMarkdown } from '../../io/filesystem.js';
-import { graphPath, statePath, nodeDir, nodesDir, snapshotPath } from '../../utils/paths.js';
+import { graphPath, statePath, nodeDir } from '../../utils/paths.js';
 import type { Graph } from '../../types/graph.js';
 import type { WorkflowState } from '../../types/state.js';
 
@@ -31,8 +31,7 @@ const testGraph: Graph = {
   version: '1',
   created_at: '2026-03-26T00:00:00Z',
   nodes: [
-    { id: 'snapshot', type: 'deterministic', description: 'snapshot', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo snapshot' },
-    { id: 'write-tests', type: 'llm', description: 'write tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: ['src/__tests__/'], validate: [], retry: 2 },
+    { id: 'write-tests', type: 'llm', description: 'write tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: ['src/__tests__/'], validate: [], retry: 2, prompt: 'Write failing tests for the new feature.' },
     { id: 'impl-core', type: 'llm', description: 'impl core', agent: 'specwork-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: ['src/core/'], validate: [], retry: 1 },
   ],
 };
@@ -66,17 +65,9 @@ afterEach(() => {
 
 describe('node start --json context injection', () => {
   it('includes a non-empty context field in JSON response', async () => {
-    // Setup: snapshot complete, write-tests ready to start
-    const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'pending', 'impl-core': 'pending' });
+    // Setup: write-tests ready to start (first node, no deps)
+    const state = makeState('test-change', { 'write-tests': 'pending', 'impl-core': 'pending' });
     setupFixtures(root, state);
-
-    // Write snapshot so context has something
-    writeMarkdown(snapshotPath(root), '# Environment Snapshot\n\nProject files: src/index.ts\n');
-
-    // Write L0 for snapshot node
-    const snapshotNodeDir = nodeDir(root, 'test-change', 'snapshot');
-    fs.mkdirSync(snapshotNodeDir, { recursive: true });
-    writeMarkdown(path.join(snapshotNodeDir, 'L0.md'), '- snapshot: Environment snapshot captured\n');
 
     // Import and call startCmd logic
     // We simulate what the CLI does by calling the underlying functions
@@ -92,23 +83,9 @@ describe('node start --json context injection', () => {
     const bundle = assembleContext(root, 'test-change', 'write-tests');
     const contextStr = renderContext(bundle);
 
-    // Current startCmd builds a response object — after the change it should include `context`
-    // We simulate the response object as startCmd currently builds it
-    const response: Record<string, unknown> = {
-      change: 'test-change',
-      node: 'write-tests',
-      type: 'llm',
-      status: 'in_progress',
-      scope: ['src/__tests__/'],
-      deps: ['snapshot'],
-    };
-
-    // THIS IS THE KEY ASSERTION: after the change, startCmd will inject context into response
-    // Currently startCmd does NOT do this, so we test the expected new behavior
-    // by checking that `context` would be a non-empty string containing snapshot content
+    // write-tests has a prompt in the testGraph fixture — context renders the Node Prompt section
     expect(contextStr).toBeTruthy();
-    expect(contextStr).toContain('Environment Snapshot');
-    expect(contextStr).toContain('Completed Nodes (L0)');
+    expect(contextStr).toContain('Write failing tests for the new feature.');
 
     // The actual failing assertion: the response object from startCmd should have `context`
     // Since startCmd currently does NOT add this field, this test will fail
@@ -123,17 +100,10 @@ describe('node start --json context injection', () => {
   });
 
   it('context includes parent L1 when parent has L1.md artifact', async () => {
-    const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'complete', 'impl-core': 'pending' });
+    const state = makeState('test-change', { 'write-tests': 'complete', 'impl-core': 'pending' });
     setupFixtures(root, state);
 
-    // Write snapshot
-    writeMarkdown(snapshotPath(root), '# Snapshot\nfiles: src/core/archive.ts\n');
-
     // Write L0 for completed nodes
-    const snapshotNDir = nodeDir(root, 'test-change', 'snapshot');
-    fs.mkdirSync(snapshotNDir, { recursive: true });
-    writeMarkdown(path.join(snapshotNDir, 'L0.md'), '- snapshot: Environment snapshot captured\n');
-
     const writeTestsNDir = nodeDir(root, 'test-change', 'write-tests');
     fs.mkdirSync(writeTestsNDir, { recursive: true });
     writeMarkdown(path.join(writeTestsNDir, 'L0.md'), '- write-tests: 15 tests written, all RED\n');
@@ -169,13 +139,8 @@ describe('node start --json context injection', () => {
     // After the change, context is only included in the JSON response object,
     // not in the human-readable table output.
 
-    const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'pending', 'impl-core': 'pending' });
+    const state = makeState('test-change', { 'write-tests': 'pending', 'impl-core': 'pending' });
     setupFixtures(root, state);
-    writeMarkdown(snapshotPath(root), '# Snapshot\n');
-
-    const snapshotNDir = nodeDir(root, 'test-change', 'snapshot');
-    fs.mkdirSync(snapshotNDir, { recursive: true });
-    writeMarkdown(path.join(snapshotNDir, 'L0.md'), '- snapshot: done\n');
 
     // The non-JSON output should not contain assembled context markers
     // This test validates that the human table output format is unchanged
@@ -191,30 +156,24 @@ describe('node start --json context injection', () => {
   });
 
   it('context injection works when no prior nodes are complete (first node)', async () => {
-    // First node (snapshot) has no prior completed nodes — context should
-    // have the snapshot content but empty L0/L1 sections
-    const state = makeState('test-change', { snapshot: 'pending', 'write-tests': 'pending', 'impl-core': 'pending' });
+    // First node (write-tests) has no prior completed nodes — L0/L1 are empty
+    const state = makeState('test-change', { 'write-tests': 'pending', 'impl-core': 'pending' });
     setupFixtures(root, state);
-
-    // Write snapshot file (exists from environment, not from a completed node)
-    writeMarkdown(snapshotPath(root), '# Environment Snapshot\nProject: test\n');
 
     // Assemble context for first node — no completed nodes yet
     const { assembleContext, renderContext } = await import('../../core/context-assembler.js');
-    const bundle = assembleContext(root, 'test-change', 'snapshot');
+    const bundle = assembleContext(root, 'test-change', 'write-tests');
     const contextStr = renderContext(bundle);
 
-    // Should have snapshot but no L0/L1 content
+    // No prior completed nodes — L0 and L1 are empty
     expect(bundle.l0).toHaveLength(0);
     expect(bundle.l1).toHaveLength(0);
-    // Snapshot should still be present if the file exists
-    expect(bundle.snapshot).toContain('Environment Snapshot');
 
     // THE FAILING ASSERTION: after the change, buildNextAction for node:start
     // should not reference context assemble (it's auto-injected)
     const { buildNextAction, readChangeContext } = await import('../../core/next-action.js');
     const ctx = readChangeContext(root, 'test-change');
-    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'snapshot' });
+    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'write-tests' });
 
     // Currently returns command with 'context assemble' — after change it should NOT
     expect(nextAction.command).not.toContain('context assemble');

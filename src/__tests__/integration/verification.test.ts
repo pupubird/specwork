@@ -116,10 +116,10 @@ describe('verification is mandatory', () => {
 
   it('node complete without passing verification returns error', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
     // Try to complete without verifying first (non-json mode to get stderr)
-    const result = runSpecwork(dir, 'node complete my-change snapshot --l0 "done" --no-commit');
+    const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "done" --no-commit');
 
     // Should fail with verification error
     expect(result.exitCode).not.toBe(0);
@@ -140,12 +140,12 @@ describe('scope-check via CLI', () => {
   it('verify FAILS when files outside scope are modified', () => {
     setupProjectWithGraph(dir);
 
-    // Modify the graph to give snapshot a scope and scope-check rule
+    // Modify the graph to give write-tests a scope and scope-check rule
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.scope = ['src/auth/'];
-    snapshotNode.validate = [{ type: 'scope-check' }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.scope = ['src/auth/'];
+    writeTestsNode.validate = [{ type: 'scope-check' }];
     writeGraphYaml(dir, 'my-change', graph);
 
     // Create a committed file, then modify outside scope
@@ -154,8 +154,8 @@ describe('scope-check via CLI', () => {
     fs.writeFileSync(path.join(dir, 'src/db/schema.ts'), 'export const b = 2;', 'utf-8');
 
     // Start and verify
-    runSpecwork(dir, 'node start my-change snapshot');
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -188,8 +188,7 @@ describe('files-unchanged via CLI', () => {
     commitFile(dir, 'src/__tests__/auth.test.ts', 'test("a", () => {});');
     fs.writeFileSync(path.join(dir, 'src/__tests__/auth.test.ts'), 'test("b", () => {});', 'utf-8');
 
-    // Mark snapshot and write-tests as complete so we can start impl
-    markNodeStatus(dir, 'my-change', 'snapshot', 'complete');
+    // Mark write-tests as complete so we can start impl
     markNodeStatus(dir, 'my-change', 'write-tests', 'complete');
 
     const nodeId = implNode.id as string;
@@ -217,16 +216,16 @@ describe('structured error output via CLI', () => {
   it('verify JSON includes errors array with structured objects', () => {
     setupProjectWithGraph(dir);
 
-    // Make snapshot node have a failing file-exists check
+    // Make write-tests node have a failing file-exists check
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.validate = [{ type: 'file-exists', args: { path: 'nonexistent-file.ts' } }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'file-exists', args: { path: 'nonexistent-file.ts' } }];
     writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -238,9 +237,9 @@ describe('structured error output via CLI', () => {
 
   it('detail field is at most 200 characters', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -263,20 +262,20 @@ describe('fail-fast via CLI', () => {
   it('skips expensive checks when cheap check fails', () => {
     setupProjectWithGraph(dir);
 
-    // Give snapshot node multiple checks: file-exists (will fail) + tsc-check
+    // Give write-tests node multiple checks: file-exists (will fail) + tsc-check
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.validate = [
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [
       { type: 'file-exists', args: { path: 'nonexistent.ts' } },
       { type: 'tsc-check' },
       { type: 'tests-pass' },
     ];
     writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -301,40 +300,54 @@ describe('verification history', () => {
 
   it('verify updates state with verified flag and verify_history', () => {
     setupProjectWithGraph(dir);
-    // Create the snapshot file so verification passes
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
+    // Override write-tests validate to a simple file-exists check for testability
+    const graph = readGraphYaml(dir, 'my-change');
+    const graphNodes = graph.nodes as Array<Record<string, unknown>>;
+    const writeTestsNode = graphNodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
+    writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    // Create the test artifact so verification passes
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
+
+    runSpecwork(dir, 'node start my-change write-tests');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
     const state = readStateYaml(dir, 'my-change');
-    const nodes = state.nodes as Record<string, Record<string, unknown>>;
-    const snapshotState = nodes.snapshot;
+    const stateNodes = state.nodes as Record<string, Record<string, unknown>>;
+    const writeTestsState = stateNodes['write-tests'];
 
-    expect(snapshotState.verified).toBe(true);
-    expect(snapshotState.last_verdict).toBe('PASS');
-    expect(Array.isArray(snapshotState.verify_history)).toBe(true);
-    expect((snapshotState.verify_history as any[]).length).toBe(1);
+    expect(writeTestsState.verified).toBe(true);
+    expect(writeTestsState.last_verdict).toBe('PASS');
+    expect(Array.isArray(writeTestsState.verify_history)).toBe(true);
+    expect((writeTestsState.verify_history as any[]).length).toBe(1);
   });
 
   it('multiple verify runs append to history', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
+    // Override write-tests validate to a simple file-exists check for testability
+    const graph = readGraphYaml(dir, 'my-change');
+    const graphNodes = graph.nodes as Array<Record<string, unknown>>;
+    const writeTestsNode = graphNodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
+    writeGraphYaml(dir, 'my-change', graph);
 
-    // First verify (will fail — no snapshot file)
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+
+    // First verify (will fail — no test artifact)
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
     // Create the file and verify again
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
     const state = readStateYaml(dir, 'my-change');
-    const nodes = state.nodes as Record<string, Record<string, unknown>>;
-    const history = nodes.snapshot.verify_history as any[];
+    const stateNodes = state.nodes as Record<string, Record<string, unknown>>;
+    const history = stateNodes['write-tests'].verify_history as any[];
 
     expect(history.length).toBe(2);
     expect(history[0].verdict).toBe('FAIL');
@@ -343,12 +356,12 @@ describe('verification history', () => {
 
   it('history entries include attempt number and timestamp', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
     const state = readStateYaml(dir, 'my-change');
-    const nodes = state.nodes as Record<string, Record<string, unknown>>;
-    const history = nodes.snapshot.verify_history as any[];
+    const stateNodes = state.nodes as Record<string, Record<string, unknown>>;
+    const history = stateNodes['write-tests'].verify_history as any[];
 
     expect(history[0].attempt).toBe(1);
     expect(history[0].timestamp).toBeDefined();
@@ -358,24 +371,24 @@ describe('verification history', () => {
   it('flags regressions when a previously-passing check now fails', () => {
     setupProjectWithGraph(dir);
 
-    // Give snapshot a file-exists check
+    // Give write-tests a file-exists check
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/snapshot.md' } }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
     writeGraphYaml(dir, 'my-change', graph);
 
     // Create file, verify (PASS)
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
     // Delete file, verify again (FAIL — regression)
-    fs.unlinkSync(snapshotPath);
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    fs.unlinkSync(testArtifact);
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     const json = JSON.parse(result.stdout);
 
     // The response should indicate regression
@@ -396,16 +409,16 @@ describe('verify.md artifact', () => {
 
   it('contains all verification attempts, not just the latest', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
     // Verify twice
-    runSpecwork(dir, '--json node verify my-change snapshot');
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, '--json node verify my-change write-tests');
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
-    const verifyPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'snapshot', 'verify.md');
+    const verifyPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'write-tests', 'verify.md');
     const content = fs.readFileSync(verifyPath, 'utf-8');
 
     // Should have both attempts
@@ -426,14 +439,21 @@ describe('verified flag blocks completion', () => {
 
   it('node complete succeeds after passing verification', () => {
     setupProjectWithGraph(dir);
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
+    // Override write-tests validate to a simple file-exists check for testability
+    const graph = readGraphYaml(dir, 'my-change');
+    const graphNodes = graph.nodes as Array<Record<string, unknown>>;
+    const writeTestsNode = graphNodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
+    writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
 
-    const result = runSpecwork(dir, 'node complete my-change snapshot --l0 "snapshot done" --no-commit');
+    runSpecwork(dir, 'node start my-change write-tests');
+    runSpecwork(dir, '--json node verify my-change write-tests');
+
+    const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "write-tests done" --no-commit');
     expect(result.exitCode).toBe(0);
   });
 });
@@ -522,15 +542,15 @@ describe('custom checks via config', () => {
     };
     writeConfig(dir, config);
 
-    // Add custom check to snapshot node's validate
+    // Add custom check to write-tests node's validate
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.validate = [{ type: 'echo-test' }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'echo-test' }];
     writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -553,13 +573,13 @@ describe('custom checks via config', () => {
 
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.scope = ['src/auth/', 'src/utils/'];
-    snapshotNode.validate = [{ type: 'list-scope' }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.scope = ['src/auth/', 'src/utils/'];
+    writeTestsNode.validate = [{ type: 'list-scope' }];
     writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
 
     const json = JSON.parse(result.stdout);
     expect(json.verdict).toBe('PASS');
@@ -570,12 +590,12 @@ describe('custom checks via config', () => {
 
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const snapshotNode = nodes.find(n => n.id === 'snapshot')!;
-    snapshotNode.validate = [{ type: 'totally-nonexistent-check' }];
+    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
+    writeTestsNode.validate = [{ type: 'totally-nonexistent-check' }];
     writeGraphYaml(dir, 'my-change', graph);
 
-    runSpecwork(dir, 'node start my-change snapshot');
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
 
     // Should either error or FAIL, not silently PASS
     if (result.exitCode === 0) {
@@ -613,7 +633,6 @@ describe('cross-node validation', () => {
     )!;
 
     // Mark prerequisites as complete
-    markNodeStatus(dir, 'my-change', 'snapshot', 'complete');
     markNodeStatus(dir, 'my-change', 'write-tests', 'complete');
 
     const nodeId = implNode.id as string;
@@ -642,18 +661,18 @@ describe('verify-output.txt artifact', () => {
 
   it('saves full check output to verify-output.txt', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
-    runSpecwork(dir, '--json node verify my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
+    runSpecwork(dir, '--json node verify my-change write-tests');
 
-    const outputPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'snapshot', 'verify-output.txt');
+    const outputPath = path.join(dir, '.specwork', 'nodes', 'my-change', 'write-tests', 'verify-output.txt');
     expect(fs.existsSync(outputPath)).toBe(true);
   });
 
   it('JSON response includes full_output_path', () => {
     setupProjectWithGraph(dir);
-    runSpecwork(dir, 'node start my-change snapshot');
+    runSpecwork(dir, 'node start my-change write-tests');
 
-    const result = runSpecwork(dir, '--json node verify my-change snapshot');
+    const result = runSpecwork(dir, '--json node verify my-change write-tests');
     const json = JSON.parse(result.stdout);
 
     expect(json.full_output_path).toBeDefined();

@@ -96,21 +96,6 @@ export function generateGraph(root: string, change: string): Graph {
 
   const nodes: GraphNode[] = [];
 
-  // First node: snapshot (deterministic)
-  const snapshotNode: GraphNode = {
-    id: 'snapshot',
-    type: 'deterministic',
-    description: 'Capture environment snapshot (file tree, deps, types)',
-    command: 'specwork snapshot',
-    deps: [],
-    inputs: [],
-    outputs: ['.specwork/env/snapshot.md'],
-    scope: [],
-    validate: [{ type: 'file-exists', args: { path: '.specwork/env/snapshot.md' } }],
-    retry: 2,
-  };
-  nodes.push(snapshotNode);
-
   // Discover spec files from change's specs/ directory
   const specsDir = path.join(dir, 'specs');
   const specInputs: string[] = [];
@@ -129,8 +114,8 @@ export function generateGraph(root: string, change: string): Graph {
     agent: 'specwork-test-writer',
     gate: 'human',
     model: 'opus',
-    deps: ['snapshot'],
-    inputs: ['.specwork/env/snapshot.md', ...specInputs],
+    deps: [],
+    inputs: [...specInputs],
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
     validate: [
@@ -178,7 +163,7 @@ export function generateGraph(root: string, change: string): Graph {
         description: name,
         agent: 'specwork-implementer',
         deps: ['write-tests'],
-        inputs: ['.specwork/env/snapshot.md'],
+        inputs: [],
         outputs: scope,
         scope,
         validate,
@@ -199,7 +184,7 @@ export function generateGraph(root: string, change: string): Graph {
         description: task.description,
         agent: 'specwork-implementer',
         deps: ['write-tests'],
-        inputs: ['.specwork/env/snapshot.md'],
+        inputs: [],
         outputs: implScope,
         scope: implScope,
         validate,
@@ -220,7 +205,7 @@ export function generateGraph(root: string, change: string): Graph {
         description: task.description,
         agent: 'specwork-implementer',
         deps: ['write-tests'],
-        inputs: ['.specwork/env/snapshot.md'],
+        inputs: [],
         outputs: implScope,
         scope: implScope,
         validate,
@@ -239,7 +224,7 @@ export function generateGraph(root: string, change: string): Graph {
     }
   }
   const leafIds = nodes
-    .filter(n => !depended.has(n.id) && n.id !== 'snapshot')
+    .filter(n => !depended.has(n.id))
     .map(n => n.id);
 
   const integrationDeps = leafIds.length > 0 ? leafIds : ['write-tests'];

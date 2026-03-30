@@ -80,13 +80,6 @@ describe('edge case: empty tasks.md', () => {
     expect(graph.nodes.length).toBeGreaterThan(0);
   });
 
-  it('generated graph contains snapshot backbone node', () => {
-    const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
-    const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
-    const ids = graph.nodes.map((n) => n.id);
-    expect(ids).toContain('snapshot');
-  });
-
   it('generated graph contains write-tests backbone node', () => {
     const graphFile = path.join(dir, '.specwork', 'graph', 'empty-change', 'graph.yaml');
     const graph = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as { nodes: Array<{ id: string }> };
@@ -108,11 +101,11 @@ describe('edge case: empty tasks.md', () => {
     expect(implNodes).toHaveLength(0);
   });
 
-  it('specwork run still identifies snapshot as first ready node', () => {
+  it('specwork run identifies write-tests as first ready node', () => {
     const result = runSpecwork(dir, '--json run empty-change');
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as { ready: Array<{ id: string }> };
-    expect(parsed.ready[0].id).toBe('snapshot');
+    expect(parsed.ready[0].id).toBe('write-tests');
   });
 });
 

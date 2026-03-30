@@ -30,7 +30,6 @@ export function buildMermaidDiagram(graph: Graph): string {
 
   // Class definitions for type-based coloring
   lines.push('');
-  lines.push('  classDef snapshot fill:#9e9e9e,stroke:#757575,color:#fff');
   lines.push('  classDef test fill:#2196f3,stroke:#1565c0,color:#fff');
   lines.push('  classDef impl fill:#4caf50,stroke:#2e7d32,color:#fff');
   lines.push('  classDef integration fill:#9c27b0,stroke:#6a1b9a,color:#fff');
@@ -53,11 +52,10 @@ function buildNodeLabel(node: GraphNode): string {
 }
 
 function getNodeClass(node: GraphNode): string {
-  if (node.id === 'snapshot' || node.command?.includes('snapshot')) return 'snapshot';
   if (node.id.startsWith('write-tests') || node.id === 'write-tests') return 'test';
   if (node.id === 'integration') return 'integration';
   if (node.id.startsWith('impl')) return 'impl';
-  return 'snapshot';
+  return 'deterministic';
 }
 
 // ── extractProposalSummary ───────────────────────────────────────────────────
@@ -250,7 +248,6 @@ export function renderHTML(data: VizData): string {
     .ft-badge{font-size:12px;font-weight:600;padding:2px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
     .ft-badge-new,.ft-badge-impl{background:var(--green-dim);color:var(--green);border:1px solid var(--green)}
     .ft-badge-mod,.ft-badge-test{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue)}
-    .ft-badge-snapshot{background:var(--surface-2);color:var(--text-3);border:1px solid var(--text-3)}
     .ft-badge-integration{background:rgba(170,102,255,0.1);color:var(--purple);border:1px solid var(--purple)}
     .ft-desc{color:var(--text-3);font-size:14px;margin-left:auto}
     .impact-legend{display:flex;gap:32px;margin-bottom:32px;font-size:15px}

@@ -128,9 +128,8 @@ describe('archiveChange', () => {
     const content = fs.readFileSync(summaryPath, 'utf-8');
     // Should contain node timeline with L0 headlines
     expect(content).toContain('## Node Timeline');
-    expect(content).toContain('snapshot');
     expect(content).toContain('write-tests');
-    expect(content).toContain('snapshot done');
+    expect(content).toContain('write-tests done');
   });
 
   it('does not create separate graph.yaml, state.yaml, or nodes/ in archive', () => {
@@ -149,10 +148,10 @@ describe('archiveChange', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
-    // Add last_verdict to state for snapshot node
+    // Add last_verdict to state for write-tests node
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['snapshot'] = { ...state.nodes['snapshot'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');
@@ -376,7 +375,7 @@ describe('archiveChange — digest.md', () => {
     const archivePath = path.join(root, '.specwork', 'changes', 'archive', 'my-feature');
     const content = fs.readFileSync(path.join(archivePath, 'digest.md'), 'utf-8');
     expect(content).toContain('## Node Timeline');
-    expect(content).toContain('snapshot');
+    expect(content).toContain('write-tests');
   });
 
   it('digest.md contains verification summary table when verdicts exist', () => {
@@ -386,7 +385,7 @@ describe('archiveChange — digest.md', () => {
     // Add verdict to state
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['snapshot'] = { ...state.nodes['snapshot'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');

@@ -13,7 +13,6 @@ import { AGENTS_SPECWORK_VERIFIER } from "./instructions/agents-specwork-verifie
 import { SKILLS_SPECWORK_CONTEXT_SKILL } from "./instructions/skills-specwork-context-SKILL.js";
 import { SKILLS_SPECWORK_CONVENTIONS_SKILL } from "./instructions/skills-specwork-conventions-SKILL.js";
 import { SKILLS_SPECWORK_ENGINE_SKILL } from "./instructions/skills-specwork-engine-SKILL.js";
-import { SKILLS_SPECWORK_SNAPSHOT_SKILL } from "./instructions/skills-specwork-snapshot-SKILL.js";
 import { COMMANDS_SPECWORK_GO } from "./instructions/commands-specwork-go.js";
 import { COMMANDS_SPECWORK_PLAN } from "./instructions/commands-specwork-plan.js";
 import { COMMANDS_SPECWORK_STATUS } from "./instructions/commands-specwork-status.js";
@@ -34,7 +33,6 @@ export const CLAUDE_FILES: Record<string, string> = {
   ".claude/skills/specwork-conventions/SKILL.md":
     SKILLS_SPECWORK_CONVENTIONS_SKILL,
   ".claude/skills/specwork-engine/SKILL.md": SKILLS_SPECWORK_ENGINE_SKILL,
-  ".claude/skills/specwork-snapshot/SKILL.md": SKILLS_SPECWORK_SNAPSHOT_SKILL,
   ".claude/commands/specwork-go.md": COMMANDS_SPECWORK_GO,
   ".claude/commands/specwork-plan.md": COMMANDS_SPECWORK_PLAN,
   ".claude/commands/specwork-status.md": COMMANDS_SPECWORK_STATUS,
@@ -171,30 +169,12 @@ change: add-auth
 description: Add JWT-based authentication to the API
 
 nodes:
-  # ── Stage 0: Environment Snapshot ────────────────────────────────────────
-  - id: snapshot
-    type: deterministic
-    description: Generate environment snapshot (file tree, deps, conventions)
-    command: |
-      echo "=== File Tree ===" > .specwork/nodes/add-auth/snapshot/output.txt
-      find src -name "*.ts" | head -100 >> .specwork/nodes/add-auth/snapshot/output.txt
-      echo "" >> .specwork/nodes/add-auth/snapshot/output.txt
-      echo "=== Dependencies ===" >> .specwork/nodes/add-auth/snapshot/output.txt
-      cat package.json >> .specwork/nodes/add-auth/snapshot/output.txt 2>/dev/null || echo "no package.json"
-      echo "" >> .specwork/nodes/add-auth/snapshot/output.txt
-      echo "=== Existing Interfaces ===" >> .specwork/nodes/add-auth/snapshot/output.txt
-      grep -r "^export interface\\|^export type\\|^export function\\|^export class" src/ >> .specwork/nodes/add-auth/snapshot/output.txt 2>/dev/null
-    deps: []
-    outputs:
-      - .specwork/nodes/add-auth/snapshot/output.txt
-
   # ── Stage 1: Write Tests (RED state) ─────────────────────────────────────
   - id: write-tests
     type: llm
     description: Write all tests before any implementation exists (RED state)
     agent: specwork-test-writer
-    deps:
-      - snapshot
+    deps: []
     inputs:
       - .specwork/changes/add-auth/proposal.md
       - .specwork/changes/add-auth/design.md
@@ -255,7 +235,6 @@ nodes:
     prompt: |
       Implement JWT utility functions: generateToken(payload, secret, expiresIn),
       verifyToken(token, secret) → JwtPayload | null.
-      Use only dependencies listed in the environment snapshot.
       Make the unit tests pass.
 
   # ── Stage 4: Implement Service Layer ─────────────────────────────────────

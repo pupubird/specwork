@@ -28,7 +28,6 @@ import { makeLogCommand } from './cli/log.js';
 import { makeNodeCommand } from './cli/node.js';
 import { makeGraphCommand } from './cli/graph.js';
 import { makeContextCommand } from './cli/context.js';
-import { makeSnapshotCommand } from './cli/snapshot.js';
 
 // Read version from package.json
 const __filename = fileURLToPath(import.meta.url);
@@ -80,7 +79,6 @@ program.addCommand(makeLogCommand());
 program.addCommand(makeNodeCommand());
 program.addCommand(makeGraphCommand());
 program.addCommand(makeContextCommand());
-program.addCommand(makeSnapshotCommand());
 
 // Custom help to show the porcelain/plumbing split
 program.addHelpText('after', `

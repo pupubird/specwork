@@ -20,8 +20,7 @@ Read the output JSON — it contains `change`, `mode`, `path`, and `description`
 Before spawning any planner agent, pre-assemble a compact `<planning-context>` block:
 
 1. **Spec headers** — Grep `.specwork/specs/` for `### Requirement:` lines. Include only the header lines, not full spec content. If no specs exist, note "No existing specs found."
-2. **Environment snapshot** — Read `.specwork/env/snapshot.md` if it exists, or run `specwork snapshot` to generate it.
-3. **Relevant source paths** — Based on the description, identify key source files that will likely be affected.
+2. **Relevant source paths** — Based on the description, identify key source files that will likely be affected.
 
 Bundle into a `<planning-context>` block:
 ```
@@ -30,9 +29,6 @@ Bundle into a `<planning-context>` block:
 - spec-enforcement.md: ### Requirement: Mandatory Spec Generation
 - spec-enforcement.md: ### Requirement: Spec-Fed Test Writing
 (... one line per requirement header)
-
-## Environment Snapshot
-(snapshot.md content — file tree, deps, exports)
 
 ## Relevant Source Paths
 - src/core/graph-generator.ts

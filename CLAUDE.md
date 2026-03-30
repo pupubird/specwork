@@ -36,7 +36,7 @@ specwork status
 1. `specwork plan` creates `.specwork/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
 2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
 3. `specwork graph generate <name>` maps tasks to a DAG of nodes
-4. `specwork go <name>` walks the graph: snapshot → write tests (RED) → implement (GREEN) → verify → commit
+4. `specwork go <name>` walks the graph: write tests (RED) → implement (GREEN) → verify → commit
 5. `specwork status` shows all active changes with progress
 
 One-time setup: `specwork init` (creates `.specwork/` directory structure).
@@ -63,27 +63,13 @@ Context files: `.specwork/nodes/<change>/<node-id>/L0.md`, `L1.md`, `L2.md`
 
 ---
 
-## Environment Snapshot
-
-Every graph starts with a `snapshot` node (deterministic). It generates:
-- File tree (`src/`)
-- `package.json` dependencies
-- Exported interfaces and types
-
-Subagents MUST use only imports/types from the snapshot — never guess at interfaces.
-
-Snapshot refreshes after each LLM node (configurable in `.specwork/config.yaml`).
-
----
-
 ## Rules
 
 1. **Tests before implementation** — `write-tests` node always runs before any `impl-*` node. Tests must fail (red state) first.
 2. **Immutable tests** — implementer agents cannot modify test files.
-3. **Snapshot-only imports** — subagents use only types/imports visible in the environment snapshot.
-4. **Verify before commit** — the verifier agent runs after each node, before any git commit.
-5. **Human gates** — `write-tests` node requires human approval before implementation begins.
-6. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
+3. **Verify before commit** — the verifier agent runs after each node, before any git commit.
+4. **Human gates** — `write-tests` node requires human approval before implementation begins.
+5. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
 
 ---
 
@@ -164,7 +150,6 @@ execution:
   max_retries: 2        # Retry failed nodes up to N times
   expand_limit: 1       # Max EXPAND requests per node
   parallel_mode: parallel      # TeamCreate always used; controls concurrency within team
-  snapshot_refresh: after_each_node
 
 context:
   ancestors: L0         # All completed nodes get L0

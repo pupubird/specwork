@@ -25,7 +25,6 @@ export interface MicroSpecBundle {
 }
 
 export interface ContextBundle {
-  snapshot: string;
   l0: L0Entry[];
   l1: L1Entry[];
   inputs: Record<string, string>;

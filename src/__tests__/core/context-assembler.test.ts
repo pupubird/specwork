@@ -9,7 +9,6 @@ import {
   getL2,
   assembleContext,
   renderContext,
-  filterSnapshot,
   sliceSpecs,
   getStructuredL1,
   expandValidate,
@@ -166,8 +165,7 @@ describe('assembleContext', () => {
     graph: Graph,
     state: WorkflowState,
     l0Map: Record<string, string> = {},
-    l1Map: Record<string, string> = {},
-    snapshot = ''
+    l1Map: Record<string, string> = {}
   ): void {
     const graphDir = path.join(root, '.specwork', 'graph', change);
     fs.mkdirSync(graphDir, { recursive: true });
@@ -182,20 +180,13 @@ describe('assembleContext', () => {
       const dir = makeNodeDir(root, change, nodeId);
       writeFile(path.join(dir, 'L1.md'), content);
     }
-
-    if (snapshot) {
-      const snapDir = path.join(root, '.specwork', 'env');
-      fs.mkdirSync(snapDir, { recursive: true });
-      fs.writeFileSync(path.join(snapDir, 'snapshot.md'), snapshot, 'utf8');
-    }
   }
 
   it('returns empty l0 when no nodes complete', () => {
     const graph = makeGraph('ch', [
-      { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
-    const state = makeState('ch', { snapshot: 'pending', 'write-tests': 'pending' });
+    const state = makeState('ch', { 'write-tests': 'pending' });
     setupChange('ch', graph, state);
 
     const bundle = assembleContext(root, 'ch', 'write-tests');
@@ -204,57 +195,35 @@ describe('assembleContext', () => {
 
   it('includes L0 only for completed nodes', () => {
     const graph = makeGraph('ch', [
-      { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'impl-core', type: 'llm', description: 'impl', agent: 'specwork-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
-    const state = makeState('ch', { snapshot: 'complete', 'write-tests': 'pending' });
-    setupChange('ch', graph, state, { snapshot: 'snapshot: complete, env captured' });
+    const state = makeState('ch', { 'write-tests': 'complete', 'impl-core': 'pending' });
+    setupChange('ch', graph, state, { 'write-tests': 'write-tests: complete, 5 tests written' });
 
-    const bundle = assembleContext(root, 'ch', 'write-tests');
+    const bundle = assembleContext(root, 'ch', 'impl-core');
     expect(bundle.l0).toHaveLength(1);
-    expect(bundle.l0[0].nodeId).toBe('snapshot');
+    expect(bundle.l0[0].nodeId).toBe('write-tests');
   });
 
   it('includes L1 only for direct parents', () => {
     const graph = makeGraph('ch', [
-      { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: ['snapshot'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [] },
       { id: 'impl-core', type: 'llm', description: 'impl', agent: 'specwork-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'integration', type: 'llm', description: 'integration', agent: 'specwork-verifier', deps: ['impl-core'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
-    const state = makeState('ch', { snapshot: 'complete', 'write-tests': 'complete', 'impl-core': 'pending' });
+    const state = makeState('ch', { 'write-tests': 'complete', 'impl-core': 'complete', 'integration': 'pending' });
     setupChange(
       'ch', graph, state,
-      { snapshot: 'snap done', 'write-tests': 'tests done' },
-      { snapshot: 'L1 for snapshot', 'write-tests': 'L1 for write-tests' }
+      { 'write-tests': 'tests done', 'impl-core': 'impl done' },
+      { 'write-tests': 'L1 for write-tests', 'impl-core': 'L1 for impl-core' }
     );
 
-    const bundle = assembleContext(root, 'ch', 'impl-core');
-    // impl-core's parent is write-tests only (not snapshot)
+    const bundle = assembleContext(root, 'ch', 'integration');
+    // integration's parent is impl-core only (not write-tests)
     expect(bundle.l1).toHaveLength(1);
-    expect(bundle.l1[0].nodeId).toBe('write-tests');
-    expect(bundle.l1[0].content).toContain('L1 for write-tests');
-  });
-
-  it('includes snapshot content', () => {
-    const graph = makeGraph('ch', [
-      { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-    ]);
-    const state = makeState('ch', { snapshot: 'pending' });
-    setupChange('ch', graph, state, {}, {}, '# Environment Snapshot\nfiles: 10');
-
-    const bundle = assembleContext(root, 'ch', 'snapshot');
-    expect(bundle.snapshot).toContain('files: 10');
-  });
-
-  it('returns empty snapshot when file does not exist', () => {
-    const graph = makeGraph('ch', [
-      { id: 'snapshot', type: 'deterministic', description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
-    ]);
-    const state = makeState('ch', { snapshot: 'pending' });
-    setupChange('ch', graph, state);
-
-    const bundle = assembleContext(root, 'ch', 'snapshot');
-    expect(bundle.snapshot).toBe('');
+    expect(bundle.l1[0].nodeId).toBe('impl-core');
+    expect(bundle.l1[0].content).toContain('L1 for impl-core');
   });
 
   it('includes node prompt from graph', () => {
@@ -273,24 +242,10 @@ describe('assembleContext', () => {
 
 describe('renderContext', () => {
   const baseBundle = (): ContextBundle => ({
-    snapshot: '',
     l0: [],
     l1: [],
     inputs: {},
     prompt: '',
-  });
-
-  it('renders snapshot section when present', () => {
-    const bundle = { ...baseBundle(), snapshot: '# Snapshot\nfiles: 5' };
-    const rendered = renderContext(bundle);
-    expect(rendered).toContain('## Environment Snapshot');
-    expect(rendered).toContain('files: 5');
-  });
-
-  it('omits snapshot section when empty', () => {
-    const bundle = baseBundle();
-    const rendered = renderContext(bundle);
-    expect(rendered).not.toContain('## Environment Snapshot');
   });
 
   it('renders L0 section with headlines', () => {
@@ -343,67 +298,13 @@ describe('renderContext', () => {
 
   it('joins sections with separator', () => {
     const bundle = {
-      snapshot: '# snap',
       l0: [{ nodeId: 'n', headline: 'done' }],
-      l1: [],
+      l1: [{ nodeId: 'm', content: 'L1 content' }],
       inputs: {},
       prompt: '',
     };
     const rendered = renderContext(bundle);
     expect(rendered).toContain('---');
-  });
-});
-
-// ── filterSnapshot ───────────────────────────────────────────────────────────
-
-describe('filterSnapshot', () => {
-  const snapshot = [
-    '# Environment Snapshot',
-    '',
-    '## File Tree',
-    'src/core/engine.ts',
-    'src/core/graph-walker.ts',
-    'src/types/graph.ts',
-    'src/types/state.ts',
-    'src/utils/logger.ts',
-    'src/__tests__/core/engine.test.ts',
-    '',
-    '## Dependencies',
-    'vitest: ^1.0.0',
-    'minimatch: ^9.0.0',
-  ].join('\n');
-
-  it('filters file-tree lines by scope glob', () => {
-    const result = filterSnapshot(snapshot, ['src/core/**']);
-    expect(result).toContain('src/core/engine.ts');
-    expect(result).toContain('src/core/graph-walker.ts');
-    expect(result).not.toContain('src/types/graph.ts');
-    expect(result).not.toContain('src/utils/logger.ts');
-  });
-
-  it('supports multi-glob union', () => {
-    const result = filterSnapshot(snapshot, ['src/core/**', 'src/types/**']);
-    expect(result).toContain('src/core/engine.ts');
-    expect(result).toContain('src/types/graph.ts');
-    expect(result).not.toContain('src/utils/logger.ts');
-  });
-
-  it('returns full snapshot when scope is empty', () => {
-    const result = filterSnapshot(snapshot, []);
-    expect(result).toBe(snapshot);
-  });
-
-  it('preserves non-tree sections (headers, deps, etc.)', () => {
-    const result = filterSnapshot(snapshot, ['src/core/**']);
-    expect(result).toContain('## Dependencies');
-    expect(result).toContain('vitest: ^1.0.0');
-  });
-
-  it('omits file tree section when filtered result is empty', () => {
-    const result = filterSnapshot(snapshot, ['nonexistent/**']);
-    expect(result).not.toContain('## File Tree');
-    // But non-tree sections should still be present
-    expect(result).toContain('## Dependencies');
   });
 });
 
@@ -601,22 +502,22 @@ describe('composeMicroSpec', () => {
   it('composes a full micro-spec from all sections', () => {
     const nodes: Graph['nodes'] = [
       {
-        id: 'snapshot',
-        type: 'deterministic',
-        description: 'snapshot',
+        id: 'write-tests',
+        type: 'llm',
+        description: 'write tests',
+        agent: 'specwork-test-writer',
         deps: [],
         inputs: [],
         outputs: [],
-        scope: [],
+        scope: ['src/__tests__/'],
         validate: [],
-        command: 'echo',
       },
       {
         id: 'impl-core',
         type: 'llm',
         description: 'implement core',
         agent: 'specwork-implementer',
-        deps: ['snapshot'],
+        deps: ['write-tests'],
         inputs: [],
         outputs: ['src/core/foo.ts'],
         scope: ['src/core/**'],
@@ -627,28 +528,23 @@ describe('composeMicroSpec', () => {
     ];
     setupGraphAndState('ch', nodes);
 
-    // Set up snapshot
-    const envDir = path.join(root, '.specwork', 'env');
-    fs.mkdirSync(envDir, { recursive: true });
-    writeFile(path.join(envDir, 'snapshot.md'), '# Snapshot\nsrc/core/engine.ts\nsrc/types/graph.ts');
-
-    // Set up L0
-    const snapNodeDir = makeNodeDir(root, 'ch', 'snapshot');
-    writeFile(path.join(snapNodeDir, 'L0.md'), 'snapshot: complete, 10 files');
+    // Set up L0 for write-tests
+    const writeTestsNodeDir = makeNodeDir(root, 'ch', 'write-tests');
+    writeFile(path.join(writeTestsNodeDir, 'L0.md'), 'write-tests: complete, 5 tests written');
 
     // Set up specs
     const specsDir = path.join(root, '.specwork', 'changes', 'ch', 'specs');
     fs.mkdirSync(specsDir, { recursive: true });
     writeFile(path.join(specsDir, 'auth.md'), '#### Scenario: Login\nUser logs in.');
 
-    // Set up structured L1 for parent
+    // Set up structured L1 for parent (write-tests)
     const structured: StructuredL1 = {
-      decisions: ['Use snapshot approach'],
+      decisions: ['Use vitest for tests'],
       contracts: [],
       enables: ['impl-core'],
       changed: [],
     };
-    writeFile(path.join(snapNodeDir, 'L1-structured.json'), JSON.stringify(structured));
+    writeFile(path.join(writeTestsNodeDir, 'L1-structured.json'), JSON.stringify(structured));
 
     const result = composeMicroSpec(root, 'ch', 'impl-core');
     expect(typeof result).toBe('string');
@@ -683,38 +579,38 @@ describe('composeMicroSpec', () => {
     // Old-style node without the new fields
     const nodes: Graph['nodes'] = [
       {
-        id: 'snapshot',
-        type: 'deterministic',
-        description: 'snapshot',
-        deps: [],
-        inputs: [],
-        outputs: [],
-        scope: [],
-        validate: [],
-        command: 'echo',
-      },
-      {
         id: 'write-tests',
         type: 'llm',
         description: 'write tests',
         agent: 'specwork-test-writer',
-        deps: ['snapshot'],
+        deps: [],
         inputs: [],
         outputs: [],
         scope: [],
         validate: [],
         prompt: 'Write tests.',
       },
+      {
+        id: 'impl-core',
+        type: 'llm',
+        description: 'impl core',
+        agent: 'specwork-implementer',
+        deps: ['write-tests'],
+        inputs: [],
+        outputs: [],
+        scope: [],
+        validate: [],
+      },
     ];
     setupGraphAndState('ch', nodes);
 
-    // Set up basic L0/L1 for snapshot
-    const snapDir = makeNodeDir(root, 'ch', 'snapshot');
-    writeFile(path.join(snapDir, 'L0.md'), 'snapshot: done');
-    writeFile(path.join(snapDir, 'L1.md'), 'Snapshot summary content');
+    // Set up basic L0/L1 for write-tests
+    const writeTestsDir = makeNodeDir(root, 'ch', 'write-tests');
+    writeFile(path.join(writeTestsDir, 'L0.md'), 'write-tests: done');
+    writeFile(path.join(writeTestsDir, 'L1.md'), 'Write-tests summary content');
 
     // Should not throw — backward compatible
-    const result = composeMicroSpec(root, 'ch', 'write-tests');
+    const result = composeMicroSpec(root, 'ch', 'impl-core');
     expect(typeof result).toBe('string');
   });
 });

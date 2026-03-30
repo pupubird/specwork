@@ -9,7 +9,7 @@ import type { WorkflowState } from '../../types/state.js';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 /**
- * Wide graph: snapshot → [n1..nN] — all impl nodes ready simultaneously after snapshot
+ * Wide graph: write-tests → [n1..nN] — all impl nodes ready simultaneously after write-tests
  */
 const wideGraph = (count: number): Graph => ({
   change: 'wave-test',
@@ -17,22 +17,22 @@ const wideGraph = (count: number): Graph => ({
   created_at: '2026-03-30T00:00:00Z',
   nodes: [
     {
-      id: 'snapshot',
-      type: 'deterministic',
-      description: 'snapshot',
+      id: 'write-tests',
+      type: 'llm',
+      description: 'write tests',
+      agent: 'specwork-test-writer',
       deps: [],
       inputs: [],
       outputs: [],
       scope: [],
       validate: [],
-      command: 'echo',
     },
     ...Array.from({ length: count }, (_, i) => ({
       id: `impl-${i + 1}`,
       type: 'llm' as const,
       description: `impl ${i + 1}`,
       agent: 'specwork-implementer',
-      deps: ['snapshot'],
+      deps: ['write-tests'],
       inputs: [],
       outputs: [],
       scope: [],
@@ -42,7 +42,7 @@ const wideGraph = (count: number): Graph => ({
 });
 
 /**
- * Two-wave graph: snapshot → [a, b, c] → [d, e]
+ * Two-wave graph: write-tests → [a, b, c] → [d, e]
  */
 const twoWaveGraph = (): Graph => ({
   change: 'two-wave',
@@ -50,22 +50,22 @@ const twoWaveGraph = (): Graph => ({
   created_at: '2026-03-30T00:00:00Z',
   nodes: [
     {
-      id: 'snapshot',
-      type: 'deterministic',
-      description: 'snapshot',
+      id: 'write-tests',
+      type: 'llm',
+      description: 'write tests',
+      agent: 'specwork-test-writer',
       deps: [],
       inputs: [],
       outputs: [],
       scope: [],
       validate: [],
-      command: 'echo',
     },
     {
       id: 'impl-a',
       type: 'llm',
       description: 'impl a',
       agent: 'specwork-implementer',
-      deps: ['snapshot'],
+      deps: ['write-tests'],
       inputs: [],
       outputs: [],
       scope: [],
@@ -76,7 +76,7 @@ const twoWaveGraph = (): Graph => ({
       type: 'llm',
       description: 'impl b',
       agent: 'specwork-implementer',
-      deps: ['snapshot'],
+      deps: ['write-tests'],
       inputs: [],
       outputs: [],
       scope: [],
@@ -87,7 +87,7 @@ const twoWaveGraph = (): Graph => ({
       type: 'llm',
       description: 'impl c',
       agent: 'specwork-implementer',
-      deps: ['snapshot'],
+      deps: ['write-tests'],
       inputs: [],
       outputs: [],
       scope: [],
@@ -118,11 +118,11 @@ const twoWaveGraph = (): Graph => ({
   ],
 });
 
-/** Helper: complete snapshot so impl nodes become ready */
-function completeSnapshot(graph: Graph): WorkflowState {
+/** Helper: complete write-tests so impl nodes become ready */
+function completeWriteTests(graph: Graph): WorkflowState {
   let state = initializeState(graph);
-  state = transitionNode(state, 'snapshot', 'in_progress');
-  state = transitionNode(state, 'snapshot', 'complete');
+  state = transitionNode(state, 'write-tests', 'in_progress');
+  state = transitionNode(state, 'write-tests', 'complete');
   return state;
 }
 
@@ -140,7 +140,7 @@ describe('getNextWave', () => {
   it('caps wave size at maxConcurrent', () => {
     // Spec: Given 10 ready nodes and max_concurrent=3, exactly 3 are selected
     const graph = wideGraph(10);
-    const state = completeSnapshot(graph);
+    const state = completeWriteTests(graph);
 
     const getNextWave = (graphWalker as any).getNextWave;
     const wave = getNextWave(graph, state, { maxConcurrent: 3 });
@@ -150,7 +150,7 @@ describe('getNextWave', () => {
   it('defaults max_concurrent to 5 when not configured', () => {
     // Spec: Given 8 ready nodes and no max_concurrent, exactly 5 are selected
     const graph = wideGraph(8);
-    const state = completeSnapshot(graph);
+    const state = completeWriteTests(graph);
 
     const getNextWave = (graphWalker as any).getNextWave;
     const wave = getNextWave(graph, state);
@@ -160,7 +160,7 @@ describe('getNextWave', () => {
   it('returns all ready nodes when fewer than maxConcurrent', () => {
     // Spec: Given 2 ready nodes and max_concurrent=5, both are selected
     const graph = wideGraph(2);
-    const state = completeSnapshot(graph);
+    const state = completeWriteTests(graph);
 
     const getNextWave = (graphWalker as any).getNextWave;
     const wave = getNextWave(graph, state, { maxConcurrent: 5 });
@@ -169,7 +169,7 @@ describe('getNextWave', () => {
 
   it('returns GraphNode objects (not just ids)', () => {
     const graph = wideGraph(3);
-    const state = completeSnapshot(graph);
+    const state = completeWriteTests(graph);
 
     const getNextWave = (graphWalker as any).getNextWave;
     const wave = getNextWave(graph, state, { maxConcurrent: 2 });
@@ -207,7 +207,7 @@ describe('wave tracking in state', () => {
 
   it('tracks cumulative wave numbers across multiple dispatches', () => {
     const graph = twoWaveGraph();
-    let state = completeSnapshot(graph);
+    let state = completeWriteTests(graph);
 
     const dispatchWave = (stateMachine as any).dispatchWave;
 
@@ -240,7 +240,7 @@ describe('wave gate behavior', () => {
   it('auto-continues after a clean wave (all PASS, no regressions)', () => {
     // Spec: clean wave → auto dispatch next wave, no user confirmation
     const graph = twoWaveGraph();
-    let state = completeSnapshot(graph);
+    let state = completeWriteTests(graph);
 
     const shouldWaveAutoContinue = (graphWalker as any).shouldWaveAutoContinue;
 
@@ -259,7 +259,7 @@ describe('wave gate behavior', () => {
   it('pauses when a node in the wave failed', () => {
     // Spec: wave with failure → pause execution
     const graph = twoWaveGraph();
-    let state = completeSnapshot(graph);
+    let state = completeWriteTests(graph);
 
     const shouldWaveAutoContinue = (graphWalker as any).shouldWaveAutoContinue;
 
@@ -279,7 +279,7 @@ describe('wave gate behavior', () => {
   it('pauses when a node in the wave has regressions', () => {
     // Spec: regression detected → pause execution with regression details
     const graph = twoWaveGraph();
-    let state = completeSnapshot(graph);
+    let state = completeWriteTests(graph);
 
     const shouldWaveAutoContinue = (graphWalker as any).shouldWaveAutoContinue;
 
@@ -321,23 +321,12 @@ describe('wave gate behavior', () => {
       created_at: '2026-03-30T00:00:00Z',
       nodes: [
         {
-          id: 'snapshot',
-          type: 'deterministic',
-          description: 'snapshot',
-          deps: [],
-          inputs: [],
-          outputs: [],
-          scope: [],
-          validate: [],
-          command: 'echo',
-        },
-        {
           id: 'write-tests',
           type: 'llm',
           description: 'write tests',
           agent: 'specwork-test-writer',
           gate: 'human',
-          deps: ['snapshot'],
+          deps: [],
           inputs: [],
           outputs: [],
           scope: [],
@@ -348,7 +337,7 @@ describe('wave gate behavior', () => {
           type: 'llm',
           description: 'impl 1',
           agent: 'specwork-implementer',
-          deps: ['snapshot'],
+          deps: [],
           inputs: [],
           outputs: [],
           scope: [],
@@ -358,8 +347,6 @@ describe('wave gate behavior', () => {
     };
 
     let state = initializeState(graph);
-    state = transitionNode(state, 'snapshot', 'in_progress');
-    state = transitionNode(state, 'snapshot', 'complete');
 
     const shouldWaveAutoContinue = (graphWalker as any).shouldWaveAutoContinue;
 

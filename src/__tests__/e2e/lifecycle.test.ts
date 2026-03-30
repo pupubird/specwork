@@ -1,7 +1,7 @@
 /**
  * Full lifecycle E2E test — exercises every major workflow step in order:
  *   init → new → graph generate → graph validate → run → node start/complete
- *   → status → run (next) → snapshot → context l0
+ *   → status → run (next) → context l0
  *
  * All interactions use core module APIs (same pattern as other tests in this
  * project). No subprocess spawning required.
@@ -17,7 +17,6 @@ import { generateGraph } from '../../core/graph-generator.js';
 import { validateGraph } from '../../core/graph-validator.js';
 import { initializeState, transitionNode, getChangeStatus } from '../../core/state-machine.js';
 import { getReadyNodes } from '../../core/graph-walker.js';
-import { writeSnapshot } from '../../core/snapshot-generator.js';
 import { getL0All } from '../../core/context-assembler.js';
 
 // ── IO ───────────────────────────────────────────────────────────────────────
@@ -28,7 +27,6 @@ import {
   graphPath,
   statePath,
   nodeDir,
-  snapshotPath,
 } from '../../utils/paths.js';
 
 // ── CLI functions (tested indirectly via their core deps) ────────────────────
@@ -52,7 +50,7 @@ function initSpecwork(root: string): void {
 
   const config = {
     models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
-    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
+    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel' },
     context: { ancestors: 'L0', parents: 'L1' },
     spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes', archive_dir: '.specwork/changes/archive', templates_dir: '.specwork/templates' },
     graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
@@ -170,8 +168,8 @@ describe('E2E: full workflow lifecycle', () => {
 
     const saved = readYaml<Graph>(graphPath(root, CHANGE));
     expect(saved.change).toBe(CHANGE);
-    expect(saved.nodes.length).toBeGreaterThanOrEqual(3); // snapshot + tasks + integration
-    expect(saved.nodes[0].id).toBe('snapshot');
+    expect(saved.nodes.length).toBeGreaterThanOrEqual(2); // write-tests + impl nodes + integration
+    expect(saved.nodes[0].id).toBe('write-tests');
   });
 
   // ── Step 5: graph validate ─────────────────────────────────────────────────
@@ -189,59 +187,54 @@ describe('E2E: full workflow lifecycle', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
 
     const ids = graph.nodes.map(n => n.id);
-    expect(ids).toContain('snapshot');
     expect(ids).toContain('write-tests');
     expect(ids).toContain('integration');
 
-    // snapshot has no deps
-    const snapshot = graph.nodes.find(n => n.id === 'snapshot')!;
-    expect(snapshot.deps).toHaveLength(0);
-    expect(snapshot.type).toBe('deterministic');
-
-    // write-tests depends on snapshot
+    // write-tests has no deps (it is the root node)
     const writeTests = graph.nodes.find(n => n.id === 'write-tests')!;
-    expect(writeTests.deps).toContain('snapshot');
+    expect(writeTests.deps).toHaveLength(0);
+    expect(writeTests.type).toBe('llm');
   });
 
   // ── Step 7: run — first ready node ────────────────────────────────────────
 
-  it('step 7 — specwork run returns first ready node (snapshot)', () => {
+  it('step 7 — specwork run returns first ready node (write-tests)', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
     const state = readYaml<WorkflowState>(statePath(root, CHANGE));
 
     const ready = getReadyNodes(graph, state);
     expect(ready.length).toBeGreaterThan(0);
-    expect(ready[0].id).toBe('snapshot');
+    expect(ready[0].id).toBe('write-tests');
   });
 
   // ── Step 8: node start ─────────────────────────────────────────────────────
 
-  it('step 8 — specwork node start transitions snapshot to in_progress', () => {
+  it('step 8 — specwork node start transitions write-tests to in_progress', () => {
     let state = readYaml<WorkflowState>(statePath(root, CHANGE));
-    state = transitionNode(state, 'snapshot', 'in_progress');
+    state = transitionNode(state, 'write-tests', 'in_progress');
     writeYaml(statePath(root, CHANGE), state);
 
     const saved = readYaml<WorkflowState>(statePath(root, CHANGE));
-    expect(saved.nodes['snapshot']?.status).toBe('in_progress');
-    expect(saved.nodes['snapshot']?.started_at).toBeTruthy();
+    expect(saved.nodes['write-tests']?.status).toBe('in_progress');
+    expect(saved.nodes['write-tests']?.started_at).toBeTruthy();
   });
 
   // ── Step 9: node complete ──────────────────────────────────────────────────
 
-  it('step 9 — specwork node complete transitions snapshot to complete', () => {
+  it('step 9 — specwork node complete transitions write-tests to complete', () => {
     let state = readYaml<WorkflowState>(statePath(root, CHANGE));
-    state = transitionNode(state, 'snapshot', 'complete', { l0: 'snapshot done, 42 files' });
+    state = transitionNode(state, 'write-tests', 'complete', { l0: 'write-tests done, 5 tests written' });
     writeYaml(statePath(root, CHANGE), state);
 
     // Write L0 artifact
-    const nDir = nodeDir(root, CHANGE, 'snapshot');
+    const nDir = nodeDir(root, CHANGE, 'write-tests');
     ensureDir(nDir);
-    writeMarkdown(path.join(nDir, 'L0.md'), '- snapshot: snapshot done, 42 files\n');
+    writeMarkdown(path.join(nDir, 'L0.md'), '- write-tests: write-tests done, 5 tests written\n');
 
     const saved = readYaml<WorkflowState>(statePath(root, CHANGE));
-    expect(saved.nodes['snapshot']?.status).toBe('complete');
-    expect(saved.nodes['snapshot']?.l0).toBe('snapshot done, 42 files');
-    expect(saved.nodes['snapshot']?.completed_at).toBeTruthy();
+    expect(saved.nodes['write-tests']?.status).toBe('complete');
+    expect(saved.nodes['write-tests']?.l0).toBe('write-tests done, 5 tests written');
+    expect(saved.nodes['write-tests']?.completed_at).toBeTruthy();
   });
 
   // ── Step 10: status — 1 node complete ─────────────────────────────────────
@@ -252,46 +245,31 @@ describe('E2E: full workflow lifecycle', () => {
 
     const complete = graph.nodes.filter(n => state.nodes[n.id]?.status === 'complete');
     expect(complete).toHaveLength(1);
-    expect(complete[0].id).toBe('snapshot');
+    expect(complete[0].id).toBe('write-tests');
   });
 
-  // ── Step 11: run — next ready node ────────────────────────────────────────
+  // ── Step 11: run — next ready nodes ───────────────────────────────────────
 
-  it('step 11 — specwork run returns next ready node (write-tests) after snapshot done', () => {
+  it('step 11 — specwork run returns impl nodes after write-tests is done', () => {
     const graph = readYaml<Graph>(graphPath(root, CHANGE));
     const state = readYaml<WorkflowState>(statePath(root, CHANGE));
 
     const ready = getReadyNodes(graph, state);
     expect(ready.length).toBeGreaterThan(0);
-    expect(ready[0].id).toBe('write-tests');
+    // impl nodes should now be ready
+    expect(ready.some(n => n.id.startsWith('impl-') || n.id === 'integration')).toBe(true);
   });
 
-  // ── Step 12: snapshot ──────────────────────────────────────────────────────
+  // ── Step 12: context l0 ────────────────────────────────────────────────────
 
-  it('step 12 — specwork snapshot creates snapshot.md', () => {
-    // Create a minimal src/ directory for the scanner
-    const srcDir = path.join(root, 'src');
-    ensureDir(srcDir);
-    fs.writeFileSync(path.join(srcDir, 'index.ts'), 'export const hello = "world";\n', 'utf8');
-
-    writeSnapshot(root);
-
-    const snapFile = snapshotPath(root);
-    expect(fs.existsSync(snapFile)).toBe(true);
-    const content = fs.readFileSync(snapFile, 'utf8');
-    expect(content.length).toBeGreaterThan(0);
-  });
-
-  // ── Step 13: context l0 ────────────────────────────────────────────────────
-
-  it('step 13 — specwork context l0 returns L0 entries for completed nodes', () => {
+  it('step 12 — specwork context l0 returns L0 entries for completed nodes', () => {
     const entries = getL0All(root, CHANGE);
 
-    // snapshot node has an L0 headline
+    // write-tests node has an L0 headline
     expect(Array.isArray(entries)).toBe(true);
-    const snapshotEntry = entries.find(e => e.nodeId === 'snapshot');
-    expect(snapshotEntry).toBeDefined();
-    expect(snapshotEntry?.headline).toBeTruthy();
+    const writeTestsEntry = entries.find(e => e.nodeId === 'write-tests');
+    expect(writeTestsEntry).toBeDefined();
+    expect(writeTestsEntry?.headline).toBeTruthy();
   });
 
   // ── Bonus: change status computes correctly ────────────────────────────────

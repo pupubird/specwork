@@ -117,8 +117,8 @@ describe('archiveChange — digest.md (replaces summary.md)', () => {
     expect(fs.existsSync(digestPath)).toBe(true);
     const content = fs.readFileSync(digestPath, 'utf-8');
     expect(content).toContain('## Node Timeline');
-    expect(content).toContain('snapshot');
-    expect(content).toContain('snapshot done');
+    expect(content).toContain('write-tests');
+    expect(content).toContain('write-tests done');
   });
 
   it('digest.md contains Verification Summary table when verdicts exist', () => {
@@ -128,7 +128,7 @@ describe('archiveChange — digest.md (replaces summary.md)', () => {
     // Add verdict to state before archiving
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['snapshot'] = { ...state.nodes['snapshot'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');

@@ -28,7 +28,6 @@ export const DEFAULT_CONFIG = {
     max_retries: 2,
     expand_limit: 1,
     parallel_mode: 'parallel',
-    snapshot_refresh: 'after_each_node',
     verify: 'gates',
   },
   context: {

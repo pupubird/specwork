@@ -24,19 +24,6 @@ function setupProjectWithGraph(dir: string, change = 'my-change'): void {
   runSpecwork(dir, `graph generate ${change}`);
 }
 
-// ── Helper: mark specific nodes as complete ─────────────────────────────────────
-
-function markNodeComplete(dir: string, change: string, nodeId: string): void {
-  const sp = path.join(dir, '.specwork', 'graph', change, 'state.yaml');
-  const raw = fs.readFileSync(sp, 'utf-8');
-  const state = parseYaml(raw) as Record<string, unknown>;
-  const nodes = state.nodes as Record<string, Record<string, unknown>>;
-  const ts = new Date().toISOString();
-  nodes[nodeId] = { ...nodes[nodeId], status: 'complete', completed_at: ts };
-  state.updated_at = ts;
-  fs.writeFileSync(sp, stringifyYaml(state), 'utf-8');
-}
-
 // ── Helper: mark all nodes as complete ──────────────────────────────────────────
 
 function markAllNodesComplete(dir: string, change: string): void {
@@ -132,8 +119,8 @@ describe('specwork go --json next_action', () => {
 
   it('includes next_action with wait for waiting status', () => {
     setupProjectWithGraph(dir);
-    // Mark snapshot as in_progress — no nodes ready but one running
-    markNodeInProgress(dir, 'my-change', 'snapshot');
+    // Mark write-tests as in_progress — no nodes ready but one running
+    markNodeInProgress(dir, 'my-change', 'write-tests');
 
     const result = runSpecwork(dir, 'go my-change --json');
     expect(result.exitCode).toBe(0);
@@ -173,18 +160,26 @@ describe('specwork node complete --json next_action', () => {
 
   it('includes next_action pointing to specwork go for next batch', () => {
     setupProjectWithGraph(dir);
-    // Start, verify, and complete the snapshot node
-    runSpecwork(dir, 'node start my-change snapshot');
+    // Override write-tests validate to a simple file-exists check for testability
+    const graphFile = path.join(dir, '.specwork', 'graph', 'my-change', 'graph.yaml');
+    const graphData = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as Record<string, unknown>;
+    const graphNodes = graphData.nodes as Array<Record<string, unknown>>;
+    const writeTestsNode = graphNodes.find(n => n.id === 'write-tests');
+    if (writeTestsNode) writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
+    fs.writeFileSync(graphFile, stringifyYaml(graphData), 'utf-8');
 
-    // Create snapshot file so verification passes
-    const snapshotPath = path.join(dir, '.specwork', 'env', 'snapshot.md');
-    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-    fs.writeFileSync(snapshotPath, '# Snapshot\n', 'utf-8');
+    // Start write-tests
+    runSpecwork(dir, 'node start my-change write-tests');
+
+    // Create test artifact so verification passes
+    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
+    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
+    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
 
     // Verify first (mandatory)
-    runSpecwork(dir, 'node verify my-change snapshot');
+    runSpecwork(dir, 'node verify my-change write-tests');
 
-    const result = runSpecwork(dir, 'node complete my-change snapshot --l0 "snapshot done" --no-commit --json');
+    const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "write-tests done" --no-commit --json');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -213,7 +208,7 @@ describe('specwork node start --json next_action', () => {
   it('includes next_action with on_pass and on_fail', () => {
     setupProjectWithGraph(dir);
 
-    const result = runSpecwork(dir, 'node start my-change snapshot --json');
+    const result = runSpecwork(dir, 'node start my-change write-tests --json');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);
@@ -244,10 +239,10 @@ describe('specwork node verify --json next_action', () => {
 
   it('includes next_action with on_pass referencing complete for PASS verdict', () => {
     setupProjectWithGraph(dir);
-    // Start snapshot so we can verify it
-    runSpecwork(dir, 'node start my-change snapshot');
+    // Start write-tests so we can verify it
+    runSpecwork(dir, 'node start my-change write-tests');
 
-    const result = runSpecwork(dir, 'node verify my-change snapshot --json');
+    const result = runSpecwork(dir, 'node verify my-change write-tests --json');
     // Verdict may be PASS or FAIL depending on validation rules, but next_action should exist
     expect(result.exitCode).toBe(0);
 
@@ -280,8 +275,7 @@ describe('specwork node fail --json next_action', () => {
 
   it('includes next_action with respawn for retries remaining', () => {
     setupProjectWithGraph(dir);
-    markNodeComplete(dir, 'my-change', 'snapshot');
-    // Start write-tests, then fail it
+    // Start write-tests (first node, no deps), then fail it
     runSpecwork(dir, 'node start my-change write-tests');
 
     const result = runSpecwork(dir, 'node fail my-change write-tests --reason "tests not compiling" --json');
@@ -315,7 +309,6 @@ describe('specwork node escalate --json next_action', () => {
 
   it('includes next_action with suggest and suggest_to_user', () => {
     setupProjectWithGraph(dir);
-    markNodeComplete(dir, 'my-change', 'snapshot');
     runSpecwork(dir, 'node start my-change write-tests');
 
     const result = runSpecwork(dir, 'node escalate my-change write-tests --reason "manual intervention needed" --json');

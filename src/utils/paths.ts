@@ -60,10 +60,6 @@ export function lockPath(root: string, change: string): string {
   return path.join(root, '.specwork', 'graph', change, '.lock');
 }
 
-export function snapshotPath(root: string): string {
-  return path.join(root, '.specwork', 'env', 'snapshot.md');
-}
-
 export function archiveChangeDir(root: string, change: string): string {
   return path.join(root, '.specwork', 'changes', 'archive', change);
 }

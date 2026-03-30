@@ -99,7 +99,6 @@ describe('specwork init (enhanced / batteries-included)', () => {
       'specwork-context/SKILL.md',
       'specwork-conventions/SKILL.md',
       'specwork-engine/SKILL.md',
-      'specwork-snapshot/SKILL.md',
     ];
     for (const skill of skills) {
       const p = path.join(dir, '.claude', 'skills', skill);

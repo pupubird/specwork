@@ -10,7 +10,6 @@ export interface SpecworkConfig {
     max_retries: number;
     expand_limit: number;
     parallel_mode: 'sequential' | 'parallel';
-    snapshot_refresh: 'after_each_node' | 'once' | 'never';
     verify?: string;
     max_concurrent?: number;
   };

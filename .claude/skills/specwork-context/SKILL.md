@@ -20,13 +20,13 @@ This keeps token budgets small while preserving decision-making context.
 ## CLI Commands for Context
 
 ### Auto-injected on node start
-`specwork node start --json` automatically includes a `context` field in its JSON response containing the fully assembled context bundle (snapshot + L0 + L1 + inputs + prompt). No separate assembly step needed.
+`specwork node start --json` automatically includes a `context` field in its JSON response containing the fully assembled context bundle (L0 + L1 + inputs + prompt). No separate assembly step needed.
 
 ### Assemble full context manually
 ```bash
 specwork context assemble <change> <node-id>
 ```
-Returns the complete prompt block: L0 (all nodes) + L1 (parents) + snapshot + inputs + task. Available for manual use and EXPAND flows. Not needed during normal workflow — `node start` handles this automatically.
+Returns the complete prompt block: L0 (all nodes) + L1 (parents) + inputs + task. Available for manual use and EXPAND flows. Not needed during normal workflow — `node start` handles this automatically.
 
 ### Get L0 headlines only
 ```bash
@@ -53,7 +53,6 @@ Returns re-assembled context with full L2 of the target node injected under `<ex
 
 L0 examples:
 ```
-- snapshot: complete, 47 files indexed
 - write-tests: complete, 23 tests written (all red)
 - impl-types: complete, 2 interfaces exported
 - impl-service: complete, 3 functions, 8/8 tests pass
@@ -103,17 +102,15 @@ When assembling context for a subagent, estimate token usage:
 |-----------|-----------------|
 | L0 per completed node | ~10 |
 | L1 per parent node | ~100 |
-| Environment snapshot | ~500-2000 |
 | Input files | varies |
 | Task description | ~100 |
 | System prompt overhead | ~500 |
 
 **Budget target**: Keep total context under 8,000 tokens for Haiku nodes, under 20,000 for Sonnet, under 50,000 for Opus.
 
-`specwork context assemble` respects these budgets automatically. If L0 + L1 + snapshot exceeds budget, it prioritizes:
-1. Snapshot (always include)
-2. L1 parents (always include)
-3. L0 (truncate to most recent N nodes if needed)
+`specwork context assemble` respects these budgets automatically. If L0 + L1 exceeds budget, it prioritizes:
+1. L1 parents (always include)
+2. L0 (truncate to most recent N nodes if needed)
 
 ---
 
@@ -153,7 +150,6 @@ Format: `- <node-id>: complete, <stat>`
 Stats to use:
 - For test-writer: `N tests written (all red)`
 - For implementers: `N functions, N/N tests pass`
-- For snapshot: `N files indexed`
 - For integration: `N/N tests pass` or `FAILED: N failures`
 
 ### L1 — Written by specwork-summarizer
@@ -175,7 +171,7 @@ Concatenate in order:
 
 ## Context in Practice
 
-**At write-tests node**: subagent sees full snapshot + L0 of just `snapshot` node.
-**At impl-types node**: subagent sees snapshot + L0 of `snapshot, write-tests` + L1 of `write-tests`.
-**At impl-service node**: subagent sees snapshot + L0 of all prior nodes + L1 of `impl-types, write-tests`.
+**At write-tests node**: subagent sees L0 of completed nodes (none yet).
+**At impl-types node**: subagent sees L0 of `write-tests` + L1 of `write-tests`.
+**At impl-service node**: subagent sees L0 of all prior nodes + L1 of `impl-types, write-tests`.
 **If impl-service needs the actual test code**: it outputs `EXPAND(write-tests)`, the engine calls `specwork context expand`, gets L2 of write-tests, re-runs.

@@ -75,10 +75,17 @@ Keep the context block compact — under ~500 tokens. Headers only, not full spe
    - Returns a summary
 4. Cleanup: \`SendMessage\` shutdown → \`TeamDelete\`
 
-### 4. Generate graph and present plan
+### 4. Generate graph, visualize, and present plan
 \`\`\`bash
 specwork graph generate <change-name>
 specwork graph show <change-name>
+specwork viz <change-name> --json
 \`\`\`
-Show the generated graph to the user. Ask for approval before proceeding to \`specwork go\`.
+
+The \`specwork viz\` command generates a **base** HTML overview (\`overview.html\`) and returns agent instructions in JSON. After running the command:
+
+1. Read the \`agent_instructions\` field from the JSON output
+2. Follow the instructions: read the generated \`overview.html\`, then **enhance it** using the Edit tool — rewrite descriptions, add annotations, improve layout, add visual emphasis tailored to this specific change
+3. When done editing, open the final HTML in the browser: \`open <path>\` (macOS) or \`xdg-open <path>\` (Linux)
+4. Show the graph table to the user and ask for approval before proceeding to \`specwork go\`
 `;

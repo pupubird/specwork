@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Specwork: plan-visualization</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 2rem; }
+    h1 { color: #58a6ff; margin-bottom: 0.5rem; }
+    h2 { color: #8b949e; font-size: 1.1rem; margin-bottom: 1.5rem; border-bottom: 1px solid #21262d; padding-bottom: 0.5rem; }
+    h3 { color: #58a6ff; margin-bottom: 0.5rem; }
+    h4 { color: #8b949e; margin-bottom: 0.25rem; }
+    .panel { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .panel-title { color: #8b949e; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .mermaid { background: #0d1117; padding: 1rem; text-align: center; }
+    .node-detail { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem; }
+    .node-detail table { width: 100%; border-collapse: collapse; }
+    .node-detail td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #21262d; font-size: 0.9rem; }
+    .node-detail td:first-child { color: #8b949e; width: 140px; }
+    .sub-tasks ul { margin-left: 1.5rem; margin-top: 0.25rem; }
+    .sub-tasks li { margin-bottom: 0.15rem; font-size: 0.9rem; }
+    .spec-group { margin-bottom: 1rem; }
+    .spec-group ul { margin-left: 1.5rem; }
+    .spec-group li { margin-bottom: 0.15rem; font-size: 0.9rem; }
+    .status { font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 3px; margin-left: 0.5rem; }
+    .status-complete { background: #238636; color: #fff; }
+    .status-pending { background: #30363d; color: #8b949e; }
+    .status-running { background: #1f6feb; color: #fff; }
+    .status-failed { background: #da3633; color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>plan-visualization</h1>
+  <h2>Created 2026-03-30T07:59:27.250Z</h2>
+
+  <div class="panel">
+    <div class="panel-title">Why this change</div>
+    <p>After `specwork plan` completes, the user is left with a wall of terminal text — a table of graph nodes and a Mermaid diagram printed inline. Before committing to `specwork go`, there's no easy way to review the full plan: what each node does, which specs drive it, what the change is actually trying to accomplish. Users have to mentally reconstruct the plan from multiple text files.
+
+This change adds an auto-generated HTML page (`overview.html`) that renders immediately in the browser after planning completes — a visual, interactive planning review artifact. It shows the DAG, the change proposal (WHY), and the spec requirements mapped to each node, so the user can review the full scope of a change in one place before approving execution.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Execution Graph</div>
+    <div class="mermaid">
+graph TD
+  snapshot["Capture environment snapshot (file tree, deps, types)"]
+  write-tests["Write tests from specs (must be RED before implementation)"]
+  snapshot --> write-tests
+  impl-1["Types and renderer core (5 tasks)"]
+  write-tests --> impl-1
+  impl-2["CLI command (4 tasks)"]
+  impl-1 --> impl-2
+  impl-3["Update specwork-plan.md step 4 to call specwork viz after graph generate"]
+  impl-2 --> impl-3
+  integration["Run full test suite (integration verification)"]
+  impl-1 --> integration
+  impl-2 --> integration
+  impl-3 --> integration
+
+  classDef snapshot fill:#9e9e9e,stroke:#757575,color:#fff
+  classDef test fill:#2196f3,stroke:#1565c0,color:#fff
+  classDef impl fill:#4caf50,stroke:#2e7d32,color:#fff
+  classDef integration fill:#9c27b0,stroke:#6a1b9a,color:#fff
+  class snapshot snapshot
+  class write-tests test
+  class impl-1 impl
+  class impl-2 impl
+  class impl-3 impl
+  class integration integration
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <div class="panel-title">Node Details</div>
+        
+      <div class="node-detail" id="detail-snapshot">
+        <h3>snapshot <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>deterministic</td></tr>
+          <tr><td>Agent/Command</td><td>specwork snapshot</td></tr>
+          <tr><td>Dependencies</td><td>none</td></tr>
+          <tr><td>Scope</td><td>-</td></tr>
+        </table>
+        
+      </div>
+
+      <div class="node-detail" id="detail-write-tests">
+        <h3>write-tests <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>llm</td></tr>
+          <tr><td>Agent/Command</td><td>specwork-test-writer</td></tr>
+          <tr><td>Dependencies</td><td>snapshot</td></tr>
+          <tr><td>Scope</td><td>src/__tests__/</td></tr>
+        </table>
+        
+      </div>
+
+      <div class="node-detail" id="detail-impl-1">
+        <h3>impl-1 <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>llm</td></tr>
+          <tr><td>Agent/Command</td><td>specwork-implementer</td></tr>
+          <tr><td>Dependencies</td><td>write-tests</td></tr>
+          <tr><td>Scope</td><td>src/core/viz-renderer.ts</td></tr>
+        </table>
+        
+        <div class="sub-tasks">
+          <strong>Sub-tasks:</strong>
+          <ul><li>Add VizData type (graph nodes, proposal summary, spec requirements, state) in src/core/viz-renderer.ts</li><li>Implement buildMermaidDiagram() — converts graph.yaml nodes/deps to Mermaid TD syntax with type-based coloring</li><li>Implement extractProposalSummary() — reads proposal.md, extracts WHY section text</li><li>Implement extractSpecRequirements() — reads specs/*.md, extracts ### Requirement headers and their scenarios</li><li>Implement renderHTML() — assembles self-contained HTML with inline CSS, Mermaid CDN, collapsible node panels, spec summary</li></ul>
+        </div>
+      </div>
+
+      <div class="node-detail" id="detail-impl-2">
+        <h3>impl-2 <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>llm</td></tr>
+          <tr><td>Agent/Command</td><td>specwork-implementer</td></tr>
+          <tr><td>Dependencies</td><td>impl-1</td></tr>
+          <tr><td>Scope</td><td>src/cli/viz.ts, src/index.ts</td></tr>
+        </table>
+        
+        <div class="sub-tasks">
+          <strong>Sub-tasks:</strong>
+          <ul><li>Create src/cli/viz.ts with makeVizCommand() — `specwork viz &lt;change&gt;` with --refresh flag</li><li>Register makeVizCommand() in src/index.ts as porcelain command</li><li>Implement open-or-generate logic: open existing overview.html, generate if missing or --refresh passed</li><li>Auto-open in browser via `open` (macOS) / `xdg-open` (Linux)</li></ul>
+        </div>
+      </div>
+
+      <div class="node-detail" id="detail-impl-3">
+        <h3>impl-3 <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>llm</td></tr>
+          <tr><td>Agent/Command</td><td>specwork-implementer</td></tr>
+          <tr><td>Dependencies</td><td>impl-2</td></tr>
+          <tr><td>Scope</td><td>.claude/commands/specwork-plan.md</td></tr>
+        </table>
+        
+      </div>
+
+      <div class="node-detail" id="detail-integration">
+        <h3>integration <span class="status status-complete">complete</span></h3>
+        <table>
+          <tr><td>Type</td><td>deterministic</td></tr>
+          <tr><td>Agent/Command</td><td>npm test</td></tr>
+          <tr><td>Dependencies</td><td>impl-1, impl-2, impl-3</td></tr>
+          <tr><td>Scope</td><td>-</td></tr>
+        </table>
+        
+      </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="panel-title">Spec Requirements</div>
+        
+    <div class="spec-group">
+      <h4>plan-visualization.md</h4>
+      <ul><li>Self-Contained HTML Output</li><li>DAG Graph Visualization</li><li>Proposal Overview Panel</li><li>Spec Requirements Per Node</li><li>CLI Command specwork viz</li><li>Plan Skill Integration</li></ul>
+    </div>
+      </div>
+    </div>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

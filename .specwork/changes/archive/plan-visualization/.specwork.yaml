@@ -1,0 +1,7 @@
+schema: specwork-change/v1
+change: add-interactive-html-visualization-after-planning-phase-agent-generates-html-with-dag-graph-node-states-reasoning-change-overview-auto-opens-in-browser-before-go-also-available-as-standalone-specwork-viz-command
+description: Add interactive HTML visualization after planning phase - agent generates HTML with DAG graph, node states, reasoning, change overview; auto-opens in browser before go; also available as standalone specwork viz command
+created_at: 2026-03-30T07:52:03.120Z
+status: archived
+mode: brainstorm
+archived_at: 2026-03-30T08:29:09.234Z

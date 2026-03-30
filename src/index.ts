@@ -16,6 +16,7 @@ import { makeInitCommand } from './cli/init.js';
 import { makeDoctorCommand } from './cli/doctor.js';
 import { makeUpdateCommand } from './cli/update.js';
 import { makeArchiveCommand } from './cli/archive.js';
+import { makeVizCommand } from './cli/viz.js';
 
 // Plumbing (agent-facing)
 import { makeNewCommand } from './cli/new.js';
@@ -67,6 +68,7 @@ program.addCommand(makeStatusCommand());
 program.addCommand(makeDoctorCommand());
 program.addCommand(makeUpdateCommand());
 program.addCommand(makeArchiveCommand());
+program.addCommand(makeVizCommand());
 
 // ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());

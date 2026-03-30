@@ -194,9 +194,9 @@ describe('specwork go', () => {
     writeTasksFile(dir, 'my-change', `## 1. Setup\n\n- [ ] 1.1 Initialize the module\n- [ ] 1.2 Configure\n`);
     runSpecwork(dir, 'graph generate my-change');
 
-    // --from impl-1-1 skips snapshot + write-tests, but those are deps of impl-1-1
-    // so impl-1-1 ends up blocked — exit code 2 (BLOCKED) with skipped nodes listed
-    const result = runSpecwork(dir, 'go my-change --from impl-1-1 --json');
+    // --from impl-1 skips snapshot + write-tests, but those are deps of impl-1
+    // so impl-1 ends up blocked — exit code 2 (BLOCKED) with skipped nodes listed
+    const result = runSpecwork(dir, 'go my-change --from impl-1 --json');
     expect(result.exitCode).toBe(2); // BLOCKED
     const out = JSON.parse(result.stdout);
     expect(out.status).toBe('blocked');

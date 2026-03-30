@@ -128,6 +128,71 @@ export function getSiblings(graph: Graph, nodeId: string): string[] {
   return [...result];
 }
 
+export function getNextWave(
+  graph: Graph,
+  state: WorkflowState,
+  opts?: { maxConcurrent?: number }
+): GraphNode[] {
+  const maxConcurrent = opts?.maxConcurrent ?? 5;
+  const ready = getReadyNodes(graph, state);
+  const topoOrder = topologicalSort(graph);
+  ready.sort((a, b) => topoOrder.indexOf(a.id) - topoOrder.indexOf(b.id));
+  return ready.slice(0, maxConcurrent);
+}
+
+export function shouldWaveAutoContinue(
+  graph: Graph,
+  state: WorkflowState,
+  waveNodeIds: string[]
+): { autoContinue: boolean; pauseReason?: string } {
+  // Check for failures
+  for (const id of waveNodeIds) {
+    const ns = state.nodes[id];
+    if (ns && ns.status === 'failed') {
+      return { autoContinue: false, pauseReason: `Node "${id}" failed` };
+    }
+  }
+
+  // Check for regressions in verify_history
+  for (const id of waveNodeIds) {
+    const ns = state.nodes[id];
+    if (ns) {
+      for (const entry of ns.verify_history) {
+        if (entry.regressions && entry.regressions.length > 0) {
+          return { autoContinue: false, pauseReason: `Node "${id}" has regressions` };
+        }
+      }
+    }
+  }
+
+  // Check for gate:human nodes
+  for (const id of waveNodeIds) {
+    const node = graph.nodes.find(n => n.id === id);
+    if (node?.gate === 'human') {
+      return { autoContinue: false, pauseReason: `Node "${id}" has gate:human` };
+    }
+  }
+
+  return { autoContinue: true };
+}
+
+export function isGroupNode(node: Pick<GraphNode, 'sub_tasks'>): boolean {
+  return Array.isArray(node.sub_tasks) && node.sub_tasks.length > 0;
+}
+
+export function getVerificationScope(graph: Graph, nodeId: string): string[] {
+  const node = graph.nodes.find(n => n.id === nodeId);
+  if (!node) throw new NodeNotFoundError(nodeId);
+  return node.scope ?? [];
+}
+
+export function getRetryContext(node: GraphNode, verifyResult: unknown): object {
+  return {
+    sub_tasks: node.sub_tasks ?? [],
+    failed_checks: verifyResult,
+  };
+}
+
 export function topologicalSort(graph: Graph): string[] {
   const cycles = detectCycles(graph);
   if (cycles.length > 0) {

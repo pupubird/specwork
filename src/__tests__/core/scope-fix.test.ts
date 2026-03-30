@@ -53,23 +53,24 @@ describe('graph generator — per-task scope extraction', () => {
 - [ ] 1.1 Update src/core/graph-generator.ts to fix scope extraction
 `);
     const graph = generateGraph(root, 'test-change');
-    const implNode = graph.nodes.find(n => n.id === 'impl-1-1');
+    const implNode = graph.nodes.find(n => n.id === 'impl-1');
     expect(implNode).toBeDefined();
     expect(implNode!.scope).toContain('src/core/graph-generator.ts');
   });
 
-  it('does NOT use shared context to extract scope for individual tasks', () => {
+  it('collapsed group scope is union of all task scopes', () => {
     writeChange(root, 'test-change', `## 1. Core
 
-- [ ] 1.1 Fix the scope logic
+- [ ] 1.1 Fix src/core/graph-walker.ts scope logic
 - [ ] 1.2 Update src/core/verification.ts for baseline
 `);
     const graph = generateGraph(root, 'test-change');
 
-    // Task 1.1 mentions no files — should NOT inherit src/core/verification.ts from task 1.2
-    const node1 = graph.nodes.find(n => n.id === 'impl-1-1');
-    expect(node1).toBeDefined();
-    expect(node1!.scope).not.toContain('src/core/verification.ts');
+    // Collapsed group should have union of both task scopes
+    const node = graph.nodes.find(n => n.id === 'impl-1');
+    expect(node).toBeDefined();
+    expect(node!.scope).toContain('src/core/graph-walker.ts');
+    expect(node!.scope).toContain('src/core/verification.ts');
   });
 
   it('uses group-slug fallback when task has no explicit paths', () => {
@@ -78,7 +79,7 @@ describe('graph generator — per-task scope extraction', () => {
 - [ ] 1.1 Fix the scope logic
 `);
     const graph = generateGraph(root, 'test-change');
-    const implNode = graph.nodes.find(n => n.id === 'impl-1-1');
+    const implNode = graph.nodes.find(n => n.id === 'impl-1');
     expect(implNode).toBeDefined();
     // Should NOT be ['src/'] — should be based on group name
     expect(implNode!.scope[0]).not.toBe('src/');

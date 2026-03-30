@@ -387,16 +387,16 @@ describe('parseTasks — skip convention lines', () => {
     const graph = generateGraph(root, 'test-change');
     const implNodes = graph.nodes.filter(n => n.id.startsWith('impl-'));
 
-    // Should have 3 impl nodes (1.1, 1.2, 2.1) — convention lines skipped
-    expect(implNodes).toHaveLength(3);
-    const descriptions = implNodes.map(n => n.description);
-    expect(descriptions).toContain('Build login page');
-    expect(descriptions).toContain('Build dashboard');
-    expect(descriptions).toContain('Wire up API endpoints');
+    // Should have 2 collapsed impl nodes (group 1 + group 2) — convention lines skipped
+    expect(implNodes).toHaveLength(2);
+    // Group 1 has sub_tasks for login page + dashboard, group 2 has wire up API
+    const allSubTasks = implNodes.flatMap(n => n.sub_tasks ?? [n.description]);
+    expect(allSubTasks.some(d => d.includes('Build login page'))).toBe(true);
+    expect(allSubTasks.some(d => d.includes('Wire up API endpoints'))).toBe(true);
 
-    // Convention lines should NOT appear as impl nodes
-    expect(descriptions.every(d => !d.includes('write-tests:'))).toBe(true);
-    expect(descriptions.every(d => !d.includes('integration:'))).toBe(true);
+    // Convention lines should NOT appear as impl nodes or sub_tasks
+    expect(allSubTasks.every(d => !d.includes('write-tests:'))).toBe(true);
+    expect(allSubTasks.every(d => !d.includes('integration:'))).toBe(true);
   });
 
   it('still generates correct graph when no convention lines present', () => {
@@ -410,7 +410,8 @@ describe('parseTasks — skip convention lines', () => {
     const graph = generateGraph(root, 'test-change');
     const implNodes = graph.nodes.filter(n => n.id.startsWith('impl-'));
 
-    expect(implNodes).toHaveLength(2);
+    // Collapsed into 1 group node
+    expect(implNodes).toHaveLength(1);
   });
 });
 

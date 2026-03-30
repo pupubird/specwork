@@ -11,6 +11,7 @@ interface ParsedTask {
   groupIndex: number;
   taskIndex: number;
   rawLine: string;
+  optOut: boolean;
 }
 
 function slugify(text: string): string {
@@ -59,7 +60,11 @@ function parseTasks(tasksContent: string): ParsedTask[] {
     // Checkbox task: - [ ] 1.1 Task description or - [ ] Task description
     const taskMatch = /^-\s+\[\s*[ x]?\s*\]\s+(?:\d+(?:\.\d+)?\s+)?(.+)/.exec(line);
     if (taskMatch) {
-      const description = taskMatch[1].trim();
+      let description = taskMatch[1].trim();
+      const optOut = /<!--\s*group:\s*null\s*-->/.test(description);
+      if (optOut) {
+        description = description.replace(/<!--\s*group:\s*null\s*-->/, '').trim();
+      }
       taskIndexInGroup++;
       const id = `impl-${currentGroupIndex}-${taskIndexInGroup}`;
       tasks.push({
@@ -69,6 +74,7 @@ function parseTasks(tasksContent: string): ParsedTask[] {
         groupIndex: currentGroupIndex,
         taskIndex: taskIndexInGroup,
         rawLine: line,
+        optOut,
       });
     }
   }
@@ -136,47 +142,86 @@ export function generateGraph(root: string, change: string): Graph {
   };
   nodes.push(writeTestsNode);
 
-  // Impl nodes — group-aware dependency chaining
-  const groupLastTask = new Map<number, string>(); // groupIndex → last task id
+  // Impl nodes — collapse tasks per section into grouped nodes
+  const validate: ValidationRule[] = [
+    { type: 'scope-check' },
+    { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
+    { type: 'imports-exist' },
+    { type: 'tsc-check' },
+    { type: 'tests-pass' },
+  ];
 
+  // Bucket tasks by groupIndex, separating opted-out tasks
+  const groupMap = new Map<number, { name: string; grouped: ParsedTask[]; isolated: ParsedTask[] }>();
   for (const task of tasks) {
-    // Extract scope from task line ONLY (not shared context) to avoid cross-node conflicts
-    const scope = extractFilePaths(task.rawLine);
-    const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
-
-    const validate: ValidationRule[] = [
-      { type: 'scope-check' },
-      { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
-      { type: 'imports-exist' },
-      { type: 'tsc-check' },
-      { type: 'tests-pass' },
-    ];
-
-    // Deps: previous task in same group (sequential within group),
-    // or write-tests if first task in group (parallel between groups)
-    const deps: string[] = [];
-    const prevInGroup = groupLastTask.get(task.groupIndex);
-    if (prevInGroup) {
-      deps.push(prevInGroup);
+    if (!groupMap.has(task.groupIndex)) {
+      groupMap.set(task.groupIndex, { name: task.group, grouped: [], isolated: [] });
+    }
+    const entry = groupMap.get(task.groupIndex)!;
+    if (task.optOut) {
+      entry.isolated.push(task);
     } else {
-      // First task in every group depends on write-tests (enables parallelism)
-      deps.push('write-tests');
+      entry.grouped.push(task);
+    }
+  }
+
+  for (const [groupIndex, { name, grouped, isolated }] of groupMap) {
+    // Emit collapsed or single group node
+    if (grouped.length >= 2) {
+      const scope = [...new Set(grouped.flatMap(t => extractFilePaths(t.rawLine)))];
+      if (scope.length === 0) scope.push(`src/${slugify(name)}/`);
+      const implNode: GraphNode = {
+        id: `impl-${groupIndex}`,
+        type: 'llm',
+        description: name,
+        agent: 'specwork-implementer',
+        deps: ['write-tests'],
+        inputs: ['.specwork/env/snapshot.md'],
+        outputs: scope,
+        scope,
+        validate,
+        retry: 2,
+        group: slugify(name),
+        sub_tasks: grouped.map(t => t.description),
+      };
+      nodes.push(implNode);
+    } else if (grouped.length === 1) {
+      const task = grouped[0];
+      const scope = extractFilePaths(task.rawLine);
+      const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
+      const implNode: GraphNode = {
+        id: `impl-${groupIndex}`,
+        type: 'llm',
+        description: task.description,
+        agent: 'specwork-implementer',
+        deps: ['write-tests'],
+        inputs: ['.specwork/env/snapshot.md'],
+        outputs: implScope,
+        scope: implScope,
+        validate,
+        retry: 2,
+      };
+      nodes.push(implNode);
     }
 
-    const implNode: GraphNode = {
-      id: task.id,
-      type: 'llm',
-      description: task.description,
-      agent: 'specwork-implementer',
-      deps,
-      inputs: ['.specwork/env/snapshot.md'],
-      outputs: implScope,
-      scope: implScope,
-      validate,
-      retry: 2,
-    };
-    nodes.push(implNode);
-    groupLastTask.set(task.groupIndex, task.id);
+    // Emit opted-out (isolated) nodes
+    for (const task of isolated) {
+      const scope = extractFilePaths(task.rawLine);
+      const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
+      const implNode: GraphNode = {
+        id: `impl-${groupIndex}-${task.taskIndex}`,
+        type: 'llm',
+        description: task.description,
+        agent: 'specwork-implementer',
+        deps: ['write-tests'],
+        inputs: ['.specwork/env/snapshot.md'],
+        outputs: implScope,
+        scope: implScope,
+        validate,
+        retry: 2,
+      };
+      nodes.push(implNode);
+    }
   }
 
   // Last node: integration (deterministic)

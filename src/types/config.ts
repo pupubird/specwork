@@ -12,6 +12,7 @@ export interface SpecworkConfig {
     parallel_mode: 'sequential' | 'parallel';
     snapshot_refresh: 'after_each_node' | 'once' | 'never';
     verify?: string;
+    max_concurrent?: number;
   };
   context: {
     ancestors: 'L0';

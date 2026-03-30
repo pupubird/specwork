@@ -35,6 +35,8 @@ export interface GraphNode {
   model?: string;
   retry?: number;
   worktree?: boolean;
+  group?: string | null;
+  sub_tasks?: string[];
 }
 
 export interface Graph {

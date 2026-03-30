@@ -58,14 +58,15 @@ export function buildNextAction(
     case 'go:ready':
       return {
         command: 'team:spawn',
-        description: `Create team exec-${change}, spawn one teammate per ready node: ${(readyNodes ?? []).join(', ')}`,
+        description: `Spawn teammates for wave`,
         context,
+        ready_queue: readyNodes ?? [],
       };
 
     case 'go:done':
       return {
         command: 'suggest',
-        description: 'Workflow complete. Present options to user.',
+        description: 'Workflow complete',
         context,
         suggest_to_user: [
           `Archive this change (specwork archive ${change})`,
@@ -77,44 +78,45 @@ export function buildNextAction(
     case 'go:blocked':
       return {
         command: 'escalate',
-        description: `No runnable nodes. Blocked: ${(blockedNodes ?? []).join(', ')}. Report to user and suggest escalation or manual fix.`,
+        description: `Blocked nodes: ${(blockedNodes ?? []).join(', ')}`,
         context,
       };
 
     case 'go:waiting':
       return {
         command: 'wait',
-        description: `Nodes still in progress. Wait for teammates to complete, then run: specwork go ${change} --json`,
+        description: `Nodes in progress`,
         context,
       };
 
     case 'node:start':
       return {
-        command: 'subagent:spawn',
-        description: `Context is assembled and included in this response. Spawn the appropriate subagent for node ${nodeId} using the context field. After the subagent finishes, run verification — the implementer never grades its own homework.`,
+        command: `specwork node start ${change} ${nodeId} --json`,
+        description: `Start node ${nodeId}`,
         context,
         on_pass: `specwork node verify ${change} ${nodeId} --json`,
-        on_fail: `specwork node fail ${change} ${nodeId} --reason '<error>'`,
+        on_fail: `specwork node fail ${change} ${nodeId}`,
       };
 
     case 'node:complete':
       return {
         command: `specwork go ${change} --json`,
-        description: `Node ${nodeId} complete. Run specwork go to get the next batch of ready nodes.`,
+        description: `Node ${nodeId} complete`,
         context,
+        current_wave: 0,
       };
 
     case 'node:fail':
       if (retriesLeft !== undefined && retriesLeft > 0) {
         return {
           command: 'subagent:respawn',
-          description: `Node ${nodeId} failed. ${retriesLeft} retries remaining. Re-spawn subagent with failure feedback injected as context.`,
+          description: `Retry node ${nodeId} (${retriesLeft} left)`,
           context,
         };
       }
       return {
-        command: `specwork node escalate ${change} ${nodeId}`,
-        description: `Node ${nodeId} failed with no retries remaining. Escalate to user for manual intervention.`,
+        command: 'escalate',
+        description: `Node ${nodeId} failed, retries exhausted`,
         context,
         suggest_to_user: [
           `Fix the issue manually and run: specwork node complete ${change} ${nodeId}`,
@@ -126,7 +128,7 @@ export function buildNextAction(
     case 'node:escalate':
       return {
         command: 'suggest',
-        description: `Node ${nodeId} escalated. Dependent nodes have been cascade-skipped. Report to user.`,
+        description: `Node ${nodeId} escalated`,
         context,
         suggest_to_user: [
           `Fix manually and retry: specwork node start ${change} ${nodeId}`,
@@ -138,17 +140,20 @@ export function buildNextAction(
     case 'node:verify:pass':
       return {
         command: 'subagent:spawn',
-        description: `Verification passed for ${nodeId}. Spawn specwork-summarizer (haiku) to write L0/L1/L2 context artifacts, then complete the node.`,
+        description: `Spawn summarizer for ${nodeId}`,
         context,
-        on_pass: `specwork node complete ${change} ${nodeId}`,
+        on_pass: `specwork node complete ${change} ${nodeId} --json`,
       };
 
     case 'node:verify:fail':
       return {
-        command: `specwork node fail ${change} ${nodeId} --reason '<failed checks>'`,
-        description: `Verification failed for ${nodeId}. Fail the node so retry logic can kick in.`,
+        command: `specwork node fail ${change} ${nodeId}`,
+        description: `Verification failed for ${nodeId}`,
         context,
-        on_fail: `specwork node fail ${change} ${nodeId} --reason '<failed checks>'`,
+        on_fail: `specwork node fail ${change} ${nodeId}`,
       };
+
+    default:
+      throw new Error(`Unknown status: ${status as string}`);
   }
 }

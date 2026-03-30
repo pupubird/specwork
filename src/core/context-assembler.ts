@@ -264,6 +264,12 @@ export function expandValidate(rules: ValidationRule[]): string[] {
   });
 }
 
+export function getParentL1Sources(graph: Graph, nodeId: string): Array<{ nodeId: string }> {
+  const node = graph.nodes.find(n => n.id === nodeId);
+  if (!node) return [];
+  return node.deps.map(depId => ({ nodeId: depId }));
+}
+
 export function composeMicroSpec(root: string, change: string, nodeId: string): string {
   const graph = readYaml<Graph>(graphPath(root, change));
   const graphNode = graph.nodes.find(n => n.id === nodeId);

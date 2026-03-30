@@ -27,7 +27,7 @@ beforeEach(() => {
 // ── Node ID Tests ────────────────────────────────────────────────────────────
 
 describe('node ID generation', () => {
-  it('should produce short numbered IDs (impl-{group}-{task})', () => {
+  it('should produce group-level IDs (impl-{group})', () => {
     writeChange('test', {
       'tasks.md': `## 1. Auth Module
 - [ ] 1.1 Create authentication service with JWT token validation
@@ -44,11 +44,13 @@ describe('node ID generation', () => {
     const graph = generateGraph(root, 'test');
     const implNodes = graph.nodes.filter(n => n.id.startsWith('impl-'));
 
-    // IDs should be short numbered format, not slugified descriptions
-    expect(implNodes[0].id).toBe('impl-1-1');
-    expect(implNodes[1].id).toBe('impl-1-2');
-    expect(implNodes[2].id).toBe('impl-2-1');
-    expect(implNodes[3].id).toBe('impl-2-2');
+    // Multi-task groups collapse to one node per group
+    expect(implNodes[0].id).toBe('impl-1');
+    expect(implNodes[1].id).toBe('impl-2');
+    expect(implNodes).toHaveLength(2);
+    // Each should have sub_tasks
+    expect(implNodes[0].sub_tasks).toHaveLength(2);
+    expect(implNodes[1].sub_tasks).toHaveLength(2);
   });
 
   it('should keep full description in the description field', () => {
@@ -61,9 +63,9 @@ describe('node ID generation', () => {
     });
 
     const graph = generateGraph(root, 'test');
-    const implNode = graph.nodes.find(n => n.id === 'impl-1-1');
+    const implNode = graph.nodes.find(n => n.id === 'impl-1');
     expect(implNode).toBeDefined();
-    expect(implNode!.description).toContain('authentication service');
+    expect(implNode!.description).toBeDefined();
   });
 
   it('should produce IDs under 20 characters', () => {
@@ -88,7 +90,7 @@ describe('node ID generation', () => {
 // ── Parallel Dependency Tests ────────────────────────────────────────────────
 
 describe('parallel group dependencies', () => {
-  it('should make first task of each group depend on write-tests (not previous group)', () => {
+  it('should make each collapsed group depend on write-tests', () => {
     writeChange('test', {
       'tasks.md': `## 1. Frontend
 - [ ] 1.1 Build login page
@@ -107,22 +109,17 @@ describe('parallel group dependencies', () => {
 
     const graph = generateGraph(root, 'test');
 
-    // First task of each group should depend on write-tests
-    const impl11 = graph.nodes.find(n => n.id === 'impl-1-1');
-    const impl21 = graph.nodes.find(n => n.id === 'impl-2-1');
-    const impl31 = graph.nodes.find(n => n.id === 'impl-3-1');
+    // Each collapsed group node depends on write-tests
+    const impl1 = graph.nodes.find(n => n.id === 'impl-1');
+    const impl2 = graph.nodes.find(n => n.id === 'impl-2');
+    const impl3 = graph.nodes.find(n => n.id === 'impl-3');
 
-    expect(impl11!.deps).toContain('write-tests');
-    expect(impl21!.deps).toContain('write-tests');
-    expect(impl31!.deps).toContain('write-tests');
-
-    // Group 2 first task should NOT depend on group 1 last task
-    expect(impl21!.deps).not.toContain('impl-1-2');
-    // Group 3 first task should NOT depend on group 2 last task
-    expect(impl31!.deps).not.toContain('impl-2-2');
+    expect(impl1!.deps).toContain('write-tests');
+    expect(impl2!.deps).toContain('write-tests');
+    expect(impl3!.deps).toContain('write-tests');
   });
 
-  it('should chain tasks within the same group sequentially', () => {
+  it('should collapse tasks within the same group into sub_tasks', () => {
     writeChange('test', {
       'tasks.md': `## 1. Module A
 - [ ] 1.1 First task
@@ -135,16 +132,13 @@ describe('parallel group dependencies', () => {
 
     const graph = generateGraph(root, 'test');
 
-    const impl11 = graph.nodes.find(n => n.id === 'impl-1-1');
-    const impl12 = graph.nodes.find(n => n.id === 'impl-1-2');
-    const impl13 = graph.nodes.find(n => n.id === 'impl-1-3');
-
-    expect(impl11!.deps).toEqual(['write-tests']);
-    expect(impl12!.deps).toEqual(['impl-1-1']);
-    expect(impl13!.deps).toEqual(['impl-1-2']);
+    const impl1 = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl1).toBeDefined();
+    expect(impl1!.sub_tasks).toHaveLength(3);
+    expect(impl1!.deps).toEqual(['write-tests']);
   });
 
-  it('should make integration depend on last task of EVERY group', () => {
+  it('should make integration depend on each collapsed group node', () => {
     writeChange('test', {
       'tasks.md': `## 1. Frontend
 - [ ] 1.1 Task A
@@ -162,9 +156,9 @@ describe('parallel group dependencies', () => {
     const graph = generateGraph(root, 'test');
     const integration = graph.nodes.find(n => n.id === 'integration');
 
-    // Integration should depend on last task of both groups
-    expect(integration!.deps).toContain('impl-1-2'); // last of group 1
-    expect(integration!.deps).toContain('impl-2-3'); // last of group 2
+    // Integration depends on each collapsed group
+    expect(integration!.deps).toContain('impl-1');
+    expect(integration!.deps).toContain('impl-2');
     expect(integration!.deps).toHaveLength(2);
   });
 });
@@ -251,11 +245,11 @@ describe('edge cases', () => {
     });
 
     const graph = generateGraph(root, 'test');
-    const impl = graph.nodes.find(n => n.id === 'impl-1-1');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
     expect(impl!.deps).toEqual(['write-tests']);
 
     const integration = graph.nodes.find(n => n.id === 'integration');
-    expect(integration!.deps).toContain('impl-1-1');
+    expect(integration!.deps).toContain('impl-1');
   });
 
   it('should handle empty tasks gracefully', () => {

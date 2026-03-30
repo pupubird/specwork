@@ -35,6 +35,8 @@ export interface NodeState {
   last_verdict: 'PASS' | 'FAIL' | null;
   verify_history: VerifyHistoryEntry[];
   start_sha: string | null;
+  group?: string | null;
+  sub_tasks_completed?: boolean[];
 }
 
 export interface LockInfo {
@@ -49,6 +51,7 @@ export interface WorkflowState {
   updated_at: string;
   lock: LockInfo | null;
   nodes: Record<string, NodeState>;
+  current_wave: number;
 }
 
 export interface NextAction {
@@ -58,4 +61,6 @@ export interface NextAction {
   on_pass?: string;
   on_fail?: string;
   suggest_to_user?: string[];
+  ready_queue?: string[];
+  current_wave?: number;
 }

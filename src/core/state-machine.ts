@@ -40,7 +40,14 @@ function defaultNodeState(): NodeState {
 export function initializeState(graph: Graph): WorkflowState {
   const nodes: Record<string, NodeState> = {};
   for (const node of graph.nodes) {
-    nodes[node.id] = defaultNodeState();
+    const ns = defaultNodeState();
+    if (node.group !== undefined) {
+      ns.group = node.group;
+    }
+    if (node.sub_tasks !== undefined) {
+      ns.sub_tasks_completed = node.sub_tasks.map(() => false);
+    }
+    nodes[node.id] = ns;
   }
   const ts = now();
   return {
@@ -50,6 +57,15 @@ export function initializeState(graph: Graph): WorkflowState {
     updated_at: ts,
     lock: null,
     nodes,
+    current_wave: 0,
+  };
+}
+
+export function dispatchWave(state: WorkflowState, nodeIds: string[]): WorkflowState {
+  return {
+    ...state,
+    current_wave: state.current_wave + 1,
+    updated_at: now(),
   };
 }
 

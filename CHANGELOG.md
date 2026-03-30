@@ -7,6 +7,47 @@ Specwork uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.0] - 2026-03-30
+
+### Added
+
+- **Wave-based execution** — `max_concurrent` config (default 5) caps how many nodes run simultaneously
+  - `getNextWave()` — wraps `getReadyNodes()` with concurrency cap, ordered by topological position
+  - `shouldWaveAutoContinue()` — auto-continues clean waves, pauses on failure/regression/`gate: human`
+  - `current_wave` tracking in `WorkflowState`
+- **Node grouping** — tasks from the same `## N.` section in `tasks.md` collapse into a single graph node
+  - `sub_tasks: string[]` field on `GraphNode` — checklist for the agent
+  - `group: string` field on `GraphNode` — slugified section header
+  - `<!-- group: null -->` opt-out annotation for isolating specific tasks
+  - `isGroupNode()`, `getVerificationScope()`, `getRetryContext()`, `getParentL1Sources()` helpers
+  - Per-group verification: one verify call covers all sub-tasks in the group
+  - Per-group summarization: one L0/L1/L2 captures cross-sub-task relationships
+- **Deterministic orchestrator** — SKILL.md rewritten as (state, event) → command lookup table
+  - `ready_queue: string[]` on `NextAction` — all ready node IDs in one array
+  - `buildNextAction()` returns exact CLI commands, no prose descriptions
+  - Lead agent pattern-matches the table with zero interpretation
+- 4 new spec files: wave-execution, node-grouping, deterministic-orchestrator, graph-generator-grouping
+
+### Changed
+
+- Graph generator now emits collapsed group nodes (`impl-{groupIndex}`) instead of per-task nodes (`impl-{group}-{task}`)
+- `buildNextAction()` description fields are terse imperative labels, not prose workflows
+- 46 new tests, 12 old tests updated for grouping behavior (662 total)
+
+### Removed
+
+- `parallel_mode` config field — was never referenced in execution code (dead code since v0.1.0)
+
+### Migration
+
+The `0.2.0` migration automatically updates existing projects:
+- Rewrites `specwork-engine/SKILL.md` from prose to state machine table
+- Adds `max_concurrent: 5` to `config.yaml` execution block
+- Removes deprecated `parallel_mode` from `config.yaml`
+- Updates `specwork-summarizer.md` with group-level summarization instructions
+
+[0.2.0]: https://github.com/pupubird/specwork/releases/tag/v0.2.0
+
 ## [0.1.3] - 2026-03-29
 
 ### Added

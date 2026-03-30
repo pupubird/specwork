@@ -26,6 +26,7 @@ And it does not contain empty section headers for `## Spec Scenarios`, `## Paren
 
 #### Scenario: Micro-spec is ephemeral — not written to disk
 Given a micro-spec is composed for a node
+When the composition completes
 Then no `micro-spec.md` file is persisted to `.specwork/nodes/`
 And the document is returned in-memory as a string
 

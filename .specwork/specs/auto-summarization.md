@@ -31,11 +31,13 @@ And the command exits with code 0
 
 #### Scenario: verify:pass next_action instructs summarizer spawn
 Given `specwork node verify --json` returns verdict PASS
+When the response is inspected
 Then the `next_action.command` in the response is `subagent:spawn`
 And the description references spawning the summarizer
 And `next_action.on_pass` is `specwork node complete <change> <node>` without `--l0`
 
 #### Scenario: node:start next_action no longer references context assemble
 Given `specwork node start --json` is called for a node
+When the response is inspected
 Then the `next_action.command` in the response is NOT `specwork context assemble`
 And the description indicates context is inline in the response

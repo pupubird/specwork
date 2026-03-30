@@ -109,12 +109,14 @@ Commands with branching outcomes: `specwork node start`, `specwork node verify`.
 #### Scenario: on_pass and on_fail present for node start
 
 GIVEN any node start response
+WHEN the response is inspected
 THEN `next_action.on_pass` SHALL be present and SHALL reference `specwork node complete`
 AND `next_action.on_fail` SHALL be present and SHALL reference `specwork node fail`
 
 #### Scenario: on_pass and on_fail present for node verify
 
 GIVEN any node verify response
+WHEN the response is inspected
 THEN `next_action.on_pass` SHALL be present and SHALL reference completing the node
 AND `next_action.on_fail` SHALL be present and SHALL reference failing the node
 

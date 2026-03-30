@@ -18,6 +18,7 @@ The renderer SHALL produce a single `overview.html` file at `.specwork/changes/<
 #### Scenario: Mermaid CDN for DAG rendering
 
 - **GIVEN** the rendered HTML
+- **WHEN** the browser loads the file
 - **THEN** it SHALL load Mermaid.js from a CDN `<script>` tag
 - **AND** the DAG SHALL render as a top-down (TD) flowchart
 
@@ -30,16 +31,19 @@ The HTML SHALL render all nodes from `graph.yaml` as a directed graph with edges
 #### Scenario: Node type coloring
 
 - **GIVEN** nodes of types `snapshot`, `write-tests`, `impl-*`, and `integration`
+- **WHEN** the graph is rendered
 - **THEN** each type SHALL have a distinct visual color/style in the graph
 
 #### Scenario: Group node badge
 
 - **GIVEN** a node with `sub_tasks` array (group node)
+- **WHEN** the graph is rendered
 - **THEN** the graph SHALL display a badge or indicator showing the number of sub-tasks
 
 #### Scenario: Dependency edges
 
 - **GIVEN** a node with `deps: [A, B]`
+- **WHEN** the graph is rendered
 - **THEN** the graph SHALL draw directed edges from A and B to this node
 
 ---
@@ -57,6 +61,7 @@ The HTML SHALL include a panel showing the change rationale extracted from `prop
 #### Scenario: Change metadata
 
 - **GIVEN** a change with a name and description
+- **WHEN** the HTML is rendered
 - **THEN** the header SHALL display the change name and description
 
 ---
@@ -75,6 +80,7 @@ The HTML SHALL show spec requirements associated with each node.
 #### Scenario: Global specs summary
 
 - **GIVEN** spec files in the change's `specs/` directory
+- **WHEN** the HTML is rendered
 - **THEN** the HTML SHALL include a specs summary section listing all requirements grouped by file
 
 ---

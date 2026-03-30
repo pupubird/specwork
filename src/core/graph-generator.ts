@@ -169,7 +169,9 @@ export function generateGraph(root: string, change: string): Graph {
     // Emit collapsed or single group node
     if (grouped.length >= 2) {
       const scope = [...new Set(grouped.flatMap(t => extractFilePaths(t.rawLine)))];
-      if (scope.length === 0) scope.push(`src/${slugify(name)}/`);
+      if (scope.length === 0) {
+        process.stderr.write(`[specwork warn] impl-${groupIndex} ("${name}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
+      }
       const implNode: GraphNode = {
         id: `impl-${groupIndex}`,
         type: 'llm',
@@ -187,8 +189,10 @@ export function generateGraph(root: string, change: string): Graph {
       nodes.push(implNode);
     } else if (grouped.length === 1) {
       const task = grouped[0];
-      const scope = extractFilePaths(task.rawLine);
-      const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
+      const implScope = extractFilePaths(task.rawLine);
+      if (implScope.length === 0) {
+        process.stderr.write(`[specwork warn] impl-${groupIndex} ("${task.description}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
+      }
       const implNode: GraphNode = {
         id: `impl-${groupIndex}`,
         type: 'llm',
@@ -206,8 +210,10 @@ export function generateGraph(root: string, change: string): Graph {
 
     // Emit opted-out (isolated) nodes
     for (const task of isolated) {
-      const scope = extractFilePaths(task.rawLine);
-      const implScope = scope.length > 0 ? scope : [`src/${slugify(task.group)}/`];
+      const implScope = extractFilePaths(task.rawLine);
+      if (implScope.length === 0) {
+        process.stderr.write(`[specwork warn] impl-${groupIndex}-${task.taskIndex} ("${task.description}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
+      }
       const implNode: GraphNode = {
         id: `impl-${groupIndex}-${task.taskIndex}`,
         type: 'llm',

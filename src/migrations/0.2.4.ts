@@ -43,7 +43,11 @@ export const migrate: MigrationFn = (root, _config) => {
       file: path.join(root, '.claude', 'agents', 'specwork-test-writer.md'),
       template: AGENTS_SPECWORK_TEST_WRITER,
       label: 'specwork-test-writer.md',
-      detectOutdated: (c) => c.includes('snapshot') || c.includes('environment snapshot'),
+      detectOutdated: (c) =>
+        c.includes('snapshot') ||
+        c.includes('environment snapshot') ||
+        !c.includes('real browser testing required') ||
+        !c.includes('Core Philosophy'),
     },
     {
       file: path.join(root, '.claude', 'agents', 'specwork-planner.md'),

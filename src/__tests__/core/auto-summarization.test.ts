@@ -131,11 +131,10 @@ describe('node complete — L0 auto-read from disk', () => {
     expect(updatedState.nodes['write-tests'].l0).toBeNull();
     expect(updatedState.nodes['write-tests'].status).toBe('complete');
 
-    // After the change, buildNextAction('node:verify:pass') should return
-    // 'subagent:spawn' even when L0 is null — summarizer still runs.
-    // Currently it returns `specwork node complete ... --l0` — this FAILS.
+    // After anti-deferral change, verify:pass spawns QA first (subagent:spawn:qa)
+    // Still a subagent:spawn variant, not complete --l0
     const action = buildNextAction('node:verify:pass', 'ctx', { change: 'test-change', nodeId: 'write-tests', summary: '' });
-    expect(action.command).toBe('subagent:spawn');
+    expect(action.command).toMatch(/subagent:spawn/);
   });
 });
 
@@ -146,14 +145,13 @@ describe('buildNextAction — updated for auto-summarization', () => {
 
     const action = buildNextAction('node:verify:pass', ctx, opts);
 
-    // After the change, node:verify:pass should return 'subagent:spawn'
-    // to trigger the summarizer agent instead of directly completing with --l0
-    // Currently it returns `specwork node complete <change> <nodeId> --l0 '<summary>'`
-    expect(action.command).toBe('subagent:spawn');
+    // After anti-deferral change, node:verify:pass spawns QA first (not summarizer directly)
+    // Command is 'subagent:spawn:qa' — still a subagent:spawn variant, not complete --l0
+    expect(action.command).toMatch(/subagent:spawn/);
     expect(action.command).not.toContain('specwork node complete');
     expect(action.command).not.toContain('--l0');
 
-    // The on_pass should also not contain --l0 (summarizer handles L0 generation)
+    // The on_pass should also not contain --l0 (QA handles next step)
     if (action.on_pass) {
       expect(action.on_pass).not.toContain('--l0');
     }

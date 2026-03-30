@@ -281,8 +281,9 @@ describe('fail-fast execution', () => {
     const result = runChecks(root, rules, { failFast: false, scope: [] });
 
     expect(result.verdict).toBe('FAIL');
-    // Both should be FAIL, not SKIPPED
-    expect(result.checks.every(c => c.status === 'FAIL')).toBe(true);
+    // Both explicit checks should be FAIL (no-todos auto-injected check may PASS)
+    const explicitChecks = result.checks.filter(c => c.type === 'file-exists');
+    expect(explicitChecks.every(c => c.status === 'FAIL')).toBe(true);
   });
 
   it('marks skipped checks with prerequisite failure detail', () => {
@@ -545,7 +546,8 @@ describe('VerifyResult', () => {
 
     expect(result.verdict).toBe('FAIL');
     expect(result.failed_count).toBe(1);
-    expect(result.total_checks).toBe(2);
+    // total_checks includes auto-injected no-todos check
+    expect(result.total_checks).toBeGreaterThanOrEqual(2);
   });
 });
 

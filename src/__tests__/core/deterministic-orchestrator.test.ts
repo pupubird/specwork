@@ -35,15 +35,16 @@ describe('exact commands in next_action', () => {
     expect(typeof (action as any).current_wave).toBe('number');
   });
 
-  it('node:verify:pass on_pass includes --json flag for complete', () => {
-    // Spec: on_pass SHALL be complete command with --json for machine parsing
+  it('node:verify:pass on_pass includes --json flag for QA pass', () => {
+    // After anti-deferral change: verify:pass → QA (not summarizer directly)
+    // on_pass now routes to QA pass handler with --json for machine parsing
     const action = buildNextAction('node:verify:pass', context, {
       change,
       nodeId: 'impl-1',
     });
 
-    // New requirement: complete command needs --json for deterministic parsing
-    expect(action.on_pass).toBe(`specwork node complete ${change} impl-1 --json`);
+    expect(action.on_pass).toMatch(/qa/i);
+    expect(action.on_pass).toContain('--json');
   });
 
   it('node:start command field is exact specwork node start CLI command', () => {

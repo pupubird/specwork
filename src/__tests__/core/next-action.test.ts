@@ -192,15 +192,16 @@ describe('buildNextAction', () => {
     expect(action.suggest_to_user).toBeDefined();
   });
 
-  it('returns complete action with on_pass/on_fail for node/verify:pass', () => {
+  it('returns QA spawn action with on_pass for node/verify:pass', () => {
     const action = buildNextAction('node:verify:pass', context, {
       change,
       nodeId: 'impl-1-1',
     });
 
     expect(action.context).toBe(context);
+    expect(action.command).toMatch(/qa/i);
     expect(action.on_pass).toBeDefined();
-    expect(action.on_pass).toMatch(/specwork node complete/);
+    expect(action.on_pass).toMatch(/qa/i);
     expect(action.on_pass).toMatch(/impl-1-1/);
   });
 

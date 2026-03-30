@@ -51,5 +51,12 @@ Fields:
 
 All fields are arrays of strings. Keep each string concise (one fact per entry).
 
+## Incomplete node guard
+
+Before generating L0/L1/L2, check the node's output for deferred work:
+- If the output contains `TODO`, `FIXME`, `stub`, `placeholder`, or `not implemented` — do NOT write a success summary.
+- Instead write a single file `.specwork/nodes/[change]/[node]/incomplete.md` with the reason, and output: `NODE INCOMPLETE: [reason]`.
+- A node with deferred work is not complete, regardless of test results.
+
 ## Note on `specwork node complete`
 The lead engine calls `specwork node complete <change> <node-id>` after you finish. This CLI command auto-commits the node's changes with `git add -A && git commit -m "specwork: complete <node-id>"`. You do not need to handle commits — just write the L0/L1/L2 files.

@@ -54,6 +54,7 @@ export interface RunChecksOptions {
 const BUILTIN_TYPES = new Set<string>([
   'tests-fail', 'tests-pass', 'tsc-check', 'file-exists',
   'exit-code', 'scope-check', 'files-unchanged', 'imports-exist',
+  'no-todos',
 ]);
 
 // ── Priority order (cheapest first) ─────────────────────────────────────────
@@ -125,7 +126,10 @@ export function runChecks(
   opts: RunChecksOptions,
 ): VerifyResult {
   const start = Date.now();
-  const sorted = sortChecksByPriority(rules);
+  const withDefaults = rules.some(r => r.type === 'no-todos')
+    ? rules
+    : [...rules, { type: 'no-todos' as BuiltinValidationRuleType }];
+  const sorted = sortChecksByPriority(withDefaults);
   const checks: CheckResult[] = [];
   const failedTypes = new Set<string>();
 
@@ -209,6 +213,9 @@ export function runSingleCheck(
 
     case 'imports-exist':
       return runImportsExist(root, scope, start);
+
+    case 'no-todos':
+      return runNoTodosCheck(root, start);
 
     case 'exit-code':
       return runExitCode(root, rule, start);
@@ -629,6 +636,88 @@ function collectTsFiles(dir: string, root: string, out: string[]): void {
       out.push(path.relative(root, full));
     }
   }
+}
+
+const DEFERRAL_PATTERNS = [
+  /\b(TODO|FIXME|HACK|XXX|STUB|PLACEHOLDER|NOT_IMPLEMENTED)\b/,
+  /throw\s+new\s+Error\s*\(\s*['"]not\s+implemented/i,
+];
+
+function runNoTodosCheck(root: string, start: number): CheckResult {
+  let diff: string;
+  try {
+    diff = execSync('git diff HEAD', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+  } catch {
+    return {
+      type: 'no-todos',
+      status: 'PASS',
+      detail: 'No git diff available',
+      errors: [],
+      duration_ms: Date.now() - start,
+    };
+  }
+
+  const errors: CheckError[] = [];
+  let currentFile: string | null = null;
+  let currentNewLine = 0;
+
+  for (const rawLine of diff.split('\n')) {
+    // Detect file header: diff --git a/... b/filepath
+    const fileMatch = /^\+\+\+ b\/(.+)$/.exec(rawLine);
+    if (fileMatch) {
+      currentFile = fileMatch[1];
+      currentNewLine = 0;
+      continue;
+    }
+
+    // Detect hunk header: @@ -old_start,old_count +new_start,new_count @@
+    const hunkMatch = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(rawLine);
+    if (hunkMatch) {
+      currentNewLine = parseInt(hunkMatch[1], 10) - 1;
+      continue;
+    }
+
+    // Skip removed lines
+    if (rawLine.startsWith('-')) continue;
+
+    // Track line numbers for context lines and added lines
+    if (rawLine.startsWith(' ') || rawLine.startsWith('+')) {
+      if (rawLine.startsWith('+') && !rawLine.startsWith('+++')) {
+        currentNewLine++;
+        if (currentFile && !currentFile.startsWith('.specwork/')) {
+          const lineContent = rawLine.slice(1);
+          const matched = DEFERRAL_PATTERNS.some(p => p.test(lineContent));
+          if (matched) {
+            errors.push({
+              file: currentFile,
+              line: currentNewLine,
+              message: `Deferred work pattern found: ${lineContent.trim()}`,
+            });
+          }
+        }
+      } else if (rawLine.startsWith(' ')) {
+        currentNewLine++;
+      }
+    }
+  }
+
+  if (errors.length === 0) {
+    return {
+      type: 'no-todos',
+      status: 'PASS',
+      detail: 'No deferred work patterns found',
+      errors: [],
+      duration_ms: Date.now() - start,
+    };
+  }
+
+  return {
+    type: 'no-todos',
+    status: 'FAIL',
+    detail: truncateDetail(`${errors.length} deferred work pattern(s) found`),
+    errors,
+    duration_ms: Date.now() - start,
+  };
 }
 
 function runExitCode(root: string, rule: ValidationRule, start: number): CheckResult {

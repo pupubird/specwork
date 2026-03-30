@@ -35,7 +35,7 @@ Run the node's validation rules:
   - Race conditions in async code
   - Missing edge cases (empty arrays, single items, duplicates)
   - Import paths that might break in different environments
-  - Any TODO/FIXME/HACK comments left behind
+  - Any TODO/FIXME/HACK/stub/placeholder comments left behind — **these are automatic FAIL, no exceptions**
 
 ### 3. Regression check
 - Run the FULL test suite (`npm test`), not just the node's tests

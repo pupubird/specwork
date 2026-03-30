@@ -20,6 +20,7 @@ Run each check specified by the lead agent. Common checks:
 - **imports-exist**: Parse import statements in changed files, verify each resolves.
 - **file-exists**: Verify specified files exist on disk.
 - **exit-code**: Run command and check exit code matches expected value.
+- **no-deferred-work**: Run `git diff` and grep for `TODO`, `FIXME`, `stub`, `placeholder`, `not implemented`. Report FAIL if any match found in changed files — even if all other checks pass.
 
 You can also run `specwork status <change>` to check the current state of all nodes if needed for context.
 

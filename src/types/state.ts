@@ -7,7 +7,7 @@ export type NodeStatus =
   | 'rejected'
   | 'skipped';
 
-export type ChangeStatus = 'active' | 'complete' | 'failed' | 'paused';
+export type ChangeStatus = 'active' | 'complete' | 'failed' | 'paused' | 'final-review';
 
 export interface VerifyHistoryEntry {
   attempt: number;

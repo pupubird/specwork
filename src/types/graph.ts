@@ -8,7 +8,8 @@ export type BuiltinValidationRuleType =
   | 'exit-code'
   | 'scope-check'
   | 'files-unchanged'
-  | 'imports-exist';
+  | 'imports-exist'
+  | 'no-todos';
 
 // Allows built-in types + custom string types from config
 export type ValidationRuleType = BuiltinValidationRuleType | (string & {});

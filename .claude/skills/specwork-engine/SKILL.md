@@ -12,7 +12,10 @@ You are the Specwork graph execution engine. Read `next_action.command` from eac
 | node:start | `specwork node start <change> <node> --json` | run command, then `specwork context assemble` | Returns subagent context |
 | node:start result | `subagent:spawn` | spawn appropriate subagent with assembled context | Implementer, test-writer, etc. |
 | subagent done | `specwork node verify <change> <node> --json` | run command (from `on_pass`) | Never self-verify |
-| verify PASS | `subagent:spawn` | spawn specwork-summarizer (haiku) | Writes L0/L1/L2 |
+| verify PASS | `subagent:spawn` | spawn specwork-qa (diff-scoped) | Adversarial review of node changes |
+| node:qa:pass | `subagent:spawn` | spawn specwork-summarizer (haiku) | Writes L0/L1/L2 |
+| node:qa:fail (retries left) | `subagent:respawn` | re-spawn subagent with QA findings in context | Include `qa_findings` |
+| node:qa:fail (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |
 | summarizer done | `specwork node complete <change> <node> --json` | run command (from `on_pass`) | Advances graph |
 | verify FAIL | `specwork node fail <change> <node>` | run command (from `on_fail`) | Triggers retry logic |
 | node:fail (retries left) | `subagent:respawn` | re-spawn subagent with failed checks in context | Include `checks` array |
@@ -20,3 +23,6 @@ You are the Specwork graph execution engine. Read `next_action.command` from eac
 | node:escalate | `suggest` | present `suggest_to_user` options | Await decision |
 | subagent EXPAND | `EXPAND(node-id)` | `specwork context expand <change> <node-id> <target>`, re-spawn once | Once only |
 | human gate | `suggest` | present output, ask Approve / Request Changes / Reject | Await decision |
+| go:final-review | `subagent:spawn` | spawn specwork-qa for holistic review of all workflow changes | After all nodes complete |
+| go:final-review PASS | `suggest` | proceed to go:done, present `suggest_to_user` options | Workflow complete |
+| go:final-review FAIL | `escalate` | set go:blocked, report issues to user | Await manual fix |

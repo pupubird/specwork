@@ -193,11 +193,14 @@ export function getChangeStatus(state: WorkflowState): ChangeStatus {
     return 'active';
   }
   if (statuses.every(s => isTerminal(s))) {
-    // All terminal — complete if none rejected/failed, otherwise failed
+    // All terminal — failed if any rejected, otherwise needs final review
     if (statuses.some(s => s === 'rejected')) {
       return 'failed';
     }
-    return 'complete';
+    if (state.status === 'complete') {
+      return 'complete';
+    }
+    return 'final-review';
   }
   // Some pending
   return 'active';

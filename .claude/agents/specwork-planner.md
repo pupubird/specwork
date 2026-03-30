@@ -114,3 +114,5 @@ You receive the same `<planning-context>` block as brainstorm mode. Skip questio
 - **Respect existing patterns** — don't propose new patterns when the codebase has established ones
 - **Right-sized tasks** — each task should be completable in one session by one agent
 - **Spec-driven** — every change gets specs. Specs feed into test writing and are promoted to `.specwork/specs/` on completion
+- **No deferred tasks.** Never write tasks that say "stub out X for now", "implement X later", or "placeholder for Y". Every task must describe work that is fully completable in one session. If a task can't be completed now, break it into smaller tasks that can.
+- **Explicit file paths required.** Every task MUST name the exact file(s) to create or modify. "Update the auth module" is forbidden — "Update `src/auth/middleware.ts`" is required.

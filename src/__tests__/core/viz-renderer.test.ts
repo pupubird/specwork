@@ -68,7 +68,6 @@ describe('buildMermaidDiagram', () => {
       makeNode({ id: 'snapshot', command: 'specwork snapshot' }),
     ]);
     const diagram = buildMermaidDiagram(graph);
-    // Should contain style or class definition making snapshot gray
     expect(diagram).toMatch(/snapshot.*gray|style snapshot.*#[0-9a-fA-F]*|classDef.*snapshot/i);
   });
 
@@ -105,7 +104,6 @@ describe('buildMermaidDiagram', () => {
       }),
     ]);
     const diagram = buildMermaidDiagram(graph);
-    // Should show a count indicator like "(3 tasks)" or badge
     expect(diagram).toMatch(/impl-auth.*3|3 tasks|3 sub/i);
   });
 
@@ -238,7 +236,6 @@ More detail.
       },
     ];
     const result = extractSpecRequirements(specFiles);
-    // Either empty array or entry with empty requirements
     const entry = result.find(r => r.file === 'empty.spec.md');
     if (entry) {
       expect(entry.requirements).toHaveLength(0);
@@ -278,40 +275,41 @@ describe('renderHTML', () => {
     expect(html).toMatch(/<script.*src=.*cdn.*mermaid/i);
   });
 
-  it('contains proposal panel with summary text', () => {
+  it('contains proposal summary in title slide', () => {
     const html = renderHTML(minimalData);
     expect(html).toContain('We need this feature for security.');
   });
 
-  it('contains change name in header', () => {
+  it('contains change name in slide 1 heading', () => {
     const html = renderHTML(minimalData);
     expect(html).toContain('test-change');
   });
 
-  it('contains spec requirements summary', () => {
+  it('contains spec requirements', () => {
     const html = renderHTML(minimalData);
     expect(html).toContain('Token Validation');
     expect(html).toContain('Token Refresh');
     expect(html).toContain('auth.spec.md');
   });
 
-  it('contains Mermaid diagram block with graph nodes', () => {
+  it('contains slide structure with 6 slides', () => {
     const html = renderHTML(minimalData);
-    // Should contain the mermaid diagram div and node references
-    expect(html).toMatch(/class="mermaid"|<div.*mermaid/i);
-    expect(html).toContain('snapshot');
-    expect(html).toContain('write-tests');
+    expect(html).toContain('id="s1"');
+    expect(html).toContain('id="s2"');
+    expect(html).toContain('id="s3"');
+    expect(html).toContain('id="s4"');
+    expect(html).toContain('id="s5"');
+    expect(html).toContain('id="s6"');
   });
 
-  it('contains node detail sections with type and deps', () => {
+  it('contains node references in slide 5', () => {
     const html = renderHTML(minimalData);
-    // Node detail should reference the node type or agent
+    expect(html).toContain('snapshot');
     expect(html).toContain('specwork-test-writer');
   });
 
   it('is self-contained — no external CSS links', () => {
     const html = renderHTML(minimalData);
-    // Should not have external stylesheet links (CDN scripts are okay)
     const cssLinkMatches = html.match(/<link[^>]*rel=["']stylesheet["'][^>]*>/gi) || [];
     expect(cssLinkMatches).toHaveLength(0);
   });
@@ -329,5 +327,25 @@ describe('renderHTML', () => {
     const html = renderHTML(dataWithState);
     expect(html).toBeDefined();
     expect(typeof html).toBe('string');
+  });
+
+  it('contains agent placeholder comments for enhancement', () => {
+    const html = renderHTML(minimalData);
+    expect(html).toContain('AGENT:');
+  });
+
+  it('contains experience preview slide with terminal mockup', () => {
+    const html = renderHTML(minimalData);
+    expect(html).toContain('terminal-bar');
+    expect(html).toContain('terminal-body');
+  });
+
+  it('shows stats in title slide', () => {
+    const html = renderHTML(minimalData);
+    // 2 requirements from the spec
+    expect(html).toContain('>2<');
+    // 2 nodes
+    expect(html).toContain('nodes');
+    expect(html).toContain('requirements');
   });
 });

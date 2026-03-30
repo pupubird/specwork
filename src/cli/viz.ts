@@ -11,18 +11,39 @@ import { renderHTML, extractProposalSummary, extractSpecRequirements } from '../
 import type { Graph } from '../types/graph.js';
 
 // Agent instructions returned after base HTML generation
-const AGENT_INSTRUCTIONS = `You have a base HTML visualization at the path above. Enhance it to make the plan review more useful:
+const AGENT_INSTRUCTIONS = `You have a base HTML visualization at the path above — a 6-slide presentation for the user to review the plan. Read overview.html first, then read the proposal.md, design.md, and specs/ to understand the change deeply.
 
-1. Read the overview.html file
-2. Improve the visualization by editing the HTML directly:
-   - Rewrite generic node descriptions with specific, meaningful summaries based on the change context
-   - Add annotations or callouts for critical nodes (e.g., nodes with human gates, high-risk scope)
-   - Improve the proposal summary — make it concise and actionable, not a raw copy of proposal.md
-   - Add visual emphasis (colors, icons, borders) to highlight the most important parts
-   - Reorganize or reformat sections if a different layout better suits this specific change
-3. Open the final file in the browser when done
+Enhance the slides by editing the HTML. The base has placeholder comments (<!-- AGENT: ... -->) marking where you fill in content. The CSS classes are already defined — use them.
 
-You have full freedom to restructure the HTML. The base is a starting point, not a constraint.`;
+## Slides to enhance:
+
+**Slide 2 — The Problem (before/after):**
+Fill in 3-4 pain points for "Today" and matching improvements for "After". Keep each point to one line. Use \`<code>\` for commands/paths.
+
+**Slide 3 — How It Works:**
+Replace placeholder flow-step blocks with 3-5 concrete steps showing the key mechanics. Use flow-visual divs for visual elements when helpful. Use colors: blue=input, amber=safety, green=success, purple=output.
+
+**Slide 4 — What You'll See (MOST IMPORTANT):**
+Show the actual user experience with mock outputs. Adapt to the type of change:
+- **CLI tool** → mock terminal sessions (\`.terminal\`) with realistic command + output
+- **Frontend** → browser wireframes (\`.browser\`) showing the UI being built + component states
+- **Backend API** → curl request/response pairs, before/after auth, error states
+- **Infrastructure** → mock dashboards with metrics (\`.metrics-row\`), SVG charts, config files
+- **Library** → code examples showing before/after usage
+Show 2-4 scenes. Each scene gets a numbered \`.scene\` header. The user should understand the change just by looking at this slide.
+
+**Slide 5 — What Changes:**
+The node list and stats are auto-generated. You may add an \`.impact-stat-card\` for heaviest file, new exports, or new CLI surface if relevant.
+
+**Slide 6 — Watch Out For:**
+Add 1-3 risk cards. Look at the graph for: shared file contention (multiple nodes writing same file), regression risk, breaking changes, dependency ordering issues.
+
+## Rules:
+- Be concise — this is a presentation, not documentation
+- Show, don't tell — visuals over text
+- Keep the dark theme and Geist Mono font
+- Open the file in the browser when done: \`open <path>\` (macOS) or \`xdg-open <path>\` (Linux)
+- You have full freedom to add/remove slides or restructure if it better serves this specific change`;
 
 export function makeVizCommand(): Command {
   return new Command('viz')

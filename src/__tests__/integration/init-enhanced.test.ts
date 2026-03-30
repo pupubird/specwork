@@ -72,6 +72,8 @@ describe('specwork init (enhanced / batteries-included)', () => {
     const content = fs.readFileSync(gitignorePath, 'utf-8');
     expect(content).toContain('.current-node');
     expect(content).toContain('*.lock');
+    expect(content).toContain('graph');
+    expect(content).toContain('nodes');
   });
 
   // ── .claude/ files (batteries-included) ─────────────────────────────────

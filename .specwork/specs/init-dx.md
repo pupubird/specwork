@@ -23,7 +23,7 @@ The `--with-claude` flag SHALL NOT exist. Claude integration is always included.
 #### Scenario: Gitignore covers runtime files
 - Given a fresh `specwork init`
 - When `.specwork/.gitignore` is read
-- Then it SHALL contain entries for `.current-scope`, `.current-node`, and `*.lock`
+- Then it SHALL contain entries for `.current-scope`, `.current-node`, `*.lock`, `graph`, and `nodes`
 
 #### Scenario: Post-init message references correct command
 - Given a fresh `specwork init`

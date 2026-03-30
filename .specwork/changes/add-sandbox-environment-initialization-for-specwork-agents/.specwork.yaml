@@ -1,0 +1,6 @@
+schema: specwork-change/v1
+change: add-sandbox-environment-initialization-for-specwork-agents
+description: Add sandbox environment initialization for specwork agents
+created_at: 2026-03-30T16:46:52.116Z
+status: planning
+mode: brainstorm

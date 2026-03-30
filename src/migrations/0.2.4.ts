@@ -6,6 +6,7 @@ import { AGENTS_SPECWORK_TEST_WRITER } from '../templates/instructions/agents-sp
 import { AGENTS_SPECWORK_PLANNER } from '../templates/instructions/agents-specwork-planner.js';
 import { SKILLS_SPECWORK_CONTEXT_SKILL } from '../templates/instructions/skills-specwork-context-SKILL.js';
 import { COMMANDS_SPECWORK_PLAN } from '../templates/instructions/commands-specwork-plan.js';
+import { SPECWORK_GITIGNORE } from '../templates/claude-files.js';
 
 export const description = 'Remove environment snapshot feature: delete snapshot skill, update agent/context instructions, clean config';
 
@@ -90,6 +91,16 @@ export const migrate: MigrationFn = (root, _config) => {
         .join('\n');
       fs.writeFileSync(configPath, updated, 'utf-8');
       details.push('Removed snapshot_refresh from config.yaml');
+    }
+  }
+
+  // ── Update .gitignore to include graph and nodes ───────────────────────
+  const gitignorePath = path.join(root, '.specwork', '.gitignore');
+  if (fs.existsSync(gitignorePath)) {
+    const content = fs.readFileSync(gitignorePath, 'utf-8');
+    if (!content.includes('graph') || !content.includes('nodes')) {
+      fs.writeFileSync(gitignorePath, SPECWORK_GITIGNORE, 'utf-8');
+      details.push('Updated .specwork/.gitignore — added graph and nodes');
     }
   }
 

@@ -312,4 +312,6 @@ nodes:
 // .specwork/.gitignore content
 export const SPECWORK_GITIGNORE = `.current-node
 *.lock
+graph
+nodes
 `;

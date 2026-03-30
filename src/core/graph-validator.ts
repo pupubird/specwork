@@ -61,7 +61,7 @@ export function validateGraph(graph: Graph): ValidationResult {
 
   // Check required fields per node type
   for (const node of graph.nodes) {
-    checkRequiredFields(node, errors);
+    checkRequiredFields(node, errors, warnings);
   }
 
   // Warn on nodes with no validation rules (except deterministic which may not need them)
@@ -78,7 +78,7 @@ export function validateGraph(graph: Graph): ValidationResult {
   };
 }
 
-function checkRequiredFields(node: GraphNode, errors: string[]): void {
+function checkRequiredFields(node: GraphNode, errors: string[], warnings: string[]): void {
   switch (node.type) {
     case 'deterministic':
       if (!node.command) {
@@ -90,7 +90,7 @@ function checkRequiredFields(node: GraphNode, errors: string[]): void {
         errors.push(`Node "${node.id}" (llm) must have an "agent" field`);
       }
       if (!node.scope || node.scope.length === 0) {
-        errors.push(`Node "${node.id}" (llm) must have a non-empty "scope" array`);
+        warnings.push(`Node "${node.id}" (llm) has empty scope — add file paths to tasks before running specwork go`);
       }
       break;
     case 'human':

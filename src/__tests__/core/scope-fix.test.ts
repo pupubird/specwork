@@ -73,7 +73,7 @@ describe('graph generator — per-task scope extraction', () => {
     expect(node!.scope).toContain('src/core/verification.ts');
   });
 
-  it('uses group-slug fallback when task has no explicit paths', () => {
+  it('emits empty scope when task has no explicit paths (no fake fallback)', () => {
     writeChange(root, 'test-change', `## 1. Graph Generator
 
 - [ ] 1.1 Fix the scope logic
@@ -81,9 +81,8 @@ describe('graph generator — per-task scope extraction', () => {
     const graph = generateGraph(root, 'test-change');
     const implNode = graph.nodes.find(n => n.id === 'impl-1');
     expect(implNode).toBeDefined();
-    // Should NOT be ['src/'] — should be based on group name
-    expect(implNode!.scope[0]).not.toBe('src/');
-    expect(implNode!.scope[0]).toContain('graph-generator');
+    // After anti-deferral fix: no fake src/${slugify(name)}/ fallback
+    expect(implNode!.scope).toEqual([]);
   });
 });
 

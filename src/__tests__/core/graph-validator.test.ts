@@ -164,8 +164,8 @@ describe('validateGraph — required fields', () => {
     };
 
     const result = validateGraph(g);
-    expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('scope'))).toBe(true);
+    // After anti-deferral fix: empty scope is a warning, not an error
+    expect(result.warnings.some(w => w.includes('scope'))).toBe(true);
   });
 
   it('fails when human node has no description', () => {

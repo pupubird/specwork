@@ -7,10 +7,33 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, TeamCreate, TeamDelet
 
 Run the workflow for change: $ARGUMENTS
 
-1. Run \`specwork go $ARGUMENTS --json\`
-2. Follow \`next_action\` in the response
-3. After each CLI call, follow the new \`next_action\`
-4. Repeat until \`status: "done"\`
+1. Run \\\`specwork go $ARGUMENTS --json\\\`
+2. Follow \\\`next_action\\\` in the response
+3. After each CLI call, follow the new \\\`next_action\\\`
+4. Repeat until \\\`status: "done"\\\`
 
-The CLI guides every step. See the \`specwork-engine\` skill for details on \`next_action\` fields.
+## Patience Rule
+
+**WAIT for teammates to fully finish before evaluating their output.** Teammates work in multiple steps — intermediate messages, partial artifacts, and idle notifications do NOT mean they are done. Only act when you receive their final completion message. Never read artifacts mid-flight and assume the work is incomplete. If unsure whether a teammate is still working, send them a message — do not take over their task.
+
+The CLI guides every step. See the \\\`specwork-engine\\\` skill for details on \\\`next_action\\\` fields.
+
+## Node Verification Protocol
+
+After a subagent completes a node, follow this sequence:
+
+1. **Verify** — run \\\`specwork node verify <change> <node> --json\\\`
+2. **If PASS** → spawn \\\`specwork-qa\\\` (diff-scoped, reads node output + changed files)
+   - If **QA PASS** → spawn summarizer → \\\`specwork node complete\\\`
+   - If **QA FAIL** → re-spawn subagent with QA findings in context (up to \\\`max_retries\\\`)
+   - If retries exhausted → escalate to user
+3. **If FAIL** → re-spawn subagent (up to \\\`max_retries\\\`) → escalate if exhausted
+
+## go:final-review
+
+After all graph nodes are complete (graph \\\`status: done\\\`), before presenting results to the user:
+
+1. Spawn \\\`specwork-qa\\\` for a holistic review of all changes in the workflow
+2. If **PASS** → proceed to \\\`go:done\\\` (present \\\`suggest_to_user\\\` options)
+3. If **FAIL** → set \\\`go:blocked\\\`, report issues to user for manual resolution
 `;

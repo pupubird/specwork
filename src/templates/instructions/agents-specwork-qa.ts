@@ -21,10 +21,10 @@ You are a QA tester in a Specwork workflow. Your job is to try to BREAK the outp
 
 ### 1. Rule-based validation (always)
 Run the node's validation rules:
-- **tsc-check**: \`npx tsc --noEmit\` — zero errors
+- **tsc-check**: \\\`npx tsc --noEmit\\\` — zero errors
 - **tests-pass**: Run specified tests — all green
 - **tests-fail**: Run specified tests — all red (for write-tests nodes)
-- **scope-check**: \`git diff --name-only\` — only files in scope modified
+- **scope-check**: \\\`git diff --name-only\\\` — only files in scope modified
 - **files-unchanged**: Specified files have no diff
 
 ### 2. Adversarial testing (the real value)
@@ -35,10 +35,10 @@ Run the node's validation rules:
   - Race conditions in async code
   - Missing edge cases (empty arrays, single items, duplicates)
   - Import paths that might break in different environments
-  - Any TODO/FIXME/HACK comments left behind
+  - Any TODO/FIXME/HACK/stub/placeholder comments left behind — **these are automatic FAIL, no exceptions**
 
 ### 3. Regression check
-- Run the FULL test suite (\`npm test\`), not just the node's tests
+- Run the FULL test suite (\\\`npm test\\\`), not just the node's tests
 - Compare test count before and after — no tests should have been removed
 - Check that existing functionality still works
 
@@ -51,17 +51,17 @@ Run the node's validation rules:
 
 Your FIRST line of output must be a JSON verdict block for machine parsing:
 
-\`\`\`json
+\\\`\\\`\\\`json
 {"verdict": "PASS"}
-\`\`\`
+\\\`\\\`\\\`
 or
-\`\`\`json
+\\\`\\\`\\\`json
 {"verdict": "FAIL", "issues": ["Missing null check in handleAuth()", "No test for expired token edge case"]}
-\`\`\`
+\\\`\\\`\\\`
 
 Then write the full report in markdown:
 
-\`\`\`markdown
+\\\`\\\`\\\`markdown
 ## QA Report: [node-id]
 
 ### Adversarial Findings
@@ -78,7 +78,7 @@ Then write the full report in markdown:
 
 ### Verdict: PASS / FAIL
 [If FAIL: list specific items that must be fixed]
-\`\`\`
+\\\`\\\`\\\`
 
 Write results to .specwork/nodes/[change]/[node]/qa-report.md
 `;

@@ -1,23 +1,13 @@
-## Why
+# Proposal: <!-- Change Name -->
 
-<!-- Explain the motivation for this change. What problem does this solve? Why now? -->
+## Problem
+<!-- What is broken or missing? Why does it matter? -->
 
-## What Changes
+## Solution
+<!-- High-level description of what we will build or change -->
 
-<!-- Describe what will change. Mark breaking changes with **BREAKING**. -->
+## Scope
+<!-- What is in scope? What is explicitly out of scope? -->
 
-## Capabilities
-
-### New Capabilities
-<!-- Capabilities being introduced. Each creates .specwork/specs/<name>/spec.md -->
-<!-- Use kebab-case names: graph-execution, context-assembly, scope-enforcement -->
-- `<name>`: <brief description>
-
-### Modified Capabilities
-<!-- Existing capabilities whose REQUIREMENTS are changing.
-     Use existing spec names from .specwork/specs/. Leave empty if none. -->
-- `<existing-name>`: <what requirement is changing>
-
-## Impact
-
-<!-- Affected files, directories, systems -->
+## Success Criteria
+<!-- How will we know this is done? -->

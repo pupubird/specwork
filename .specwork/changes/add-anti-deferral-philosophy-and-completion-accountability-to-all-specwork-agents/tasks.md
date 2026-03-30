@@ -14,5 +14,5 @@
      - Number tasks N.M (group.task)
      - Order by dependency — blockers first
      - Each task should be completable in one session
-     - These tasks map directly to graph nodes in specwork graph generate
+     - These tasks map directly to graph nodes in /project:specwork-graph
 -->

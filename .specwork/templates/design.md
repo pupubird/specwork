@@ -1,28 +1,13 @@
-## Context
+# Design: <!-- Change Name -->
 
-<!-- Background, current state, constraints -->
+## Architecture
+<!-- Key design decisions and rationale -->
 
-## Goals / Non-Goals
+## Data Model
+<!-- Schema changes if any -->
 
-**Goals:**
-<!-- What this design achieves -->
+## Implementation Plan
+<!-- Step-by-step technical approach -->
 
-**Non-Goals:**
-<!-- What is explicitly out of scope -->
-
-## Decisions
-
-<!-- ### Decision: <Name>
-     <Why X over Y? Include alternatives considered.> -->
-
-## Risks / Trade-offs
-
-<!-- Format: [Risk] → Mitigation -->
-
-## Migration Plan
-
-<!-- Steps to deploy, rollback strategy. Remove if not applicable. -->
-
-## Open Questions
-
-<!-- Outstanding decisions or unknowns. Remove when resolved. -->
+## Risks
+<!-- Potential problems and mitigations -->

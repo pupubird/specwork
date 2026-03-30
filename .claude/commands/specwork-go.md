@@ -12,4 +12,8 @@ Run the workflow for change: $ARGUMENTS
 3. After each CLI call, follow the new `next_action`
 4. Repeat until `status: "done"`
 
+## Patience Rule
+
+**WAIT for teammates to fully finish before evaluating their output.** Teammates work in multiple steps — intermediate messages, partial artifacts, and idle notifications do NOT mean they are done. Only act when you receive their final completion message. Never read artifacts mid-flight and assume the work is incomplete. If unsure whether a teammate is still working, send them a message — do not take over their task.
+
 The CLI guides every step. See the `specwork-engine` skill for details on `next_action` fields.

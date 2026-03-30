@@ -28,4 +28,10 @@
 - [ ] 5.3 Strengthen TODO-as-failure rule in `.claude/agents/specwork-qa.md` — any TODO/FIXME/stub in diff is automatic FAIL, no exceptions
 - [ ] 5.4 Add deferred-work check to `.claude/agents/specwork-verifier.md` — report FAIL if diff contains TODO/FIXME/stub/placeholder/`not implemented` patterns even if all structural checks pass
 - [ ] 5.5 Add incomplete-node guard to `.claude/agents/specwork-summarizer.md` — do not generate success summary if node output contains TODO/FIXME markers; report incompleteness instead
-- [ ] 5.6 Add completable-tasks rule to `.claude/agents/specwork-planner.md` — do not write tasks that defer with "stub out X for now" or "implement X later"; each task must be fully completable
+- [ ] 5.6 Add completable-tasks rule to `.claude/agents/specwork-planner.md` — do not write tasks that defer with "stub out X for now" or "implement X later"; each task must be fully completable; each task MUST include explicit file paths
+
+## 6. Graph Generator Scope Fix
+
+- [ ] 6.1 Fix `extractFilePaths` fallback in `src/core/graph-generator.ts` — when no file paths found in task text, emit a warning instead of generating fake `src/${slugify(name)}/` directories
+- [ ] 6.2 Add `.claude/agents/specwork-planner.md` instruction requiring explicit file paths in every task (e.g. "Update `src/types/graph.ts` to add field X") so graph generator can extract real scopes
+- [ ] 6.3 Add validation in graph generator — if a node's scope contains no real file paths, emit a warning in the graph generation output so the user knows to fix it before `specwork go`

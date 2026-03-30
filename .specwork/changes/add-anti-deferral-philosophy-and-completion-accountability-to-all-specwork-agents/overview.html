@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Specwork: add-anti-deferral-philosophy-and-completion-accountability-to-all-specwork-agents</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&display=swap');
+    :root {
+      --bg:#000;--surface:#0a0a0a;--surface-2:#111;--border:#222;
+      --text:#ededed;--text-2:#aaa;--text-3:#666;
+      --green:#0d0;--green-dim:#062;--blue:#48f;--blue-dim:#124;
+      --red:#f44;--purple:#a6f;--amber:#fa0;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Geist Mono',monospace;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    code{background:var(--surface-2);padding:3px 8px;border-radius:4px;color:var(--text)}
+
+    /* Slide system */
+    .slide{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px 120px;position:relative;border-bottom:1px solid var(--border)}
+    .slide-inner{width:100%;max-width:1100px}
+    .slide-number{position:absolute;top:40px;right:48px;font-size:16px;color:var(--text-3)}
+    .slide-title{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--text-3);margin-bottom:40px}
+
+    /* Slide 1 */
+    .title-slide{text-align:center}
+    .title-slide h1{font-size:48px;font-weight:600;letter-spacing:-.03em;margin-bottom:24px}
+    .title-slide .subtitle{font-size:22px;color:var(--text-2);max-width:700px;line-height:1.7;margin:0 auto 56px}
+    .title-stats{display:flex;gap:64px;justify-content:center}
+    .title-stat .num{font-size:48px;font-weight:600}
+    .title-stat .label{font-size:16px;color:var(--text-3);margin-top:4px}
+
+    /* Slide 2 — before/after */
+    .comparison{display:grid;grid-template-columns:1fr 80px 1fr;align-items:start}
+    .compare-col h3{font-size:18px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:32px}
+    .compare-arrow{display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--text-3);padding-top:60px}
+    .pain-point{display:flex;align-items:flex-start;gap:16px;padding:16px 0;font-size:20px;color:var(--text-2);line-height:1.6}
+    .pain-point .icon{font-size:22px;flex-shrink:0;margin-top:2px}
+    .pain-point code{font-size:18px}
+    .x-icon{color:var(--red)}
+    .check-icon{color:var(--green)}
+
+    /* Slide 3 — how it works */
+    .flow-diagram{display:flex;flex-direction:column}
+    .flow-step{display:flex;align-items:stretch}
+    .flow-line{width:56px;display:flex;flex-direction:column;align-items:center}
+    .flow-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;margin-top:22px}
+    .flow-connector{width:2px;flex:1;background:var(--border)}
+    .flow-content{flex:1;padding:16px 0 40px 24px}
+    .flow-title{font-size:22px;font-weight:500;margin-bottom:6px}
+    .flow-desc{font-size:17px;color:var(--text-3)}
+    .flow-visual{margin-top:18px}
+
+    /* Slide 4 — experience preview */
+    .terminal{background:#0c0c0c;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+    .terminal-bar{background:#161616;padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .terminal-dot{width:10px;height:10px;border-radius:50%}
+    .terminal-dot-r{background:#f44}.terminal-dot-y{background:#fa0}.terminal-dot-g{background:#0d0}
+    .terminal-title{margin-left:8px;font-size:12px;color:var(--text-3)}
+    .terminal-body{padding:20px 24px;font-size:15px;line-height:1.8;overflow-x:auto}
+    .t-prompt{color:var(--green)}.t-cmd{color:var(--text);font-weight:500}.t-dim{color:var(--text-3)}
+    .t-green{color:var(--green)}.t-blue{color:var(--blue)}.t-amber{color:var(--amber)}
+    .t-red{color:var(--red)}.t-purple{color:var(--purple)}.t-bold{font-weight:600}
+    .t-line{display:block}.t-blank{display:block;height:12px}
+    .scene{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .scene-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0}
+    .scene-text{font-size:18px;font-weight:500}
+    .scene-desc{font-size:14px;color:var(--text-3);margin-left:44px;margin-bottom:16px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+    .two-col .terminal{margin-bottom:0}
+
+    /* Browser mockup (for frontend changes) */
+    .browser{background:#0c0c0c;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+    .browser-bar{background:#161616;padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .browser-url{flex:1;background:#0c0c0c;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:13px;color:var(--text-3);margin-left:8px}
+    .browser-body{padding:0;min-height:300px;position:relative}
+
+    /* Dashboard mockup (for infra/monitoring changes) */
+    .metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+    .metric{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:16px 20px}
+    .metric-label{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .metric-value{font-size:28px;font-weight:600}
+    .metric-change{font-size:12px;margin-top:4px}
+
+    /* Slide 5 — file impact */
+    .impact-layout{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+    .file-tree{font-size:17px;line-height:2}
+    .ft-dir{color:var(--text-3)}
+    .ft-file{display:flex;align-items:center;gap:12px;padding-left:24px}
+    .ft-file .fname{color:var(--text-2)}
+    .ft-badge{font-size:12px;font-weight:600;padding:2px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
+    .ft-badge-new,.ft-badge-impl{background:var(--green-dim);color:var(--green);border:1px solid var(--green)}
+    .ft-badge-mod,.ft-badge-test{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue)}
+    .ft-badge-snapshot{background:var(--surface-2);color:var(--text-3);border:1px solid var(--text-3)}
+    .ft-badge-integration{background:rgba(170,102,255,0.1);color:var(--purple);border:1px solid var(--purple)}
+    .ft-desc{color:var(--text-3);font-size:14px;margin-left:auto}
+    .impact-legend{display:flex;gap:32px;margin-bottom:32px;font-size:15px}
+    .impact-legend-item{display:flex;align-items:center;gap:10px;color:var(--text-2)}
+    .impact-stats{display:flex;flex-direction:column;gap:20px}
+    .impact-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px}
+    .impact-stat-card .isc-label{font-size:13px;color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+    .impact-stat-card .isc-value{font-size:28px;font-weight:600}
+    .impact-stat-card .isc-detail{font-size:14px;color:var(--text-3);margin-top:6px;line-height:1.6}
+    .scope-bar{display:flex;gap:3px;margin-top:12px;height:8px;border-radius:4px;overflow:hidden}
+    .scope-bar-seg{height:100%;border-radius:2px}
+    .node-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .status-complete{background:var(--green)}.status-running{background:var(--blue);box-shadow:0 0 6px var(--blue)}.status-pending{background:var(--text-3);opacity:.3}.status-failed{background:var(--red)}
+    .task-chips{display:flex;flex-wrap:wrap;gap:4px}
+    .task-chip{background:var(--surface-2);border:1px solid var(--border);padding:2px 8px;border-radius:3px;font-size:11px;color:var(--text-3)}
+    .spec-group{margin-bottom:16px}
+    .spec-file-name{color:var(--purple);font-size:14px;font-weight:500;margin-bottom:6px}
+    .spec-item{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:14px;color:var(--text-2)}
+    .spec-dot{width:5px;height:5px;border-radius:50%;background:var(--purple);flex-shrink:0}
+
+    /* Slide 6 — risks */
+    .risk-cards{display:flex;gap:24px}
+    .risk-card{flex:1;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:0 10px 10px 0;padding:32px}
+    .risk-card h4{font-size:20px;font-weight:500;margin-bottom:12px;color:var(--red)}
+    .risk-card p{font-size:17px;color:var(--text-2);line-height:1.7}
+    .risk-card code{font-size:15px}
+
+    /* Nav */
+    .nav-dots{position:fixed;right:28px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;z-index:100}
+    .nav-dot{width:8px;height:8px;border-radius:50%;background:var(--text-3);opacity:.3;cursor:pointer;transition:all .2s}
+    .nav-dot:hover{opacity:.8}
+    .nav-dot.active{opacity:1;background:var(--text);transform:scale(1.8)}
+  </style>
+</head>
+<body>
+  <div class="nav-dots">
+    <div class="nav-dot active" onclick="document.getElementById('s1').scrollIntoView({behavior:'smooth'})"></div>
+    <div class="nav-dot" onclick="document.getElementById('s2').scrollIntoView({behavior:'smooth'})"></div>
+    <div class="nav-dot" onclick="document.getElementById('s3').scrollIntoView({behavior:'smooth'})"></div>
+    <div class="nav-dot" onclick="document.getElementById('s4').scrollIntoView({behavior:'smooth'})"></div>
+    <div class="nav-dot" onclick="document.getElementById('s5').scrollIntoView({behavior:'smooth'})"></div>
+    <div class="nav-dot" onclick="document.getElementById('s6').scrollIntoView({behavior:'smooth'})"></div>
+  </div>
+
+  <!-- SLIDE 1 — Title -->
+  <div class="slide title-slide" id="s1">
+    <div class="slide-number">1 / 6</div>
+    <div class="slide-inner" style="text-align:center;">
+      <h1 style="font-size:40px">Anti-Deferral &amp; Completion Accountability</h1>
+      <div class="subtitle">Complete all work now. There is no later.<br>Five layers of enforcement — from agent instructions to automated blocking — so no node ships with TODOs, stubs, or deferred logic.</div>
+      <div class="title-stats">
+        <div class="title-stat"><div class="num" style="color:var(--purple)">8</div><div class="label">requirements</div></div>
+        <div class="title-stat"><div class="num" style="color:var(--blue)">9</div><div class="label">nodes</div></div>
+        <div class="title-stat"><div class="num" style="color:var(--green)">18</div><div class="label">sub-tasks</div></div>
+        <div class="title-stat"><div class="num">3</div><div class="label">spec files</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 — The Problem (agent fills in before/after) -->
+  <div class="slide" id="s2">
+    <div class="slide-number">2 / 6</div>
+    <div class="slide-inner">
+      <div class="slide-title">The Problem</div>
+      <div class="comparison">
+        <div class="compare-col">
+          <h3 style="color:var(--red)">Today</h3>
+          <div class="pain-point"><span class="icon x-icon">✕</span><span>Implementer writes <code>// TODO: implement later</code> — tests pass because tests are also hollow</span></div>
+          <div class="pain-point"><span class="icon x-icon">✕</span><span>Test writer creates <code>it('does X', () =&gt; {})</code> stubs — red state satisfied for the wrong reason</span></div>
+          <div class="pain-point"><span class="icon x-icon">✕</span><span>Lead trusts <code>specwork node verify</code> — but it only checks types/scope, not semantic completeness</span></div>
+          <div class="pain-point"><span class="icon x-icon">✕</span><span><code>specwork-qa</code> agent exists with TODO detection — but it's not wired into any workflow step</span></div>
+        </div>
+        <div class="compare-arrow">→</div>
+        <div class="compare-col">
+          <h3 style="color:var(--green)">After</h3>
+          <div class="pain-point"><span class="icon check-icon">✓</span><span>Agent instructions explicitly prohibit TODOs, stubs, and deferred work</span></div>
+          <div class="pain-point"><span class="icon check-icon">✓</span><span><code>no-todos</code> CLI check scans diffs for deferral patterns — blocks verify automatically</span></div>
+          <div class="pain-point"><span class="icon check-icon">✓</span><span>QA agent runs after every node verify PASS — catches semantic gaps patterns miss</span></div>
+          <div class="pain-point"><span class="icon check-icon">✓</span><span><code>go:final-review</code> — holistic QA of entire change before declaring done</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 — How It Works (agent fills in steps) -->
+  <div class="slide" id="s3">
+    <div class="slide-number">3 / 6</div>
+    <div class="slide-inner">
+      <div class="slide-title">How It Works</div>
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-line"><div class="flow-dot" style="background:var(--blue)"></div><div class="flow-connector"></div></div>
+          <div class="flow-content">
+            <div class="flow-title">Layer 1 — Agent Instructions</div>
+            <div class="flow-desc">All 6 agent .md files get explicit anti-deferral rules. "Complete ALL work now. Never defer."</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-line"><div class="flow-dot" style="background:var(--amber)"></div><div class="flow-connector"></div></div>
+          <div class="flow-content">
+            <div class="flow-title">Layer 2 — <code>no-todos</code> Verification Check</div>
+            <div class="flow-desc">New CLI check scans <code>git diff</code> for TODO/FIXME/STUB/HACK patterns. Runs on every <code>specwork node verify</code>. Machine-enforced — agents can't dodge it.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-line"><div class="flow-dot" style="background:var(--purple)"></div><div class="flow-connector"></div></div>
+          <div class="flow-content">
+            <div class="flow-title">Layer 3 — Per-Node QA</div>
+            <div class="flow-desc">After verify PASS, <code>specwork-qa</code> runs adversarially on the node diff. Catches semantic holes that pattern matching misses (hardcoded returns, incomplete logic).</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-line"><div class="flow-dot" style="background:var(--green)"></div><div class="flow-connector"></div></div>
+          <div class="flow-content">
+            <div class="flow-title">Layer 4 — <code>go:final-review</code></div>
+            <div class="flow-desc">When all nodes complete, engine enters <code>go:final-review</code> instead of <code>go:done</code>. QA agent reviews the entire change holistically — cross-node regressions, integration gaps.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-line"><div class="flow-dot" style="background:var(--red)"></div><div class="flow-connector" style="background:transparent"></div></div>
+          <div class="flow-content">
+            <div class="flow-title">Layer 5 — Graph Generator Fix</div>
+            <div class="flow-desc">Fix fake <code>src/${slugify(name)}/</code> fallback paths. Warn when tasks lack explicit file paths. Planner required to include real paths.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 — What You'll See (agent creates experience preview) -->
+  <div class="slide" id="s4" style="min-height:auto;padding-top:100px;padding-bottom:100px;">
+    <div class="slide-number">4 / 6</div>
+    <div class="slide-inner">
+      <div class="slide-title">What You'll See</div>
+      <!-- Scene 1: no-todos check catches deferred work -->
+      <div class="scene">
+        <div class="scene-num" style="background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);">1</div>
+        <div class="scene-text">no-todos check blocks a lazy implementer</div>
+      </div>
+      <div class="scene-desc">The implementer writes a TODO instead of real code. Verify catches it automatically.</div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot terminal-dot-r"></div>
+          <div class="terminal-dot terminal-dot-y"></div>
+          <div class="terminal-dot terminal-dot-g"></div>
+          <div class="terminal-title">specwork node verify</div>
+        </div>
+        <div class="terminal-body">
+          <span class="t-line"><span class="t-prompt">$ </span><span class="t-cmd">specwork node verify my-change impl-auth</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-green">✓</span> <span class="t-dim">scope-check .......... PASS</span></span>
+          <span class="t-line"><span class="t-green">✓</span> <span class="t-dim">files-unchanged ...... PASS</span></span>
+          <span class="t-line"><span class="t-green">✓</span> <span class="t-dim">imports-exist ........ PASS</span></span>
+          <span class="t-line"><span class="t-green">✓</span> <span class="t-dim">tsc-check ............ PASS</span></span>
+          <span class="t-line"><span class="t-green">✓</span> <span class="t-dim">tests-pass ........... PASS</span></span>
+          <span class="t-line"><span class="t-red">✕</span> <span class="t-bold t-red">no-todos ............. FAIL</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-red">  Found deferred work in diff:</span></span>
+          <span class="t-line"><span class="t-dim">  src/auth/jwt.ts:42</span>  <span class="t-red">// TODO: implement token refresh</span></span>
+          <span class="t-line"><span class="t-dim">  src/auth/jwt.ts:67</span>  <span class="t-red">throw new Error('not implemented')</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-red t-bold">Verdict: FAIL</span> <span class="t-dim">— 2 deferred patterns found</span></span>
+        </div>
+      </div>
+
+      <!-- Scene 2: per-node QA catches semantic gap -->
+      <div class="scene">
+        <div class="scene-num" style="background:var(--purple);color:var(--bg);border:1px solid var(--purple);">2</div>
+        <div class="scene-text">QA agent catches what patterns miss</div>
+      </div>
+      <div class="scene-desc">No TODOs in the code, but the QA agent finds a hardcoded return that skips real logic.</div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot terminal-dot-r"></div>
+          <div class="terminal-dot terminal-dot-y"></div>
+          <div class="terminal-dot terminal-dot-g"></div>
+          <div class="terminal-title">specwork-qa report</div>
+        </div>
+        <div class="terminal-body">
+          <span class="t-line"><span class="t-purple t-bold">QA Report: impl-auth</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-dim">Spec Compliance:</span></span>
+          <span class="t-line">  <span class="t-green">✓</span> Token Validation — <span class="t-dim">PASS</span></span>
+          <span class="t-line">  <span class="t-red">✕</span> Token Refresh — <span class="t-red">FAIL</span></span>
+          <span class="t-line"><span class="t-dim">    src/auth/jwt.ts:42 — refreshToken() returns hardcoded true</span></span>
+          <span class="t-line"><span class="t-dim">    Expected: call to token provider API per spec requirement</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-red t-bold">Verdict: FAIL</span> <span class="t-dim">— incomplete implementation detected</span></span>
+        </div>
+      </div>
+
+      <!-- Scene 3: final review catches cross-node issue -->
+      <div class="scene">
+        <div class="scene-num" style="background:var(--green-dim);color:var(--green);border:1px solid var(--green);">3</div>
+        <div class="scene-text">Final review catches cross-node regression</div>
+      </div>
+      <div class="scene-desc">All nodes pass individually. The holistic review spots an integration gap.</div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dot terminal-dot-r"></div>
+          <div class="terminal-dot terminal-dot-y"></div>
+          <div class="terminal-dot terminal-dot-g"></div>
+          <div class="terminal-title">go:final-review</div>
+        </div>
+        <div class="terminal-body">
+          <span class="t-line"><span class="t-prompt">$ </span><span class="t-cmd">specwork go my-change</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-amber">⟳</span> <span class="t-bold">All 5 nodes complete — entering final review...</span></span>
+          <span class="t-line"><span class="t-dim">  Spawning specwork-qa for holistic change review</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-purple t-bold">Final Review Report</span></span>
+          <span class="t-line">  <span class="t-green">✓</span> <span class="t-dim">No TODO/FIXME/STUB patterns in change</span></span>
+          <span class="t-line">  <span class="t-green">✓</span> <span class="t-dim">All spec requirements covered</span></span>
+          <span class="t-line">  <span class="t-amber">⚠</span> <span class="t-amber">impl-2 exports AuthConfig but impl-3 imports OldAuthConfig</span></span>
+          <span class="t-blank"></span>
+          <span class="t-line"><span class="t-amber t-bold">Verdict: FAIL</span> <span class="t-dim">— cross-node import mismatch</span></span>
+          <span class="t-line"><span class="t-dim">  Status: blocked → awaiting manual fix</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 — What Changes In Your Codebase -->
+  <div class="slide" id="s5">
+    <div class="slide-number">5 / 6</div>
+    <div class="slide-inner">
+      <div class="slide-title">What Changes In Your Codebase</div>
+      <div class="impact-layout">
+        <div>
+          <div class="file-tree">
+            <div class="ft-dir">Nodes</div>
+            
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">snapshot</span>
+            <span class="ft-badge ft-badge-snapshot">deterministic</span>
+            <span class="ft-desc">specwork snapshot</span>
+          </div>
+          
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">write-tests</span>
+            <span class="ft-badge ft-badge-test">llm</span>
+            <span class="ft-desc">specwork-test-writer</span>
+          </div>
+          
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-1</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Add `'final-review'` to `ChangeStatus` union type in `src/types/graph.ts`</span><span class="task-chip">Update any exhaustive switch/match on `ChangeStatus` in `src/core/state-machine.ts` to handle the new value</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-2</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Implement `no-todos` check function in `src/core/verification.ts` — scans `git diff HEAD` for TODO/FIXME/HACK/XXX/PLACEHOLDER/STUB/NOT_IMPLEMENTED patterns, returns list of file:line matches, skips `.specwork/` paths</span><span class="task-chip">Register `no-todos` as a built-in default check in `src/cli/node.ts` so it runs automatically on every node verify, no graph.yaml config required</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-3</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Add `go:final-review` action case to `src/core/next-action.ts` — when all nodes complete and final-review has not run, return `go:final-review` instead of `go:done`</span><span class="task-chip">Add `final-review` state transition logic to `src/core/state-machine.ts` — transitions: `(all nodes done → final-review)`, `(final-review PASS → done)`, `(final-review FAIL → blocked)`</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-4</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Add QA step to specwork-go.md node lifecycle: after verify PASS → run specwork-qa (diff-scoped) → if FAIL retry → proceed to summarizer</span><span class="task-chip">Update specwork-engine/SKILL.md state machine table — add per-node QA step between verify and summarizer</span><span class="task-chip">Add go:final-review row to specwork-engine/SKILL.md state machine table</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-5</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Add anti-deferral rules to specwork-implementer.md — explicit prohibition on TODO/FIXME/stub/placeholder</span><span class="task-chip">Add no-stub-tests rule to specwork-test-writer.md — every test must have real assertions</span><span class="task-chip">Strengthen TODO-as-failure rule in specwork-qa.md — any TODO/FIXME/stub in diff is automatic FAIL</span><span class="task-chip">Add deferred-work check to specwork-verifier.md — FAIL on TODO/FIXME patterns even if structural checks pass</span><span class="task-chip">Add incomplete-node guard to specwork-summarizer.md — refuse success summary if TODOs found</span><span class="task-chip">Add completable-tasks rule to specwork-planner.md — no tasks that defer work</span><span class="task-chip">Add explicit file paths requirement to specwork-planner.md — every task must mention real file paths</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">impl-6</span>
+            <span class="ft-badge ft-badge-impl">llm</span>
+            <span class="ft-desc">specwork-implementer</span>
+          </div>
+          <div style="padding-left:48px;margin-bottom:4px;"><div class="task-chips"><span class="task-chip">Fix extractFilePaths fallback — when no file paths found in task text, emit warning instead of fake src/${slugify(name)}/ directory</span><span class="task-chip">Add scope validation — if generated node scope contains no real file paths, include warning in graph generation output</span></div></div>
+
+          <div class="ft-file">
+            <span class="node-dot status-pending"></span>
+            <span class="fname">integration</span>
+            <span class="ft-badge ft-badge-integration">deterministic</span>
+            <span class="ft-desc">npm test</span>
+          </div>
+          
+          </div>
+        </div>
+        <div class="impact-stats">
+          <div class="impact-stat-card">
+            <div class="isc-label">Nodes</div>
+            <div class="isc-value">9</div>
+            <div class="isc-detail">6 impl · 0 complete · 0 running · 9 pending</div>
+            <div class="scope-bar">
+              <div class="scope-bar-seg" style="flex:0;background:var(--green)"></div>
+              <div class="scope-bar-seg" style="flex:0;background:var(--blue)"></div>
+              <div class="scope-bar-seg" style="flex:9;background:var(--text-3);opacity:.3"></div>
+            </div>
+          </div>
+          <div class="impact-stat-card">
+            <div class="isc-label">Spec Coverage</div>
+            <div class="isc-value" style="color:var(--purple)">8 requirements</div>
+            <div class="isc-detail">3 spec files</div>
+            
+        <div class="spec-group">
+          <div class="spec-file-name">anti-deferral-enforcement.md</div>
+          <div class="spec-item"><span class="spec-dot"></span>Agent Instructions Prohibit Deferred Work</div>
+<div class="spec-item"><span class="spec-dot"></span>No-Todos Verification Check Blocks Deferred Work</div>
+        </div>
+
+        <div class="spec-group">
+          <div class="spec-file-name">final-review-engine-state.md</div>
+          <div class="spec-item"><span class="spec-dot"></span>ChangeStatus Type Includes Final-Review Value</div>
+<div class="spec-item"><span class="spec-dot"></span>go:final-review is a Valid Engine Action</div>
+<div class="spec-item"><span class="spec-dot"></span>State Machine Handles go:final-review Transitions</div>
+<div class="spec-item"><span class="spec-dot"></span>go:final-review State is Documented in Engine Skill</div>
+        </div>
+
+        <div class="spec-group">
+          <div class="spec-file-name">qa-workflow-integration.md</div>
+          <div class="spec-item"><span class="spec-dot"></span>QA Agent Runs After Every Node Verify PASS</div>
+<div class="spec-item"><span class="spec-dot"></span>Final Review Session Evaluates Complete Change</div>
+        </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 — Watch Out For (agent fills in risks) -->
+  <div class="slide" id="s6">
+    <div class="slide-number">6 / 6</div>
+    <div class="slide-inner">
+      <div class="slide-title">Watch Out For</div>
+      <div class="risk-cards">
+        <div class="risk-card">
+          <h4>Shared File Contention</h4>
+          <p><code>src/core/state-machine.ts</code> is modified by both impl-1 (types) and impl-3 (final-review state). Must run sequentially — impl-3 depends on impl-1.</p>
+        </div>
+        <div class="risk-card">
+          <h4>False Positives</h4>
+          <p>The <code>no-todos</code> check scans diffs for patterns. Spec files that discuss TODOs as concepts could false-positive. Mitigated: <code>.specwork/</code> paths are excluded from scanning.</p>
+        </div>
+        <div class="risk-card">
+          <h4>Increased Execution Time</h4>
+          <p>Per-node QA adds an agent invocation after every impl node. Mitigated: QA is diff-scoped (lightweight) and uses Haiku model. Cost is near-zero on clean nodes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({startOnLoad:true,theme:'dark',themeVariables:{darkMode:true,background:'#000',primaryColor:'#48f',primaryTextColor:'#ededed',lineColor:'#444'}});
+    const dots=document.querySelectorAll('.nav-dot'),slides=document.querySelectorAll('.slide');
+    new IntersectionObserver(e=>{e.forEach(entry=>{if(entry.isIntersecting){const i=Array.from(slides).indexOf(entry.target);dots.forEach((d,j)=>d.classList.toggle('active',j===i))}})},{threshold:.3}).observe&&slides.forEach(s=>new IntersectionObserver(e=>{e.forEach(entry=>{if(entry.isIntersecting){const i=Array.from(slides).indexOf(entry.target);dots.forEach((d,j)=>d.classList.toggle('active',j===i))}})},{threshold:.3}).observe(s));
+  </script>
+</body>
+</html>

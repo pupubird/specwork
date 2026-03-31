@@ -17,6 +17,7 @@ import { makeDoctorCommand } from './cli/doctor.js';
 import { makeUpdateCommand } from './cli/update.js';
 import { makeArchiveCommand } from './cli/archive.js';
 import { makeVizCommand } from './cli/viz.js';
+import { makeSandboxCommand } from './cli/sandbox.js';
 
 // Plumbing (agent-facing)
 import { makeNewCommand } from './cli/new.js';
@@ -68,6 +69,7 @@ program.addCommand(makeDoctorCommand());
 program.addCommand(makeUpdateCommand());
 program.addCommand(makeArchiveCommand());
 program.addCommand(makeVizCommand());
+program.addCommand(makeSandboxCommand());
 
 // ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());
@@ -89,6 +91,7 @@ Workflow:
   specwork update                Update project files to current version
   specwork archive <change>     Archive a completed change
   specwork status [change]      Check progress
+  specwork sandbox <cmd>        Manage sandbox environments for agent testing
 
 All other commands are used by the engine internally.
 Run: specwork <command> --help  for details on any command.

@@ -10,13 +10,16 @@ You are the Specwork graph execution engine. Read `next_action.command` from eac
 | go:blocked | `escalate` | report blocked nodes to user | Await manual fix |
 | go:done | `suggest` | present `suggest_to_user` options to user | Await decision |
 | node:start | `specwork node start <change> <node> --json` | run command, then `specwork context assemble` | Returns subagent context |
-| node:start result | `subagent:spawn` | spawn appropriate subagent with assembled context | Implementer, test-writer, etc. |
+| node:start result | `sandbox:init` | `specwork sandbox init <change> --json` | Prepares test environment before subagent runs |
+| sandbox init PASS | `subagent:spawn` | spawn appropriate subagent with assembled context | Implementer, test-writer, etc. |
+| sandbox init FAIL | `escalate` | report sandbox init failure to user, do NOT spawn subagent | Sandbox init fail blocks subagent spawn |
 | subagent done | `specwork node verify <change> <node> --json` | run command (from `on_pass`) | Never self-verify |
 | verify PASS | `subagent:spawn` | spawn specwork-qa (diff-scoped) | Adversarial review of node changes |
 | node:qa:pass | `subagent:spawn` | spawn specwork-summarizer (haiku) | Writes L0/L1/L2 |
 | node:qa:fail (retries left) | `subagent:respawn` | re-spawn subagent with QA findings in context | Include `qa_findings` |
 | node:qa:fail (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |
-| summarizer done | `specwork node complete <change> <node> --json` | run command (from `on_pass`) | Advances graph |
+| summarizer done | `sandbox:teardown` | `specwork sandbox teardown <change> --json` | Cleans up test environment after node work |
+| sandbox teardown done | `specwork node complete <change> <node> --json` | run command (from `on_pass`) | Sandbox teardown failure is non-fatal — log warning and continue |
 | verify FAIL | `specwork node fail <change> <node>` | run command (from `on_fail`) | Triggers retry logic |
 | node:fail (retries left) | `subagent:respawn` | re-spawn subagent with failed checks in context | Include `checks` array |
 | node:fail (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |

@@ -11,6 +11,7 @@ import type {
   SandboxChangeConfig,
   OutputCapture,
 } from '../types/sandbox.js';
+import { generateEnvFile, propagateOutputs } from './sandbox-env.js';
 
 // ── resolveServiceOrder ──────────────────────────────────────────────────────
 
@@ -227,6 +228,12 @@ async function executeService(
         if (step.outputs) {
           captureOutputs(stdout, step.outputs, capturedOutputs);
         }
+        if (step.propagate_to && step.propagate_to.length > 0) {
+          await propagateOutputs(capturedOutputs, step.propagate_to, rootDir);
+        }
+      }
+      if (service.propagate_to && service.propagate_to.length > 0) {
+        await propagateOutputs(capturedOutputs, service.propagate_to, rootDir);
       }
       return { name: service.name, status: 'stopped' };
     }
@@ -254,6 +261,9 @@ async function executeService(
         if (service.outputs) {
           captureOutputs(stdout, service.outputs, capturedOutputs);
         }
+        if (service.propagate_to && service.propagate_to.length > 0) {
+          await propagateOutputs(capturedOutputs, service.propagate_to, rootDir);
+        }
         return { name: service.name, status: 'stopped' };
       }
     }
@@ -271,6 +281,20 @@ export async function initSandbox(
 ): Promise<SandboxState> {
   const config = await resolveConfig(rootDir, change, options?.profile);
   const ordered = resolveServiceOrder(config.services);
+
+  if (!options?.dryRun) {
+    // Check port conflicts before starting any services
+    const conflicts = await checkPortConflicts(ordered);
+    if (conflicts.length > 0) {
+      const msgs = conflicts.map(c => `Port ${c.port} (${c.service}) in use by PID ${c.pid}`);
+      throw new Error(`Port conflicts detected:\n${msgs.join('\n')}`);
+    }
+
+    // Generate .env.test if env config exists
+    if (config.env) {
+      await generateEnvFile(rootDir, config.env);
+    }
+  }
 
   const capturedOutputs: Record<string, string> = {};
   const serviceStates: ServiceState[] = [];

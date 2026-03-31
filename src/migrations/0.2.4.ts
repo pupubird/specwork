@@ -7,8 +7,9 @@ import { AGENTS_SPECWORK_PLANNER } from '../templates/instructions/agents-specwo
 import { SKILLS_SPECWORK_CONTEXT_SKILL } from '../templates/instructions/skills-specwork-context-SKILL.js';
 import { COMMANDS_SPECWORK_PLAN } from '../templates/instructions/commands-specwork-plan.js';
 import { SPECWORK_GITIGNORE } from '../templates/claude-files.js';
+import { SKILLS_SPECWORK_ENGINE_SKILL } from '../templates/instructions/skills-specwork-engine-SKILL.js';
 
-export const description = 'Remove environment snapshot feature: delete snapshot skill, update agent/context instructions, clean config';
+export const description = 'Remove environment snapshot feature, add sandbox environment initialization to engine state machine';
 
 export const migrate: MigrationFn = (root, _config) => {
   const details: string[] = [];
@@ -67,6 +68,12 @@ export const migrate: MigrationFn = (root, _config) => {
       template: COMMANDS_SPECWORK_PLAN,
       label: 'specwork-plan.md',
       detectOutdated: (c) => c.includes('snapshot') || c.includes('Snapshot'),
+    },
+    {
+      file: path.join(root, '.claude', 'skills', 'specwork-engine', 'SKILL.md'),
+      template: SKILLS_SPECWORK_ENGINE_SKILL,
+      label: 'specwork-engine/SKILL.md',
+      detectOutdated: (c) => !c.includes('sandbox init') || !c.includes('sandbox teardown'),
     },
   ];
 

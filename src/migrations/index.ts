@@ -10,6 +10,7 @@ import { migrate as migrate_0_1_3, description as desc_0_1_3 } from './0.1.3.js'
 import { migrate as migrate_0_2_0, description as desc_0_2_0 } from './0.2.0.js';
 import { migrate as migrate_0_2_2, description as desc_0_2_2 } from './0.2.2.js';
 import { migrate as migrate_0_2_4, description as desc_0_2_4 } from './0.2.4.js';
+import { migrate as migrate_0_2_5, description as desc_0_2_5 } from './0.2.5.js';
 
 export const migrations: MigrationEntry[] = [
   { version: '0.1.1', description: desc_0_1_1, migrate: migrate_0_1_1 },
@@ -18,6 +19,7 @@ export const migrations: MigrationEntry[] = [
   { version: '0.2.0', description: desc_0_2_0, migrate: migrate_0_2_0 },
   { version: '0.2.2', description: desc_0_2_2, migrate: migrate_0_2_2 },
   { version: '0.2.4', description: desc_0_2_4, migrate: migrate_0_2_4 },
+  { version: '0.2.5', description: desc_0_2_5, migrate: migrate_0_2_5 },
 ];
 
 // ── Get Pending Migrations ──────────────────────────────────────────────────

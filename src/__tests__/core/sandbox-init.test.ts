@@ -15,6 +15,8 @@ import {
   resolveConfig,
   checkPortConflicts,
   resolveServiceOrder,
+  ensureSandbox,
+  generateSandboxConfig,
 } from '../../core/sandbox-init.js';
 import type {
   SandboxConfig,
@@ -483,5 +485,100 @@ describe('initSandbox', () => {
       expect(names).toContain('deps');
       expect(names).not.toContain('db');
     });
+  });
+});
+
+// ── generateSandboxConfig ───────────────────────────────────────────────────
+
+describe('generateSandboxConfig', () => {
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-sandbox-gen-'));
+    fs.mkdirSync(path.join(root, '.specwork'), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('auto-detects node project and writes sandbox.yaml', async () => {
+    writeFile('package.json', JSON.stringify({
+      name: 'test-project',
+      devDependencies: { vitest: '^1.0.0' },
+    }));
+
+    const config = await generateSandboxConfig(root);
+
+    expect(config.services.length).toBeGreaterThan(0);
+    expect(config.detect.test_runner).toBe('vitest');
+    expect(fs.existsSync(path.join(root, '.specwork', 'sandbox.yaml'))).toBe(true);
+  });
+
+  it('detects package manager from lock file', async () => {
+    writeFile('package.json', JSON.stringify({ name: 'test' }));
+    writeFile('pnpm-lock.yaml', '');
+
+    const config = await generateSandboxConfig(root);
+
+    expect(config).toBeDefined();
+    expect(fs.existsSync(path.join(root, '.specwork', 'sandbox.yaml'))).toBe(true);
+  });
+});
+
+// ── ensureSandbox ───────────────────────────────────────────────────────────
+
+describe('ensureSandbox', () => {
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'specwork-sandbox-ensure-'));
+    setupSpecwork('my-change');
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('initializes sandbox when no state exists', async () => {
+    const base = makeBaseConfig({
+      services: [{ name: 'echo-svc', run: 'echo hello' }],
+    });
+    writeYaml('.specwork/sandbox.yaml', base);
+
+    const result = await ensureSandbox(root, 'my-change');
+
+    expect(result.initialized).toBe(true);
+    expect(result.state).not.toBeNull();
+    expect(result.state!.change).toBe('my-change');
+    expect(fs.existsSync(path.join(root, '.specwork', 'sandbox', 'state.json'))).toBe(true);
+  });
+
+  it('skips init when sandbox state already exists', async () => {
+    const base = makeBaseConfig({
+      services: [{ name: 'echo-svc', run: 'echo hello' }],
+    });
+    writeYaml('.specwork/sandbox.yaml', base);
+
+    // First call — initializes
+    await ensureSandbox(root, 'my-change');
+
+    // Second call — should skip
+    const result = await ensureSandbox(root, 'my-change');
+
+    expect(result.initialized).toBe(false);
+    expect(result.state).not.toBeNull();
+  });
+
+  it('auto-generates sandbox.yaml when missing and then initializes', async () => {
+    // No sandbox.yaml, but provide a package.json for detection
+    writeFile('package.json', JSON.stringify({
+      name: 'test-project',
+      devDependencies: { vitest: '^1.0.0' },
+    }));
+    // Create node_modules so install-deps is skipped
+    fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true });
+
+    const result = await ensureSandbox(root, 'my-change');
+
+    expect(result.initialized).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'sandbox.yaml'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.specwork', 'sandbox', 'state.json'))).toBe(true);
   });
 });

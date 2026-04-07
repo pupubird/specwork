@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
 import net from 'node:net';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 import type {
   SandboxConfig,
   SandboxService,
@@ -12,6 +12,7 @@ import type {
   OutputCapture,
 } from '../types/sandbox.js';
 import { generateEnvFile, propagateOutputs } from './sandbox-env.js';
+import { detectProject } from './sandbox-detect.js';
 
 // ── resolveServiceOrder ──────────────────────────────────────────────────────
 
@@ -323,4 +324,64 @@ export async function initSandbox(
   }
 
   return sandboxState;
+}
+
+// ── generateSandboxConfig ───────────────────────────────────────────────────
+
+export async function generateSandboxConfig(rootDir: string): Promise<SandboxConfig> {
+  const detection = await detectProject(rootDir);
+
+  const config: SandboxConfig = {
+    services: detection.detected_services,
+    detect: {
+      test_runner: (detection.test_runner as SandboxConfig['detect']['test_runner']) ?? 'auto',
+      e2e_framework: (detection.e2e_framework as SandboxConfig['detect']['e2e_framework']) ?? 'auto',
+      prompt_if_missing: false,
+    },
+    ports: {
+      conflict_strategy: 'warn',
+    },
+    env: {
+      template: '.env.example',
+      output: '.env.test',
+      defaults: {},
+    },
+    teardown: {
+      cleanup_paths: ['.specwork/sandbox'],
+    },
+  };
+
+  if (Object.keys(detection.workspaces).length > 0) {
+    config.workspaces = detection.workspaces;
+  }
+
+  const configPath = path.join(rootDir, '.specwork', 'sandbox.yaml');
+  fs.mkdirSync(path.dirname(configPath), { recursive: true });
+  fs.writeFileSync(configPath, stringify(config), 'utf-8');
+
+  return config;
+}
+
+// ── ensureSandbox ───────────────────────────────────────────────────────────
+
+export async function ensureSandbox(
+  rootDir: string,
+  change: string,
+): Promise<{ initialized: boolean; state: SandboxState | null }> {
+  const stateFile = path.join(rootDir, '.specwork', 'sandbox', 'state.json');
+
+  // Already active — skip
+  if (fs.existsSync(stateFile)) {
+    const raw = fs.readFileSync(stateFile, 'utf-8');
+    return { initialized: false, state: JSON.parse(raw) };
+  }
+
+  // Auto-generate sandbox.yaml if missing
+  const configPath = path.join(rootDir, '.specwork', 'sandbox.yaml');
+  if (!fs.existsSync(configPath)) {
+    await generateSandboxConfig(rootDir);
+  }
+
+  const state = await initSandbox(rootDir, change);
+  return { initialized: true, state };
 }

@@ -26,6 +26,8 @@ import { ExitCode } from '../types/index.js';
 import { generateGraph } from '../core/graph-generator.js';
 import { initializeState } from '../core/state-machine.js';
 import { buildNextAction, readChangeContext } from '../core/next-action.js';
+import { ensureSandbox } from '../core/sandbox-init.js';
+import { teardownSandbox } from '../core/sandbox-teardown.js';
 import type { Graph, GraphNode } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
@@ -39,7 +41,7 @@ export function makeGoCommand(): Command {
     .argument('<change>', 'Change name')
     .option('--from <id>', 'Skip nodes before this one in topo order')
     .option('--force', 'Override a stale lock', false)
-    .action((change: string, opts: { from?: string; force: boolean }, cmd: Command) => {
+    .action(async (change: string, opts: { from?: string; force: boolean }, cmd: Command) => {
       const root = findSpecworkRoot();
       const jsonMode = (cmd.parent?.opts() as { json?: boolean })?.json ?? false;
 
@@ -126,6 +128,9 @@ export function makeGoCommand(): Command {
       const allTerminal = allNodes.every(n => isTerminal(state.nodes[n.id]?.status ?? 'pending'));
 
       if (allTerminal) {
+        // Teardown sandbox when workflow completes
+        await teardownSandbox(root, change);
+
         const changeStatus = getChangeStatus(state);
         const finalState: WorkflowState = { ...state, status: changeStatus, updated_at: new Date().toISOString() };
         writeYaml(statePath(root, change), finalState);
@@ -188,6 +193,12 @@ export function makeGoCommand(): Command {
         }
       } else {
         acquireLock(lp);
+      }
+
+      // ── ensure sandbox is initialized ─────────────────────────────────
+      const sandboxResult = await ensureSandbox(root, change);
+      if (sandboxResult.initialized) {
+        info(`Sandbox initialized (${sandboxResult.state?.services.length ?? 0} service(s))`);
       }
 
       // ── build execution payload ────────────────────────────────────────

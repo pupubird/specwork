@@ -143,7 +143,7 @@ describe('validateGraph — required fields', () => {
     expect(result.errors.some(e => e.includes('agent'))).toBe(true);
   });
 
-  it('fails when llm node has empty scope', () => {
+  it('warns when llm node has empty scope', () => {
     const g: Graph = {
       change: 'test',
       version: '1',
@@ -209,5 +209,109 @@ describe('validateGraph — warnings', () => {
     // All nodes in validGraph have validate rules, so no warnings about missing rules
     const noRuleWarnings = result.warnings.filter(w => w.includes('validation rules'));
     expect(noRuleWarnings).toHaveLength(0);
+  });
+});
+
+// ── Scope Overlap Detection ──────────────────────────────────────────────────
+
+describe('validateGraph — scope overlap detection', () => {
+  it('warns when two LLM nodes share the same scope path', () => {
+    const g: Graph = {
+      change: 'overlap-test',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer', scope: ['src/__tests__/'] }),
+        makeNode({ id: 'impl-1', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'impl-2', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-1', 'impl-2'] }),
+      ],
+    };
+
+    const result = validateGraph(g);
+    // Overlap should produce a warning
+    const overlapWarnings = result.warnings.filter(w =>
+      w.includes('overlap') || w.includes('src/core/parser.ts')
+    );
+    expect(overlapWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('warns when one scope is a prefix of another (containment)', () => {
+    const g: Graph = {
+      change: 'prefix-test',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer', scope: ['src/__tests__/'] }),
+        makeNode({ id: 'impl-1', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/'] }),
+        makeNode({ id: 'impl-2', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-1', 'impl-2'] }),
+      ],
+    };
+
+    const result = validateGraph(g);
+    const overlapWarnings = result.warnings.filter(w =>
+      w.includes('overlap') || (w.includes('src/core/') && w.includes('impl-'))
+    );
+    expect(overlapWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('does not warn when LLM nodes have non-overlapping scopes', () => {
+    const g: Graph = {
+      change: 'no-overlap',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer', scope: ['src/__tests__/'] }),
+        makeNode({ id: 'impl-1', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'impl-2', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/io/filesystem.ts'] }),
+        makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-1', 'impl-2'] }),
+      ],
+    };
+
+    const result = validateGraph(g);
+    const overlapWarnings = result.warnings.filter(w => w.includes('overlap'));
+    expect(overlapWarnings).toHaveLength(0);
+  });
+
+  it('overlap is a warning, not an error (valid stays true)', () => {
+    const g: Graph = {
+      change: 'overlap-valid',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        makeNode({ id: 'write-tests', type: 'llm', agent: 'specwork-test-writer', scope: ['src/__tests__/'] }),
+        makeNode({ id: 'impl-1', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'impl-2', type: 'llm', agent: 'specwork-implementer', deps: ['write-tests'], scope: ['src/core/parser.ts'] }),
+        makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-1', 'impl-2'] }),
+      ],
+    };
+
+    const result = validateGraph(g);
+    // Graph should still be valid — overlaps are warnings, not errors
+    expect(result.valid).toBe(true);
+    // But warnings should exist
+    const overlapWarnings = result.warnings.filter(w =>
+      w.includes('overlap') || w.includes('src/core/parser.ts')
+    );
+    expect(overlapWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('excludes non-LLM nodes from overlap detection', () => {
+    const g: Graph = {
+      change: 'non-llm-overlap',
+      version: '1',
+      created_at: '2026-03-26T00:00:00Z',
+      nodes: [
+        makeNode({ id: 'snapshot', type: 'deterministic', command: 'specwork snapshot', scope: ['src/core/'] }),
+        makeNode({ id: 'impl-1', type: 'llm', agent: 'specwork-implementer', deps: ['snapshot'], scope: ['src/core/'] }),
+        makeNode({ id: 'integration', type: 'deterministic', command: 'npm test', deps: ['impl-1'], scope: ['src/core/'] }),
+      ],
+    };
+
+    const result = validateGraph(g);
+    // Deterministic nodes sharing scope with LLM nodes should NOT produce overlap warnings
+    const overlapWarnings = result.warnings.filter(w => w.includes('overlap'));
+    expect(overlapWarnings).toHaveLength(0);
   });
 });

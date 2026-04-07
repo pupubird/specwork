@@ -616,3 +616,92 @@ describe('cross-node validation', () => {
     expect(true).toBe(true);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Requirement: Baseline-Aware tsc-check
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('baseline-aware tsc-check', () => {
+  let root: string;
+
+  beforeEach(() => { root = makeTempRoot(); });
+  afterEach(() => { rmTempRoot(root); });
+
+  it('PASS when node introduces no new type errors (pre-existing errors ignored)', () => {
+    // Setup: create a tsconfig and a file with a pre-existing type error
+    commitFile(root, 'tsconfig.json', '{"compilerOptions":{"strict":true,"noEmit":true},"include":["src/"]}');
+    commitFile(root, 'src/old-bug.ts', 'const x: number = "pre-existing";');
+
+    // Record the baseline SHA
+    const startSha = execSync('git rev-parse HEAD', { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
+
+    // Node's work: add a valid file (no new errors)
+    commitFile(root, 'src/new-file.ts', 'export const y: number = 42;');
+
+    // Run tsc-check with startSha — should PASS because no NEW errors
+    const result = runSingleCheck(root, { type: 'tsc-check' }, {
+      scope: ['src/'],
+      startSha,
+    });
+
+    expect(result.status).toBe('PASS');
+  });
+
+  it('FAIL when node introduces new type errors (reports only new errors)', () => {
+    // Setup: clean baseline
+    commitFile(root, 'tsconfig.json', '{"compilerOptions":{"strict":true,"noEmit":true},"include":["src/"]}');
+    commitFile(root, 'src/good.ts', 'export const x: number = 1;');
+
+    const startSha = execSync('git rev-parse HEAD', { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
+
+    // Node's work: introduce a type error
+    commitFile(root, 'src/bad-new.ts', 'const z: number = "new-error";');
+
+    const result = runSingleCheck(root, { type: 'tsc-check' }, {
+      scope: ['src/'],
+      startSha,
+    });
+
+    expect(result.status).toBe('FAIL');
+    // Should report the new error
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some(e => e.file?.includes('bad-new') || e.message.includes('bad-new'))).toBe(true);
+  });
+
+  it('falls back to scope filter when no startSha provided', () => {
+    // Setup: file with error outside scope
+    commitFile(root, 'tsconfig.json', '{"compilerOptions":{"strict":true,"noEmit":true},"include":["src/"]}');
+    commitFile(root, 'src/outside/broken.ts', 'const x: number = "outside";');
+    commitFile(root, 'src/inside/good.ts', 'export const y: number = 1;');
+
+    // No startSha — should use scope filter
+    const result = runSingleCheck(root, { type: 'tsc-check' }, {
+      scope: ['src/inside/'],
+    });
+
+    // With scope filtering and no startSha, errors outside scope should be excluded
+    // If scope filtering works, this should PASS (only src/inside/ errors matter)
+    expect(result.status).toBe('PASS');
+  });
+
+  it('uses file+code+message for error identity (not line numbers)', () => {
+    // Setup: create a baseline with an error at line 1
+    commitFile(root, 'tsconfig.json', '{"compilerOptions":{"strict":true,"noEmit":true},"include":["src/"]}');
+    commitFile(root, 'src/shifting.ts', 'const x: number = "baseline-error";');
+
+    const startSha = execSync('git rev-parse HEAD', { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
+
+    // Node adds a blank line before the same error, shifting it to line 2
+    // The error is the SAME (same file, same code, same message) just different line
+    modifyFile(root, 'src/shifting.ts', '\nconst x: number = "baseline-error";');
+    execSync('git add -A && git commit -m "shift lines"', { cwd: root, stdio: 'pipe' });
+
+    const result = runSingleCheck(root, { type: 'tsc-check' }, {
+      scope: ['src/'],
+      startSha,
+    });
+
+    // Same error shifted to different line should still be considered pre-existing
+    expect(result.status).toBe('PASS');
+  });
+});

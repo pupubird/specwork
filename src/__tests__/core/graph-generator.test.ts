@@ -264,3 +264,245 @@ describe('edge cases', () => {
     expect(graph.nodes).toHaveLength(2);
   });
 });
+
+// ── Sub-Bullet Scope Extraction ─────────────────────────────────────────────
+
+describe('sub-bullet scope extraction', () => {
+  it('should extract file paths from indented sub-bullets into node scope', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core Changes
+- [ ] 1.1 Refactor the parser
+  - Update src/core/parser.ts to handle new syntax
+  - Modify src/core/lexer.ts for token changes
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl).toBeDefined();
+    expect(impl!.scope).toContain('src/core/parser.ts');
+    expect(impl!.scope).toContain('src/core/lexer.ts');
+  });
+
+  it('should stop collecting sub-bullets at next checkbox', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Module
+- [ ] 1.1 First task
+  - Change src/core/first.ts
+- [ ] 1.2 Second task
+  - Change src/core/second.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl).toBeDefined();
+    // Both sub-bullet paths should appear in the collapsed group scope
+    expect(impl!.scope).toContain('src/core/first.ts');
+    expect(impl!.scope).toContain('src/core/second.ts');
+  });
+
+  it('should stop collecting sub-bullets at next section header', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. First Group
+- [ ] 1.1 Task A
+  - Touches src/core/alpha.ts
+
+## 2. Second Group
+- [ ] 2.1 Task B
+  - Touches src/core/beta.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl1 = graph.nodes.find(n => n.id === 'impl-1');
+    const impl2 = graph.nodes.find(n => n.id === 'impl-2');
+    expect(impl1!.scope).toContain('src/core/alpha.ts');
+    expect(impl1!.scope).not.toContain('src/core/beta.ts');
+    expect(impl2!.scope).toContain('src/core/beta.ts');
+    expect(impl2!.scope).not.toContain('src/core/alpha.ts');
+  });
+
+  it('should merge file paths from rawLine and sub-bullets', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update src/core/main.ts for new API
+  - Also update src/core/helpers.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl!.scope).toContain('src/core/main.ts');
+    expect(impl!.scope).toContain('src/core/helpers.ts');
+  });
+
+  it('should deduplicate file paths across rawLine and sub-bullets', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Modify src/core/parser.ts
+  - Further changes to src/core/parser.ts
+  - Also update src/core/utils.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    // src/core/parser.ts should appear only once despite being in both rawLine and sub-bullet
+    const parserCount = impl!.scope.filter(p => p === 'src/core/parser.ts').length;
+    expect(parserCount).toBe(1);
+    expect(impl!.scope).toContain('src/core/utils.ts');
+  });
+
+  it('should not require proposal.md or design.md reads for scope (no allContext dependency)', () => {
+    // If allContext is removed, generating a graph should work
+    // without proposal.md or design.md content affecting scope
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update src/core/engine.ts
+  - Modify src/core/runner.ts
+`,
+      'proposal.md': 'This mentions src/unrelated/file.ts which should NOT appear in scope',
+      'design.md': 'This mentions src/another/unrelated.ts which should NOT appear in scope',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl!.scope).toContain('src/core/engine.ts');
+    expect(impl!.scope).toContain('src/core/runner.ts');
+    // Files mentioned only in proposal/design should NOT be in impl scope
+    expect(impl!.scope).not.toContain('src/unrelated/file.ts');
+    expect(impl!.scope).not.toContain('src/another/unrelated.ts');
+  });
+
+  it('should have scope from rawLine only when task has no sub-bullets', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update src/core/parser.ts for new syntax
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    expect(impl).toBeDefined();
+    // Scope should come only from rawLine
+    expect(impl!.scope).toContain('src/core/parser.ts');
+    // Should have exactly 1 scope entry (no phantom sub-bullet paths)
+    expect(impl!.scope).toHaveLength(1);
+  });
+});
+
+// ── Scoped tests-pass Derivation ────────────────────────────────────────────
+
+describe('scoped tests-pass derivation', () => {
+  it('should map source files to test file paths in tests-pass validation rule', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update parser
+  - Modify src/core/parser.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    const testsPassRule = impl!.validate.find(v => v.type === 'tests-pass');
+    expect(testsPassRule).toBeDefined();
+    expect(testsPassRule!.args?.file).toBe('src/__tests__/core/parser.test.ts');
+  });
+
+  it('should map multiple source files to multiple test paths joined', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update modules
+  - Modify src/core/parser.ts
+  - Modify src/core/lexer.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    const testsPassRule = impl!.validate.find(v => v.type === 'tests-pass');
+    expect(testsPassRule).toBeDefined();
+    // args.file should contain the derived test paths
+    const file = testsPassRule!.args?.file as string;
+    expect(file).toContain('src/__tests__/core/parser.test.ts');
+    expect(file).toContain('src/__tests__/core/lexer.test.ts');
+  });
+
+  it('should not double-map test files already in scope', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Fix tests
+  - Modify src/__tests__/core/parser.test.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    const testsPassRule = impl!.validate.find(v => v.type === 'tests-pass');
+    expect(testsPassRule).toBeDefined();
+    // Test file in scope should be used directly, not mapped to src/__tests__/__tests__/...
+    const file = testsPassRule!.args?.file as string;
+    expect(file).toContain('src/__tests__/core/parser.test.ts');
+    expect(file).not.toContain('__tests__/__tests__');
+  });
+
+  it('should exclude non-.ts and directory paths from test file derivation', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Core
+- [ ] 1.1 Update config
+  - Modify src/core/config.ts
+  - Update src/core/README.md
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    const testsPassRule = impl!.validate.find(v => v.type === 'tests-pass');
+    expect(testsPassRule).toBeDefined();
+    const file = testsPassRule!.args?.file as string;
+    // Only .ts files should be mapped
+    expect(file).toContain('src/__tests__/core/config.test.ts');
+    // README.md should not be mapped
+    expect(file).not.toContain('README');
+  });
+
+  it('should have tests-pass rule without args.file when no test files derivable', () => {
+    writeChange('test', {
+      'tasks.md': `## 1. Types
+- [ ] 1.1 Update type definitions
+  - Modify src/types/graph.ts
+`,
+      'proposal.md': '',
+      'design.md': '',
+    });
+
+    const graph = generateGraph(root, 'test');
+    const impl = graph.nodes.find(n => n.id === 'impl-1');
+    const testsPassRule = impl!.validate.find(v => v.type === 'tests-pass');
+    expect(testsPassRule).toBeDefined();
+    // No test file can be derived for src/types/graph.ts (no __tests__/types/ convention)
+    // So args.file should be undefined/absent
+    expect(testsPassRule!.args?.file).toBeUndefined();
+  });
+});

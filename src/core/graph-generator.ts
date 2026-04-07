@@ -11,6 +11,7 @@ interface ParsedTask {
   groupIndex: number;
   taskIndex: number;
   rawLine: string;
+  subLines: string[];
   optOut: boolean;
 }
 
@@ -22,6 +23,31 @@ function slugify(text: string): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .slice(0, 40);
+}
+
+function deriveTestPaths(scope: string[]): string[] {
+  const testPaths: string[] = [];
+  for (const p of scope) {
+    if (p.startsWith('src/__tests__/')) {
+      testPaths.push(p);
+    } else if (p.endsWith('.ts') && /^src\/(?!types\/)/.test(p)) {
+      testPaths.push(p.replace(/^src\//, 'src/__tests__/').replace(/\.ts$/, '.test.ts'));
+    }
+  }
+  return [...new Set(testPaths)];
+}
+
+function buildValidate(scope: string[]): ValidationRule[] {
+  const testPaths = deriveTestPaths(scope);
+  return [
+    { type: 'scope-check' },
+    { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
+    { type: 'imports-exist' },
+    { type: 'tsc-check' },
+    testPaths.length > 0
+      ? { type: 'tests-pass', args: { file: testPaths.join(' ') } }
+      : { type: 'tests-pass' },
+  ];
 }
 
 function extractFilePaths(text: string): string[] {
@@ -42,7 +68,9 @@ function parseTasks(tasksContent: string): ParsedTask[] {
   let currentGroupIndex = 0;
   let taskIndexInGroup = 0;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
     // Section header: ## 1. Group Name or ## Group Name
     const sectionMatch = /^##\s+(?:\d+\.\s+)?(.+)/.exec(line);
     if (sectionMatch) {
@@ -67,6 +95,19 @@ function parseTasks(tasksContent: string): ParsedTask[] {
       }
       taskIndexInGroup++;
       const id = `impl-${currentGroupIndex}-${taskIndexInGroup}`;
+
+      // Collect sub-bullet lines (indented lines following the checkbox)
+      const subLines: string[] = [];
+      while (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (/^(\s{2,}|\t)/.test(next) && !/^-\s+\[\s*[ x]?\s*\]/.test(next) && !/^##/.test(next)) {
+          subLines.push(next);
+          i++;
+        } else {
+          break;
+        }
+      }
+
       tasks.push({
         id,
         description,
@@ -74,6 +115,7 @@ function parseTasks(tasksContent: string): ParsedTask[] {
         groupIndex: currentGroupIndex,
         taskIndex: taskIndexInGroup,
         rawLine: line,
+        subLines,
         optOut,
       });
     }
@@ -86,10 +128,6 @@ export function generateGraph(root: string, change: string): Graph {
   const dir = changeDir(root, change);
 
   const tasksContent = readMarkdown(path.join(dir, 'tasks.md'));
-  const proposalContent = readMarkdown(path.join(dir, 'proposal.md'));
-  const designContent = readMarkdown(path.join(dir, 'design.md'));
-
-  const allContext = [tasksContent, proposalContent, designContent].join('\n');
 
   const tasks = parseTasks(tasksContent);
   const now = new Date().toISOString();
@@ -127,15 +165,6 @@ export function generateGraph(root: string, change: string): Graph {
   };
   nodes.push(writeTestsNode);
 
-  // Impl nodes — collapse tasks per section into grouped nodes
-  const validate: ValidationRule[] = [
-    { type: 'scope-check' },
-    { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
-    { type: 'imports-exist' },
-    { type: 'tsc-check' },
-    { type: 'tests-pass' },
-  ];
-
   // Bucket tasks by groupIndex, separating opted-out tasks
   const groupMap = new Map<number, { name: string; grouped: ParsedTask[]; isolated: ParsedTask[] }>();
   for (const task of tasks) {
@@ -153,7 +182,7 @@ export function generateGraph(root: string, change: string): Graph {
   for (const [groupIndex, { name, grouped, isolated }] of groupMap) {
     // Emit collapsed or single group node
     if (grouped.length >= 2) {
-      const scope = [...new Set(grouped.flatMap(t => extractFilePaths(t.rawLine)))];
+      const scope = [...new Set(grouped.flatMap(t => extractFilePaths([t.rawLine, ...t.subLines].join('\n'))))];
       if (scope.length === 0) {
         process.stderr.write(`[specwork warn] impl-${groupIndex} ("${name}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
       }
@@ -166,7 +195,7 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: scope,
         scope,
-        validate,
+        validate: buildValidate(scope),
         retry: 2,
         group: slugify(name),
         sub_tasks: grouped.map(t => t.description),
@@ -174,7 +203,7 @@ export function generateGraph(root: string, change: string): Graph {
       nodes.push(implNode);
     } else if (grouped.length === 1) {
       const task = grouped[0];
-      const implScope = extractFilePaths(task.rawLine);
+      const implScope = extractFilePaths([task.rawLine, ...task.subLines].join('\n'));
       if (implScope.length === 0) {
         process.stderr.write(`[specwork warn] impl-${groupIndex} ("${task.description}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
       }
@@ -187,7 +216,7 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: implScope,
         scope: implScope,
-        validate,
+        validate: buildValidate(implScope),
         retry: 2,
       };
       nodes.push(implNode);
@@ -195,7 +224,7 @@ export function generateGraph(root: string, change: string): Graph {
 
     // Emit opted-out (isolated) nodes
     for (const task of isolated) {
-      const implScope = extractFilePaths(task.rawLine);
+      const implScope = extractFilePaths([task.rawLine, ...task.subLines].join('\n'));
       if (implScope.length === 0) {
         process.stderr.write(`[specwork warn] impl-${groupIndex}-${task.taskIndex} ("${task.description}"): no file paths found in task text — scope is empty. Add file paths to tasks before running specwork go.\n`);
       }
@@ -208,7 +237,7 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: implScope,
         scope: implScope,
-        validate,
+        validate: buildValidate(implScope),
         retry: 2,
       };
       nodes.push(implNode);

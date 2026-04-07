@@ -194,7 +194,7 @@ export function runSingleCheck(
 
   switch (rule.type) {
     case 'tsc-check':
-      return runTscCheck(root, start);
+      return runTscCheck(root, start, scope, context?.startSha);
 
     case 'tests-pass':
       return runTestsPass(root, rule, start);
@@ -264,9 +264,86 @@ function truncateDetail(detail: string): string {
   return detail.slice(0, 197) + '...';
 }
 
-function runTscCheck(root: string, start: number): CheckResult {
+function runTscCheck(root: string, start: number, scope?: string[], startSha?: string | null): CheckResult {
+  // Run tsc on current state
+  let currentErrors: CheckError[];
   try {
-    execSync('npx tsc --noEmit', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+    execSync('tsc --noEmit', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+    currentErrors = [];
+  } catch (e: any) {
+    const output = (e.stdout || e.stderr || '').toString();
+    currentErrors = parseTscErrors(output);
+  }
+
+  // Strategy 1: baseline diff via startSha
+  if (startSha) {
+    let didStash = false;
+    try {
+      const stashOut = execSync('git stash --include-untracked', { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
+      didStash = !stashOut.includes('No local changes to save');
+      execSync(`git checkout ${startSha}`, { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+
+      let baselineErrors: CheckError[];
+      try {
+        execSync('tsc --noEmit', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+        baselineErrors = [];
+      } catch (e: any) {
+        const output = (e.stdout || e.stderr || '').toString();
+        baselineErrors = parseTscErrors(output);
+      }
+
+      execSync('git checkout -', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+      if (didStash) execSync('git stash pop', { cwd: root, stdio: 'pipe', encoding: 'utf-8' });
+
+      const baselineKeys = new Set(baselineErrors.map(e => `${e.file}::${e.code}::${e.message}`));
+      const newErrors = currentErrors.filter(e => !baselineKeys.has(`${e.file}::${e.code}::${e.message}`));
+
+      if (newErrors.length === 0) {
+        return {
+          type: 'tsc-check',
+          status: 'PASS',
+          detail: 'No new type errors (pre-existing errors ignored)',
+          errors: [],
+          duration_ms: Date.now() - start,
+        };
+      }
+      return {
+        type: 'tsc-check',
+        status: 'FAIL',
+        detail: truncateDetail(`${newErrors.length} new type error${newErrors.length !== 1 ? 's' : ''} introduced`),
+        errors: newErrors,
+        duration_ms: Date.now() - start,
+      };
+    } catch {
+      // Git ops failed — fall through to scope filter or plain check below
+      try { execSync('git checkout -', { cwd: root, stdio: 'pipe' }); } catch { /* ignore */ }
+      try { if (didStash) execSync('git stash pop', { cwd: root, stdio: 'pipe' }); } catch { /* ignore */ }
+    }
+  }
+
+  // Strategy 2: scope filter (no startSha or git failed, scope non-empty)
+  if (scope && scope.length > 0) {
+    const scopedErrors = currentErrors.filter(e => e.file && scope.some(s => e.file!.startsWith(s)));
+    if (scopedErrors.length === 0) {
+      return {
+        type: 'tsc-check',
+        status: 'PASS',
+        detail: 'No type errors in scope',
+        errors: [],
+        duration_ms: Date.now() - start,
+      };
+    }
+    return {
+      type: 'tsc-check',
+      status: 'FAIL',
+      detail: truncateDetail(`${scopedErrors.length} type error${scopedErrors.length !== 1 ? 's' : ''} found in scope`),
+      errors: scopedErrors,
+      duration_ms: Date.now() - start,
+    };
+  }
+
+  // Strategy 3: plain check (no startSha, empty scope)
+  if (currentErrors.length === 0) {
     return {
       type: 'tsc-check',
       status: 'PASS',
@@ -274,18 +351,14 @@ function runTscCheck(root: string, start: number): CheckResult {
       errors: [],
       duration_ms: Date.now() - start,
     };
-  } catch (e: any) {
-    const output = (e.stdout || e.stderr || '').toString();
-    const errors = parseTscErrors(output);
-    const count = errors.length;
-    return {
-      type: 'tsc-check',
-      status: 'FAIL',
-      detail: truncateDetail(`${count} type error${count !== 1 ? 's' : ''} found`),
-      errors,
-      duration_ms: Date.now() - start,
-    };
   }
+  return {
+    type: 'tsc-check',
+    status: 'FAIL',
+    detail: truncateDetail(`${currentErrors.length} type error${currentErrors.length !== 1 ? 's' : ''} found`),
+    errors: currentErrors,
+    duration_ms: Date.now() - start,
+  };
 }
 
 function parseTscErrors(output: string): CheckError[] {

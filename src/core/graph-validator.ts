@@ -71,6 +71,39 @@ export function validateGraph(graph: Graph): ValidationResult {
     }
   }
 
+  // Check scope overlap between LLM nodes (warning only)
+  const llmNodes = graph.nodes.filter(n => n.type === 'llm');
+
+  // Exact overlap: same path in multiple nodes
+  const scopeOwners = new Map<string, string[]>();
+  for (const node of llmNodes) {
+    for (const s of node.scope) {
+      const owners = scopeOwners.get(s) ?? [];
+      owners.push(node.id);
+      scopeOwners.set(s, owners);
+    }
+  }
+  for (const [filePath, owners] of scopeOwners) {
+    if (owners.length > 1) {
+      warnings.push(`Scope overlap: "${filePath}" claimed by nodes: ${owners.join(', ')}`);
+    }
+  }
+
+  // Prefix containment: one scope path is a prefix of another
+  for (let i = 0; i < llmNodes.length; i++) {
+    for (let j = i + 1; j < llmNodes.length; j++) {
+      const nodeA = llmNodes[i];
+      const nodeB = llmNodes[j];
+      for (const sa of nodeA.scope) {
+        for (const sb of nodeB.scope) {
+          if (sa !== sb && (sb.startsWith(sa) || sa.startsWith(sb))) {
+            warnings.push(`Scope containment: "${sa}" (${nodeA.id}) overlaps "${sb}" (${nodeB.id})`);
+          }
+        }
+      }
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,

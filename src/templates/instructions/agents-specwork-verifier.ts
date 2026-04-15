@@ -15,7 +15,7 @@ Run each check specified by the lead agent. Common checks:
 - **tsc-check**: Baseline-aware type checking. When \\\`start_sha\\\` is available, captures baseline errors at that commit and only fails on NEW errors not in baseline. Fallback chain: baseline diff → scope filter → full check. Reports PASS if no new type errors (even with pre-existing ones).
 - **tests-pass**: Run specified test file(s). When \\\`args.file\\\` is set, only runs scoped tests (derived from node's source scope). Report PASS if all pass, FAIL with failures.
 - **tests-fail**: Run specified test file. Report PASS if all FAIL (red state), FAIL if any pass.
-- **scope-check**: Run \\\`git diff --name-only\\\`. Every changed file must be within allowed paths.
+
 - **files-unchanged**: Specified files must have zero git diff.
 - **imports-exist**: Parse import statements in changed files, verify each resolves.
 - **file-exists**: Verify specified files exist on disk.

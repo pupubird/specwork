@@ -27,7 +27,7 @@ And the scopes SHALL NOT be identical unless the task lines mention identical fi
 
 ### Requirement: Node Start SHA Tracking
 
-When a node transitions to `in_progress` status, the system SHALL record the current git HEAD SHA as `start_sha` in the node's state. This SHA serves as the diff baseline for scope-check during verification.
+When a node transitions to `in_progress` status, the system SHALL record the current git HEAD SHA as `start_sha` in the node's state. This SHA serves as the diff baseline for tsc-check during verification.
 
 `NodeState` SHALL include a `start_sha: string | null` field. It SHALL be `null` until the node first enters `in_progress`.
 
@@ -48,40 +48,3 @@ When a node transitions to `in_progress`
 Then `start_sha` SHALL remain `null`
 And no error SHALL be thrown
 
----
-
-### Requirement: Node-Baseline Scope Check
-
-The `scope-check` validation rule SHALL compare only files changed since the node's `start_sha` against the node's declared `scope`. If `start_sha` is available, the diff command SHALL be `git diff --name-only <start_sha>`. If `start_sha` is `null`, the check SHALL fall back to `git diff --name-only` (current behavior).
-
-This ensures that files modified by sibling nodes (which ran before `start_sha`) do not appear in the current node's diff and cannot cause false scope violations.
-
-#### Scenario: Sibling node changes do not pollute scope check
-Given node A modified `src/core/foo.ts` and is complete
-And node B has `scope: ["src/core/bar.ts"]` and `start_sha` pointing to the SHA before A started
-And node B modified only `src/core/bar.ts`
-When scope-check runs for node B
-Then the diff SHALL be computed as `git diff --name-only <start_sha>`
-And `src/core/foo.ts` SHALL appear in the diff (it was changed before start_sha too)
-But since `start_sha` is the SHA at the point node B started, only `src/core/bar.ts` changes appear after it
-And the check SHALL return PASS
-
-#### Scenario: start_sha baseline isolates only this node's changes
-Given `start_sha` = SHA of commit C1
-And since C1, only `src/core/bar.ts` was modified by the current node
-When scope-check runs with `scope: ["src/core/bar.ts"]`
-Then `git diff --name-only C1` returns only `src/core/bar.ts`
-And the check SHALL return PASS
-
-#### Scenario: Fallback when start_sha is null
-Given a node with `start_sha: null`
-When scope-check runs
-Then it SHALL fall back to `git diff --name-only` (no base SHA)
-And behavior SHALL be identical to the current implementation
-
-#### Scenario: File outside scope fails even with baseline
-Given `start_sha` is set and `git diff --name-only <start_sha>` returns `src/wrong/file.ts`
-And the node's `scope` is `["src/correct/"]`
-When scope-check runs
-Then the check SHALL return FAIL
-And the detail SHALL list `src/wrong/file.ts` as out-of-scope

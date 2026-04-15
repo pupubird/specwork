@@ -15,7 +15,7 @@ Run each check specified by the lead agent. Common checks:
 - **tsc-check**: Run `npx tsc --noEmit`. Report PASS if exit 0, FAIL with errors otherwise.
 - **tests-pass**: Run specified test file. Report PASS if all pass, FAIL with failures.
 - **tests-fail**: Run specified test file. Report PASS if all FAIL (red state), FAIL if any pass.
-- **scope-check**: Run `git diff --name-only`. Every changed file must be within allowed paths.
+
 - **files-unchanged**: Specified files must have zero git diff.
 - **imports-exist**: Parse import statements in changed files, verify each resolves.
 - **file-exists**: Verify specified files exist on disk.

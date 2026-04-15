@@ -251,7 +251,7 @@ describe('specwork node verify --json next_action', () => {
     expect(json.next_action.context).toBeDefined();
 
     if (json.verdict === 'PASS') {
-      expect(json.next_action.on_pass).toMatch(/specwork node complete/);
+      expect(json.next_action.on_pass).toMatch(/specwork node qa-pass/);
     } else {
       expect(json.next_action.on_fail).toMatch(/specwork node fail/);
     }

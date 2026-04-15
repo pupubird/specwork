@@ -24,34 +24,6 @@ The system SHALL NOT provide any configuration option to skip or disable verific
 
 ---
 
-### Requirement: Scope Enforcement Check
-
-The `scope-check` validation rule SHALL compare all files modified during node execution against the node's declared `scope` patterns. A file is "in scope" if its path starts with any pattern in the `scope` array. Any file outside scope SHALL cause the check to FAIL.
-
-#### Scenario: All changes within scope
-
-- **GIVEN** a node with `scope: ["src/auth/"]`
-- **AND** `git diff --name-only` shows `src/auth/jwt.ts` and `src/auth/middleware.ts`
-- **WHEN** the `scope-check` runs
-- **THEN** the check SHALL return PASS
-
-#### Scenario: Changes outside scope
-
-- **GIVEN** a node with `scope: ["src/auth/"]`
-- **AND** `git diff --name-only` shows `src/auth/jwt.ts` and `src/db/schema.ts`
-- **WHEN** the `scope-check` runs
-- **THEN** the check SHALL return FAIL
-- **AND** the detail SHALL list each out-of-scope file: `src/db/schema.ts`
-
-#### Scenario: Empty scope allows nothing
-
-- **GIVEN** a node with `scope: []`
-- **AND** `git diff --name-only` shows any changed files
-- **WHEN** the `scope-check` runs
-- **THEN** the check SHALL return FAIL for every changed file
-
----
-
 ### Requirement: Files Unchanged Check
 
 The `files-unchanged` validation rule SHALL verify that specified files have no modifications (zero `git diff` output). This is used to enforce test immutability during implementation — implementer agents MUST NOT modify test files.
@@ -122,12 +94,11 @@ Checks SHALL execute in a defined dependency order. If a check fails and the `fa
 
 The default execution order SHALL be:
 1. `file-exists` (cheapest — filesystem stat)
-2. `scope-check` (cheap — git diff + pattern match)
-3. `files-unchanged` (cheap — git diff on specific files)
-4. `imports-exist` (medium — parse + resolve)
-5. `tsc-check` (expensive — full type check)
-6. `tests-fail` / `tests-pass` (most expensive — test execution)
-7. `exit-code` (variable — custom commands)
+2. `files-unchanged` (cheap — git diff on specific files)
+3. `imports-exist` (medium — parse + resolve)
+4. `tsc-check` (expensive — full type check)
+5. `tests-fail` / `tests-pass` (most expensive — test execution)
+6. `exit-code` (variable — custom commands)
 
 #### Scenario: tsc-check fails, tests-pass is skipped
 
@@ -323,8 +294,8 @@ The graph generator SHALL assign default validation rules based on node type and
 | Node | Default Checks |
 |------|---------------|
 | `snapshot` | `file-exists` |
-| `write-tests` | `tsc-check`, `tests-fail` (scoped), `scope-check` |
-| `impl-*` | `scope-check`, `files-unchanged` (test files), `imports-exist`, `tsc-check`, `tests-pass` (scoped) |
+| `write-tests` | `tsc-check`, `tests-fail` (scoped) |
+| `impl-*` | `files-unchanged` (test files), `imports-exist`, `tsc-check`, `tests-pass` (scoped) |
 | `integration` | `tests-pass` (full suite), plus all custom checks with `phase: [integration]` |
 
 #### Scenario: Impl node gets files-unchanged for test files
@@ -332,7 +303,7 @@ The graph generator SHALL assign default validation rules based on node type and
 - **GIVEN** a graph is being generated
 - **WHEN** an impl node is created
 - **THEN** it SHALL include `{ type: "files-unchanged", args: { files: ["src/__tests__/"] } }` in its validate array
-- **AND** it SHALL include `scope-check` and `imports-exist`
+- **AND** it SHALL include `imports-exist`
 
 #### Scenario: Integration node includes custom checks
 

@@ -6,7 +6,7 @@ export type BuiltinValidationRuleType =
   | 'tsc-check'
   | 'file-exists'
   | 'exit-code'
-  | 'scope-check'
+
   | 'files-unchanged'
   | 'imports-exist'
   | 'no-todos';

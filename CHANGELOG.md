@@ -7,6 +7,30 @@ Specwork uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.6] - 2026-04-10
+
+### Removed
+
+- **`scope-check` validation rule** — LLM agents are too dynamic for pre-defined file scope enforcement; scope was already removed as a concept in v0.1.2 (scope guard), this removes the lingering git-diff-based check from the verification engine
+- `runScopeCheck()` function from `src/core/verification.ts`
+- `scope-check` from `BuiltinValidationRuleType` union, priority order, and fail-fast dependency chain
+- `scope-check` from default validation rules in graph generator (both `write-tests` and `impl-*` nodes)
+- `scope-check` case from context assembler's `expandValidate()`
+- `scope-check` references from verifier and QA agent instructions
+
+### Fixed
+
+- `next-action` test expecting `specwork node complete` on verify pass — updated to match current flow (verify → QA → qa-pass → summarizer → complete)
+
+### Migration
+
+The `0.2.6` migration automatically updates existing projects:
+- Rewrites `specwork-verifier.md` and `specwork-qa.md` to remove scope-check references
+- Strips `scope-check` entries from `validate` arrays in any active `graph.yaml` files
+- Updates `specwork_version` to 0.2.6 in `config.yaml`
+
+[0.2.6]: https://github.com/pupubird/specwork/releases/tag/v0.2.6
+
 ## [0.2.0] - 2026-03-30
 
 ### Added

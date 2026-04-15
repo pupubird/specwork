@@ -54,72 +54,6 @@ function modifyFile(root: string, filePath: string, content: string): void {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Requirement: Scope Enforcement Check
-// ══════════════════════════════════════════════════════════════════════════════
-
-describe('scope-check', () => {
-  let root: string;
-
-  beforeEach(() => { root = makeTempRoot(); });
-  afterEach(() => { rmTempRoot(root); });
-
-  it('returns PASS when all changed files are within scope', () => {
-    commitFile(root, 'src/auth/jwt.ts', 'export const a = 1;');
-    modifyFile(root, 'src/auth/jwt.ts', 'export const a = 2;');
-
-    const result = runSingleCheck(root, {
-      type: 'scope-check',
-    }, { scope: ['src/auth/'] });
-
-    expect(result.status).toBe('PASS');
-  });
-
-  it('returns FAIL when files outside scope are modified', () => {
-    commitFile(root, 'src/auth/jwt.ts', 'export const a = 1;');
-    commitFile(root, 'src/db/schema.ts', 'export const b = 1;');
-    modifyFile(root, 'src/auth/jwt.ts', 'export const a = 2;');
-    modifyFile(root, 'src/db/schema.ts', 'export const b = 2;');
-
-    const result = runSingleCheck(root, {
-      type: 'scope-check',
-    }, { scope: ['src/auth/'] });
-
-    expect(result.status).toBe('FAIL');
-    expect(result.detail).toMatch(/src\/db\/schema\.ts/);
-  });
-
-  it('returns FAIL for any changes when scope is empty', () => {
-    commitFile(root, 'src/foo.ts', 'export const x = 1;');
-    modifyFile(root, 'src/foo.ts', 'export const x = 2;');
-
-    const result = runSingleCheck(root, {
-      type: 'scope-check',
-    }, { scope: [] });
-
-    expect(result.status).toBe('FAIL');
-  });
-
-  it('lists each out-of-scope file in errors array', () => {
-    commitFile(root, 'src/auth/jwt.ts', 'a');
-    commitFile(root, 'src/db/schema.ts', 'b');
-    commitFile(root, 'src/utils/helper.ts', 'c');
-    modifyFile(root, 'src/auth/jwt.ts', 'a2');
-    modifyFile(root, 'src/db/schema.ts', 'b2');
-    modifyFile(root, 'src/utils/helper.ts', 'c2');
-
-    const result = runSingleCheck(root, {
-      type: 'scope-check',
-    }, { scope: ['src/auth/'] });
-
-    expect(result.status).toBe('FAIL');
-    expect(result.errors).toBeDefined();
-    expect(result.errors!.length).toBe(2);
-    expect(result.errors!.some(e => e.file === 'src/db/schema.ts')).toBe(true);
-    expect(result.errors!.some(e => e.file === 'src/utils/helper.ts')).toBe(true);
-  });
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
 // Requirement: Files Unchanged Check
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -236,15 +170,13 @@ describe('sortChecksByPriority', () => {
       { type: 'tests-pass' },
       { type: 'tsc-check' },
       { type: 'file-exists', args: { path: 'foo.ts' } },
-      { type: 'scope-check' },
       { type: 'imports-exist' },
     ];
 
     const sorted = sortChecksByPriority(rules);
 
     const types = sorted.map(r => r.type);
-    expect(types.indexOf('file-exists')).toBeLessThan(types.indexOf('scope-check'));
-    expect(types.indexOf('scope-check')).toBeLessThan(types.indexOf('imports-exist'));
+    expect(types.indexOf('file-exists')).toBeLessThan(types.indexOf('imports-exist'));
     expect(types.indexOf('imports-exist')).toBeLessThan(types.indexOf('tsc-check'));
     expect(types.indexOf('tsc-check')).toBeLessThan(types.indexOf('tests-pass'));
   });

@@ -53,7 +53,7 @@ export interface RunChecksOptions {
 
 const BUILTIN_TYPES = new Set<string>([
   'tests-fail', 'tests-pass', 'tsc-check', 'file-exists',
-  'exit-code', 'scope-check', 'files-unchanged', 'imports-exist',
+  'exit-code', 'files-unchanged', 'imports-exist',
   'no-todos',
 ]);
 
@@ -61,8 +61,7 @@ const BUILTIN_TYPES = new Set<string>([
 
 const CHECK_PRIORITY: Record<string, number> = {
   'file-exists': 0,
-  'scope-check': 1,
-  'files-unchanged': 2,
+  'files-unchanged': 1,
   'imports-exist': 3,
   'tsc-check': 4,
   'tests-fail': 5,
@@ -75,8 +74,8 @@ const CHECK_PRIORITY: Record<string, number> = {
 const CHECK_DEPS: Record<string, string[]> = {
   'tests-pass': ['tsc-check', 'file-exists'],
   'tests-fail': ['tsc-check', 'file-exists'],
-  'tsc-check': ['file-exists', 'scope-check'],
-  'imports-exist': ['file-exists', 'scope-check'],
+  'tsc-check': ['file-exists'],
+  'imports-exist': ['file-exists'],
 };
 
 // ── Sort checks by priority ─────────────────────────────────────────────────
@@ -204,9 +203,6 @@ export function runSingleCheck(
 
     case 'file-exists':
       return runFileExists(root, rule, start);
-
-    case 'scope-check':
-      return runScopeCheck(root, scope, start, context?.startSha ?? null);
 
     case 'files-unchanged':
       return runFilesUnchanged(root, rule, start);
@@ -489,59 +485,6 @@ function runFileExists(root: string, rule: ValidationRule, start: number): Check
     errors: [{ file: filePath, message: `File not found: ${filePath}` }],
     duration_ms: Date.now() - start,
   };
-}
-
-function runScopeCheck(root: string, scope: string[], start: number, startSha?: string | null): CheckResult {
-  try {
-    // Use node's start SHA as baseline when available — only shows changes made by this node
-    const diffCmd = startSha ? `git diff --name-only ${startSha}` : 'git diff --name-only';
-    const diff = execSync(diffCmd, { cwd: root, stdio: 'pipe', encoding: 'utf-8' }).trim();
-    if (!diff) {
-      return {
-        type: 'scope-check',
-        status: 'PASS',
-        detail: 'No changes detected',
-        errors: [],
-        duration_ms: Date.now() - start,
-      };
-    }
-
-    const changedFiles = diff.split('\n').filter(Boolean);
-    const outOfScope: string[] = [];
-
-    for (const file of changedFiles) {
-      const inScope = scope.some(pattern => file.startsWith(pattern));
-      if (!inScope) {
-        outOfScope.push(file);
-      }
-    }
-
-    if (outOfScope.length === 0) {
-      return {
-        type: 'scope-check',
-        status: 'PASS',
-        detail: `All ${changedFiles.length} changed file(s) within scope`,
-        errors: [],
-        duration_ms: Date.now() - start,
-      };
-    }
-
-    return {
-      type: 'scope-check',
-      status: 'FAIL',
-      detail: truncateDetail(`${outOfScope.length} file(s) outside scope: ${outOfScope.join(', ')}`),
-      errors: outOfScope.map(f => ({ file: f, message: `File outside declared scope: ${f}` })),
-      duration_ms: Date.now() - start,
-    };
-  } catch {
-    return {
-      type: 'scope-check',
-      status: 'PASS',
-      detail: 'No git changes',
-      errors: [],
-      duration_ms: Date.now() - start,
-    };
-  }
 }
 
 function runFilesUnchanged(root: string, rule: ValidationRule, start: number): CheckResult {

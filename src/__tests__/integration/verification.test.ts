@@ -131,39 +131,6 @@ describe('verification is mandatory', () => {
 // Requirement: Scope Enforcement via CLI
 // ══════════════════════════════════════════════════════════════════════════════
 
-describe('scope-check via CLI', () => {
-  let dir: string;
-
-  beforeEach(() => { dir = createTestProject(); });
-  afterEach(() => { cleanup(dir); });
-
-  it('verify FAILS when files outside scope are modified', () => {
-    setupProjectWithGraph(dir);
-
-    // Modify the graph to give write-tests a scope and scope-check rule
-    const graph = readGraphYaml(dir, 'my-change');
-    const nodes = graph.nodes as Array<Record<string, unknown>>;
-    const writeTestsNode = nodes.find(n => n.id === 'write-tests')!;
-    writeTestsNode.scope = ['src/auth/'];
-    writeTestsNode.validate = [{ type: 'scope-check' }];
-    writeGraphYaml(dir, 'my-change', graph);
-
-    // Create a committed file, then modify outside scope
-    commitFile(dir, 'src/auth/jwt.ts', 'export const a = 1;');
-    commitFile(dir, 'src/db/schema.ts', 'export const b = 1;');
-    fs.writeFileSync(path.join(dir, 'src/db/schema.ts'), 'export const b = 2;', 'utf-8');
-
-    // Start and verify
-    runSpecwork(dir, 'node start my-change write-tests');
-    const result = runSpecwork(dir, '--json node verify my-change write-tests');
-    expect(result.exitCode).toBe(0);
-
-    const json = JSON.parse(result.stdout);
-    expect(json.verdict).toBe('FAIL');
-    expect(json.checks.some((c: any) => c.type === 'scope-check' && c.status === 'FAIL')).toBe(true);
-  });
-});
-
 // ══════════════════════════════════════════════════════════════════════════════
 // Requirement: Files Unchanged via CLI
 // ══════════════════════════════════════════════════════════════════════════════
@@ -468,7 +435,7 @@ describe('default validation rules in generated graph', () => {
   beforeEach(() => { dir = createTestProject(); });
   afterEach(() => { cleanup(dir); });
 
-  it('write-tests node includes tsc-check, tests-fail, and scope-check', () => {
+  it('write-tests node includes tsc-check and tests-fail', () => {
     setupProjectWithGraph(dir);
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
@@ -477,17 +444,15 @@ describe('default validation rules in generated graph', () => {
 
     expect(validateTypes).toContain('tests-fail');
     expect(validateTypes).toContain('tsc-check');
-    expect(validateTypes).toContain('scope-check');
   });
 
-  it('impl nodes include scope-check, files-unchanged, imports-exist, tsc-check, tests-pass', () => {
+  it('impl nodes include files-unchanged, imports-exist, tsc-check, tests-pass', () => {
     setupProjectWithGraph(dir);
     const graph = readGraphYaml(dir, 'my-change');
     const nodes = graph.nodes as Array<Record<string, unknown>>;
     const implNode = nodes.find(n => (n.id as string).startsWith('impl-'))!;
     const validateTypes = (implNode.validate as any[]).map((v: any) => v.type);
 
-    expect(validateTypes).toContain('scope-check');
     expect(validateTypes).toContain('files-unchanged');
     expect(validateTypes).toContain('imports-exist');
     expect(validateTypes).toContain('tsc-check');

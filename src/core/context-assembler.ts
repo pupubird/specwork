@@ -191,8 +191,6 @@ export function expandValidate(rules: ValidationRule[]): string[] {
         return 'TypeScript type-check passes (tsc --noEmit)';
       case 'file-exists':
         return `File exists: ${rule.args?.path ?? '(unknown)'}`;
-      case 'scope-check':
-        return 'Only files within the allowed scope are modified';
       case 'files-unchanged':
         return `Files are unchanged/immutable: ${((rule.args?.paths as string[]) ?? []).join(', ')}`;
       case 'imports-exist':

@@ -216,7 +216,7 @@ When a subagent starts working on a node, it doesn't receive the full conversati
 │                                                 │
 │  6. Validation Checks                           │
 │     ✓ tests-pass  ✓ no-deferred-work            │
-│     ✓ scope-check ✓ type-check                  │
+│     ✓ type-check                                │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -421,7 +421,7 @@ All commands support `--json` for machine-readable output with `next_action` gui
 
 ### State machine
 
-Every node tracks: `status`, `retries`, `verified`, `l0` (headline), `start_sha` (git baseline for scope-check), `wave` (execution batch), and a full `verify_history` with regression detection.
+Every node tracks: `status`, `retries`, `verified`, `l0` (headline), `start_sha` (git baseline for tsc-check), `wave` (execution batch), and a full `verify_history` with regression detection.
 
 Terminal states: `complete`, `skipped`, `rejected`. Retryable: `failed` → `in_progress`. Escalatable: `escalated` → `in_progress` (manual via `specwork retry`).
 

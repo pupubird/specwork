@@ -301,7 +301,7 @@ describe('wave gate behavior', () => {
               verdict: 'PASS' as const,
               timestamp: new Date().toISOString(),
               checks: [],
-              regressions: ['scope-check previously passed, now fails'],
+              regressions: ['tsc-check previously passed, now fails'],
             },
           ],
         },

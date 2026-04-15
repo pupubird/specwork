@@ -40,7 +40,6 @@ function deriveTestPaths(scope: string[]): string[] {
 function buildValidate(scope: string[]): ValidationRule[] {
   const testPaths = deriveTestPaths(scope);
   return [
-    { type: 'scope-check' },
     { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
     { type: 'imports-exist' },
     { type: 'tsc-check' },
@@ -157,7 +156,6 @@ export function generateGraph(root: string, change: string): Graph {
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
     validate: [
-      { type: 'scope-check' },
       { type: 'tsc-check' },
       { type: 'tests-fail' },
     ],

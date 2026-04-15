@@ -433,13 +433,6 @@ describe('expandValidate', () => {
     expect(result[0]).toMatch(/file.*exist|exists/i);
   });
 
-  it('maps scope-check rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'scope-check' }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/scope/i);
-  });
-
   it('maps files-unchanged rule to human-readable text', () => {
     const rules: ValidationRule[] = [{ type: 'files-unchanged', args: { paths: ['src/__tests__/'] } }];
     const result = expandValidate(rules);
@@ -458,10 +451,9 @@ describe('expandValidate', () => {
     const rules: ValidationRule[] = [
       { type: 'tests-pass' },
       { type: 'tsc-check' },
-      { type: 'scope-check' },
     ];
     const result = expandValidate(rules);
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(2);
   });
 
   it('returns empty array for empty rules', () => {

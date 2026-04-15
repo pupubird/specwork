@@ -24,7 +24,7 @@ Run the node's validation rules:
 - **tsc-check**: `npx tsc --noEmit` — zero errors
 - **tests-pass**: Run specified tests — all green
 - **tests-fail**: Run specified tests — all red (for write-tests nodes)
-- **scope-check**: `git diff --name-only` — only files in scope modified
+
 - **files-unchanged**: Specified files have no diff
 
 ### 2. Adversarial testing (the real value)

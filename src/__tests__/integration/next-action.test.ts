@@ -160,26 +160,14 @@ describe('specwork node complete --json next_action', () => {
 
   it('includes next_action pointing to specwork go for next batch', () => {
     setupProjectWithGraph(dir);
-    // Override write-tests validate to a simple file-exists check for testability
-    const graphFile = path.join(dir, '.specwork', 'graph', 'my-change', 'graph.yaml');
-    const graphData = parseYaml(fs.readFileSync(graphFile, 'utf-8')) as Record<string, unknown>;
-    const graphNodes = graphData.nodes as Array<Record<string, unknown>>;
-    const writeTestsNode = graphNodes.find(n => n.id === 'write-tests');
-    if (writeTestsNode) writeTestsNode.validate = [{ type: 'file-exists', args: { path: '.specwork/env/test-artifact.md' } }];
-    fs.writeFileSync(graphFile, stringifyYaml(graphData), 'utf-8');
 
     // Start write-tests
     runSpecwork(dir, 'node start my-change write-tests');
 
-    // Create test artifact so verification passes
-    const testArtifact = path.join(dir, '.specwork', 'env', 'test-artifact.md');
-    fs.mkdirSync(path.dirname(testArtifact), { recursive: true });
-    fs.writeFileSync(testArtifact, '# Test Artifact\n', 'utf-8');
-
-    // Verify first (mandatory)
+    // Verify first (mandatory — thin state command, no checks run)
     runSpecwork(dir, 'node verify my-change write-tests');
 
-    const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "write-tests done" --no-commit --json');
+    const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "write-tests done" --json');
     expect(result.exitCode).toBe(0);
 
     const json = JSON.parse(result.stdout);

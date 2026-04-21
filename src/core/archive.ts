@@ -136,20 +136,19 @@ function buildSummary(root: string, change: string): string {
 
   // Verification Summary
   if (state) {
-    const verifiedNodes = Object.entries(state.nodes).filter(
-      ([, ns]) => ns.last_verdict !== null && ns.last_verdict !== undefined
-    );
-
-    if (verifiedNodes.length > 0) {
-      lines.push('## Verification Summary');
-      lines.push('');
-      lines.push('| Node | Verdict |');
-      lines.push('|------|---------|');
-      for (const [nodeId, ns] of verifiedNodes) {
-        lines.push(`| ${nodeId} | ${ns.last_verdict} |`);
+    const nodeOrder = graph?.nodes.map(n => n.id) ?? Object.keys(state.nodes);
+    lines.push('## Verification Summary');
+    lines.push('');
+    lines.push('| Node | Verdict |');
+    lines.push('| ---- | ------- |');
+    for (const nodeId of nodeOrder) {
+      const ns = state.nodes[nodeId];
+      if (ns) {
+        const verdict = ns.verified ? 'PASS' : (ns.status === 'skipped' ? 'SKIPPED' : 'UNVERIFIED');
+        lines.push(`| ${nodeId} | ${verdict} |`);
       }
-      lines.push('');
     }
+    lines.push('');
   }
 
   return lines.join('\n');

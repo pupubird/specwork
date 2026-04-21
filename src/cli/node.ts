@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { execSync } from 'node:child_process';
 import {
   findSpecworkRoot,
   graphPath,
@@ -10,7 +9,6 @@ import {
   changeDir,
 } from '../utils/paths.js';
 import { readYaml, writeYaml, writeMarkdown, ensureDir } from '../io/filesystem.js';
-import { commit } from '../io/git.js';
 import {
   transitionNode,
   incrementRetry,
@@ -18,7 +16,6 @@ import {
   getChangeStatus,
 } from '../core/state-machine.js';
 import { getNode } from '../core/graph-walker.js';
-import { releaseLock } from '../core/lock-manager.js';
 import { assembleContext, renderContext } from '../core/context-assembler.js';
 import { output, table } from '../utils/output.js';
 import { info, success, error as logError, warn } from '../utils/logger.js';
@@ -29,15 +26,8 @@ import {
 } from '../utils/errors.js';
 import { ExitCode } from '../types/index.js';
 import { buildNextAction, readChangeContext } from '../core/next-action.js';
-import {
-  runChecks,
-  resolveCustomChecks,
-  detectRegressions,
-} from '../core/verification.js';
-import type { CheckResult } from '../core/verification.js';
 import type { Graph } from '../types/graph.js';
-import type { WorkflowState, VerifyHistoryEntry } from '../types/state.js';
-import { parse as parseYaml } from 'yaml';
+import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -239,12 +229,11 @@ export function uncheckTask(root: string, change: string, nodeId: string): void 
 // ── specwork node complete ─────────────────────────────────────────────────────
 
 const completeCmd = new Command('complete')
-  .description('Mark a node as complete, write L0, commit, clear scope')
+  .description('Mark a node as complete and write L0')
   .argument('<change>', 'Change name')
   .argument('<node>', 'Node ID')
   .option('--l0 <summary>', 'L0 headline summary for this node')
-  .option('--no-commit', 'Skip git commit')
-  .action(async (change: string, nodeId: string, opts: { l0?: string; commit: boolean }, cmd: Command) => {
+  .action(async (change: string, nodeId: string, opts: { l0?: string }, cmd: Command) => {
     const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
@@ -253,25 +242,25 @@ const completeCmd = new Command('complete')
     const node = getNode(graph, nodeId);
     if (!node) throw new NodeNotFoundError(nodeId);
 
-    // Enforce mandatory verification
+    // Enforce that agent has signalled verification (via specwork node verify or qa-pass)
     const nodeState = state.nodes[nodeId];
     if (!nodeState?.verified) {
       if (jsonMode) {
         const ctx = readChangeContext(root, change);
         const next_action = buildNextAction('node:verify:pass', ctx, { change, nodeId });
         next_action.command = `specwork node verify ${change} ${nodeId}`;
-        next_action.description = 'Node must pass verification before completion';
+        next_action.description = 'Node must be verified before completion';
         output({
           change,
           node: nodeId,
-          error: 'Node must pass verification before completion',
+          error: 'Node must be verified before completion',
           next_action,
         }, { json: true, quiet: false });
         process.exitCode = ExitCode.ERROR;
         return;
       }
       throw new SpecworkError(
-        `Cannot complete "${nodeId}": node must pass verification first. Run: specwork node verify ${change} ${nodeId}`,
+        `Cannot complete "${nodeId}": node must be verified first. Run: specwork node verify ${change} ${nodeId}`,
         ExitCode.ERROR
       );
     }
@@ -312,15 +301,6 @@ const completeCmd = new Command('complete')
     const finalState = { ...updated, status: changeStatus };
 
     saveState(root, change, finalState);
-
-    // Git commit
-    if (opts.commit !== false) {
-      try {
-        commit(`specwork(${change}): ${nodeId} complete`);
-      } catch (err) {
-        warn(`Git commit skipped: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
 
     const ctx = readChangeContext(root, change);
     const next_action = buildNextAction('node:complete', ctx, { change, nodeId });
@@ -468,169 +448,74 @@ const escalateCmd = new Command('escalate')
 
 // ── load custom checks from config ───────────────────────────────────────────
 
-function loadCustomChecks(root: string): Record<string, any> {
-  const configPath = path.join(root, '.specwork', 'config.yaml');
-  if (!fs.existsSync(configPath)) return {};
-  try {
-    const raw = fs.readFileSync(configPath, 'utf-8');
-    const config = parseYaml(raw) as Record<string, unknown>;
-    return (config.checks as Record<string, any>) ?? {};
-  } catch {
-    return {};
-  }
-}
-
 // ── specwork node verify ───────────────────────────────────────────────────────
+// Thin state command. The calling agent is responsible for running its own
+// checks (npm test, tsc, etc.) and calls this to record the verdict.
 
 const verifyCmd = new Command('verify')
-  .description('Run validation checks on a node and return structured verdict')
+  .description('Record agent-driven verification verdict for a node')
   .argument('<change>', 'Change name')
   .argument('<node>', 'Node ID')
   .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
     const root = findSpecworkRoot();
     const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
 
-    let { graph, state } = loadGraphAndState(root, change);
+    let { state } = loadGraphAndState(root, change);
 
-    const node = getNode(graph, nodeId);
-    if (!node) throw new NodeNotFoundError(nodeId);
-
-    // Must be in_progress to verify
     const nodeState = state.nodes[nodeId];
     if (nodeState?.status !== 'in_progress') {
       throw new SpecworkError(
-        `Cannot verify "${nodeId}": node must be in_progress (started). Current: ${nodeState?.status ?? 'pending'}`,
+        `Cannot verify "${nodeId}": node must be in_progress. Current: ${nodeState?.status ?? 'pending'}`,
         ExitCode.ERROR
       );
     }
 
-    // Resolve custom checks from config
-    const customChecks = loadCustomChecks(root);
-    const resolvedRules = resolveCustomChecks(node.validate, customChecks, node.scope);
-
-    // Run all checks with fail-fast and scope
-    const verifyResult = runChecks(root, resolvedRules, {
-      failFast: true,
-      scope: node.scope,
-    });
-
-    // Collect full raw output for verify-output.txt
-    const rawOutputLines = verifyResult.checks.map(c => {
-      let line = `[${c.status}] ${c.type}: ${c.detail}`;
-      if (c.errors && c.errors.length > 0) {
-        line += '\n' + c.errors.map(e => {
-          let errLine = `  - ${e.message}`;
-          if (e.file) errLine = `  - ${e.file}${e.line ? `:${e.line}` : ''}: ${e.message}`;
-          if (e.code) errLine += ` (${e.code})`;
-          return errLine;
-        }).join('\n');
-      }
-      return line;
-    });
-
-    // Detect regressions from previous verification history
-    const existingHistory: VerifyHistoryEntry[] = (nodeState as any).verify_history ?? [];
-    const previousChecks = existingHistory.length > 0
-      ? existingHistory[existingHistory.length - 1].checks.map(c => ({
-          type: c.type,
-          status: c.status as 'PASS' | 'FAIL' | 'SKIPPED',
-          detail: c.detail,
-          duration_ms: c.duration_ms,
-        }))
-      : [];
-    const regressions = detectRegressions(previousChecks, verifyResult.checks);
-
-    // Build history entry
-    const attempt = existingHistory.length + 1;
-    const historyEntry: VerifyHistoryEntry = {
-      attempt,
-      verdict: verifyResult.verdict,
-      timestamp: new Date().toISOString(),
-      checks: verifyResult.checks.map(c => ({
-        type: c.type,
-        status: c.status,
-        detail: c.detail,
-        duration_ms: c.duration_ms,
-      })),
-      regressions,
-    };
-
-    // Update node state with verification info
-    const updatedHistory = [...existingHistory, historyEntry];
-    const updatedNodeState = {
-      ...nodeState,
-      verified: verifyResult.verdict === 'PASS',
-      last_verdict: verifyResult.verdict,
-      verify_history: updatedHistory,
-    };
     state = {
       ...state,
       updated_at: new Date().toISOString(),
       nodes: {
         ...state.nodes,
-        [nodeId]: updatedNodeState,
+        [nodeId]: { ...nodeState, verified: true },
       },
     };
     saveState(root, change, state);
 
-    // Write verify.md artifact (full history)
     const nDir = nodeDir(root, change, nodeId);
     ensureDir(nDir);
-
-    const verifyMdSections: string[] = [`## Verification: ${nodeId}`, ''];
-    for (const entry of updatedHistory) {
-      verifyMdSections.push(`### Attempt ${entry.attempt} — ${entry.verdict} (${entry.timestamp})`);
-      verifyMdSections.push('');
-      for (const c of entry.checks) {
-        verifyMdSections.push(`- ${c.type}: ${c.status} — ${c.detail}`);
-      }
-      if (entry.regressions.length > 0) {
-        verifyMdSections.push('');
-        verifyMdSections.push(`**Regressions:** ${entry.regressions.join(', ')}`);
-      }
-      verifyMdSections.push('');
-    }
-    verifyMdSections.push(`**Latest Verdict: ${verifyResult.verdict}**`);
-    verifyMdSections.push('');
-    writeMarkdown(`${nDir}/verify.md`, verifyMdSections.join('\n'));
-
-    // Write verify-output.txt (full raw output)
-    fs.writeFileSync(`${nDir}/verify-output.txt`, rawOutputLines.join('\n\n'), 'utf-8');
+    writeMarkdown(`${nDir}/verify.md`, `## Verification: ${nodeId}\n\n**Verdict: PASS** (${new Date().toISOString()})\n`);
 
     const ctx = readChangeContext(root, change);
-    const verifyStatus = verifyResult.verdict === 'PASS' ? 'node:verify:pass' : 'node:verify:fail';
-    const next_action = buildNextAction(verifyStatus, ctx, { change, nodeId });
-
-    const fullOutputPath = path.relative(root, `${nDir}/verify-output.txt`);
-
-    const result = {
-      change,
-      node: nodeId,
-      verdict: verifyResult.verdict,
-      checks: verifyResult.checks,
-      failed_count: verifyResult.failed_count,
-      total_checks: verifyResult.total_checks,
-      duration_ms: verifyResult.duration_ms,
-      regressions: regressions.length > 0 ? regressions : undefined,
-      full_output_path: fullOutputPath,
-      next_action,
-    };
+    const next_action = buildNextAction('node:verify:pass', ctx, { change, nodeId });
 
     if (jsonMode) {
-      output(result, { json: true, quiet: false });
+      output({ change, node: nodeId, verdict: 'PASS', next_action }, { json: true, quiet: false });
     } else {
-      if (verifyResult.verdict === 'PASS') {
-        success(`✓ Verify ${change}/${nodeId}: PASS (${verifyResult.total_checks} checks, ${verifyResult.duration_ms}ms)`);
-      } else {
-        const failedChecks = verifyResult.checks.filter(c => c.status === 'FAIL');
-        logError(`✗ Verify ${change}/${nodeId}: FAIL (${verifyResult.failed_count}/${verifyResult.total_checks} failed)`);
-        for (const c of failedChecks) {
-          info(`  - ${c.type}: ${c.detail}`);
-        }
-        if (regressions.length > 0) {
-          warn(`  ⚠ Regressions: ${regressions.join(', ')}`);
-        }
-      }
+      success(`✓ Verify ${change}/${nodeId}: PASS`);
+    }
+  });
+
+// ── specwork node qa-pass ──────────────────────────────────────────────────────
+// Called by the QA agent after approving a node. Triggers summarizer → complete.
+
+const qaPassCmd = new Command('qa-pass')
+  .description('Signal QA approval for a node — triggers summarizer and completion')
+  .argument('<change>', 'Change name')
+  .argument('<node>', 'Node ID')
+  .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
+    const root = findSpecworkRoot();
+    const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
+
+    const { state } = loadGraphAndState(root, change);
+    const nodeState = state.nodes[nodeId];
+    if (!nodeState) throw new NodeNotFoundError(nodeId);
+
+    const ctx = readChangeContext(root, change);
+    const next_action = buildNextAction('node:qa:pass', ctx, { change, nodeId });
+
+    if (jsonMode) {
+      output({ change, node: nodeId, qa: 'PASS', next_action }, { json: true, quiet: false });
+    } else {
+      success(`✓ QA pass: ${change}/${nodeId}`);
     }
   });
 
@@ -645,6 +530,7 @@ export function makeNodeCommand(): Command {
   nodeCmd.addCommand(failCmd);
   nodeCmd.addCommand(escalateCmd);
   nodeCmd.addCommand(verifyCmd);
+  nodeCmd.addCommand(qaPassCmd);
 
   return nodeCmd;
 }

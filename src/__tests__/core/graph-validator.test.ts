@@ -11,7 +11,6 @@ function makeNode(overrides: Partial<GraphNode> & { id: string; type: GraphNode[
     inputs: [],
     outputs: [],
     scope: overrides.type === 'llm' ? ['src/'] : [],
-    validate: [{ type: 'tsc-check' }],
     ...overrides,
     // type-specific defaults
     ...(overrides.type === 'deterministic' && !overrides.command ? { command: 'echo ok' } : {}),
@@ -107,7 +106,6 @@ describe('validateGraph — required fields', () => {
           inputs: [],
           outputs: [],
           scope: [],
-          validate: [{ type: 'tsc-check' }],
           // no command
         },
       ],
@@ -132,7 +130,6 @@ describe('validateGraph — required fields', () => {
           inputs: [],
           outputs: [],
           scope: ['src/'],
-          validate: [{ type: 'tsc-check' }],
           // no agent
         },
       ],
@@ -158,7 +155,6 @@ describe('validateGraph — required fields', () => {
           inputs: [],
           outputs: [],
           scope: [], // empty scope
-          validate: [{ type: 'tsc-check' }],
         },
       ],
     };
@@ -182,7 +178,6 @@ describe('validateGraph — required fields', () => {
           inputs: [],
           outputs: [],
           scope: [],
-          validate: [{ type: 'tsc-check' }],
         },
       ],
     };
@@ -190,25 +185,6 @@ describe('validateGraph — required fields', () => {
     const result = validateGraph(g);
     expect(result.valid).toBe(false);
     expect(result.errors.some(e => e.includes('description'))).toBe(true);
-  });
-});
-
-// ── Warnings: no validation rules ─────────────────────────────────────────────
-
-describe('validateGraph — warnings', () => {
-  it('warns when a node has no validation rules', () => {
-    const g = validGraph();
-    g.nodes[0].validate = []; // clear snapshot's validate
-
-    const result = validateGraph(g);
-    expect(result.warnings.some(w => w.includes('snapshot') && w.includes('validation rules'))).toBe(true);
-  });
-
-  it('does not emit warnings for nodes that have rules', () => {
-    const result = validateGraph(validGraph());
-    // All nodes in validGraph have validate rules, so no warnings about missing rules
-    const noRuleWarnings = result.warnings.filter(w => w.includes('validation rules'));
-    expect(noRuleWarnings).toHaveLength(0);
   });
 });
 

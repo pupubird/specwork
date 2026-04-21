@@ -9,24 +9,44 @@ Specwork uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.6] - 2026-04-10
 
+### Changed — Prompt and Status Only (breaking)
+
+Specwork is now **prompt and status only**. The CLI no longer executes any deterministic checks (type-check, test-runner, file diffs, import resolution). All verification is agent-driven.
+
+**Rationale:** Built-in checks hardcoded `npx vitest run`, breaking jest/mocha/pytest projects. The fundamental problem was that agents know their stack — the CLI doesn't. Removing CLI-side check execution gives agents full flexibility while keeping the CLI as a thin state machine.
+
+**New verification flow:**
+1. Impl/test agent finishes work
+2. Verifier agent detects test runner from `package.json`, runs tests, runs `tsc --noEmit` if present
+3. Agent calls `specwork node verify <change> <node>` on pass → CLI records `verified: true`
+4. QA agent re-runs tests independently and adversarially
+5. QA agent calls `specwork node qa-pass <change> <node>` on pass
+6. Summarizer runs → `specwork node complete`
+
 ### Removed
 
-- **`scope-check` validation rule** — LLM agents are too dynamic for pre-defined file scope enforcement; scope was already removed as a concept in v0.1.2 (scope guard), this removes the lingering git-diff-based check from the verification engine
-- `runScopeCheck()` function from `src/core/verification.ts`
-- `scope-check` from `BuiltinValidationRuleType` union, priority order, and fail-fast dependency chain
-- `scope-check` from default validation rules in graph generator (both `write-tests` and `impl-*` nodes)
-- `scope-check` case from context assembler's `expandValidate()`
-- `scope-check` references from verifier and QA agent instructions
+- **`src/core/verification.ts`** (793 lines) — `runChecks`, `runSingleCheck`, `runTestsPass`, `runTestsFail`, `runTscCheck`, `runFilesUnchanged`, `runImportsExist`, `runNoTodos`, `detectRegressions`, `resolveCustomChecks`
+- **`BuiltinValidationRuleType`** union (`tests-fail`, `tests-pass`, `tsc-check`, `file-exists`, `exit-code`, `files-unchanged`, `imports-exist`, `no-todos`)
+- **`ValidationRule`** type and **`validate`** field from `GraphNode`
+- **`VerifyHistoryEntry`**, **`VerifyCheckRecord`**, **`last_verdict`**, **`verify_history`** from `NodeState`
+- CLI-side check execution from `specwork node verify` — now a thin state command
+- Default validation rules from graph generator
+- `expandValidate()` from context assembler (no longer needed)
+- `no-todos-check`, `scope-fix`, and integration verification test files (tested deleted code)
+- Regression detection from `shouldWaveAutoContinue()` (no verify_history to scan)
+- **Per-node git commit** from `specwork node complete` — the CLI no longer auto-commits after each node; committing is left to the agent or developer. Removed `--no-commit` flag.
 
-### Fixed
+### Added
 
-- `next-action` test expecting `specwork node complete` on verify pass — updated to match current flow (verify → QA → qa-pass → summarizer → complete)
+- **`specwork node qa-pass <change> <node>`** — new CLI command for QA agents to signal approval
+- **Verification Summary** in archive digest — shows `PASS`/`UNVERIFIED` per node based on `verified` field
 
 ### Migration
 
 The `0.2.6` migration automatically updates existing projects:
-- Rewrites `specwork-verifier.md` and `specwork-qa.md` to remove scope-check references
-- Strips `scope-check` entries from `validate` arrays in any active `graph.yaml` files
+- Rewrites `specwork-verifier.md` with agent-driven verification instructions
+- Rewrites `specwork-qa.md` with agent-driven QA instructions
+- Removes `validate:` arrays from all active `graph.yaml` files
 - Updates `specwork_version` to 0.2.6 in `config.yaml`
 
 [0.2.6]: https://github.com/pupubird/specwork/releases/tag/v0.2.6

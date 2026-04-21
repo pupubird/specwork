@@ -11,10 +11,9 @@ import {
   renderContext,
   sliceSpecs,
   getStructuredL1,
-  expandValidate,
   composeMicroSpec,
 } from '../../core/context-assembler.js';
-import type { Graph, ValidationRule } from '../../types/graph.js';
+import type { Graph } from '../../types/graph.js';
 import type { WorkflowState } from '../../types/state.js';
 import type { ContextBundle } from '../../types/context.js';
 import type { StructuredL1 } from '../../types/context.js';
@@ -408,59 +407,6 @@ describe('getStructuredL1', () => {
   });
 });
 
-// ── expandValidate ───────────────────────────────────────────────────────────
-
-describe('expandValidate', () => {
-  it('maps tests-pass rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'tests-pass', args: { pattern: 'src/__tests__/**' } }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/tests/i);
-    expect(result[0]).toMatch(/pass/i);
-  });
-
-  it('maps tsc-check rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'tsc-check' }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/typescript|tsc|type.?check/i);
-  });
-
-  it('maps file-exists rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'file-exists', args: { path: 'src/core/foo.ts' } }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/file.*exist|exists/i);
-  });
-
-  it('maps files-unchanged rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'files-unchanged', args: { paths: ['src/__tests__/'] } }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/unchanged|immutable|not.?modified/i);
-  });
-
-  it('maps imports-exist rule to human-readable text', () => {
-    const rules: ValidationRule[] = [{ type: 'imports-exist' }];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatch(/import/i);
-  });
-
-  it('handles multiple rules', () => {
-    const rules: ValidationRule[] = [
-      { type: 'tests-pass' },
-      { type: 'tsc-check' },
-    ];
-    const result = expandValidate(rules);
-    expect(result).toHaveLength(2);
-  });
-
-  it('returns empty array for empty rules', () => {
-    const result = expandValidate([]);
-    expect(result).toEqual([]);
-  });
-});
 
 // ── composeMicroSpec ─────────────────────────────────────────────────────────
 

@@ -39,7 +39,7 @@ const testGraph: Graph = {
 function makeState(change: string, nodeStatuses: Record<string, 'pending' | 'complete' | 'in_progress'>): WorkflowState {
   const nodes: WorkflowState['nodes'] = {};
   for (const [id, status] of Object.entries(nodeStatuses)) {
-    nodes[id] = { status, started_at: null, completed_at: null, retries: 0, error: null, l0: null, verified: false, last_verdict: null, verify_history: [] };
+    nodes[id] = { status, started_at: null, completed_at: null, retries: 0, error: null, l0: null, verified: false, start_sha: null };
   }
   return { change, status: 'active', started_at: '2026-03-26T00:00:00Z', updated_at: '2026-03-26T00:00:00Z', lock: null, nodes };
 }

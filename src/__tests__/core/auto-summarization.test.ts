@@ -41,7 +41,7 @@ const testGraph: Graph = {
 function makeState(change: string, nodeStatuses: Record<string, 'pending' | 'complete' | 'in_progress'>): WorkflowState {
   const nodes: WorkflowState['nodes'] = {};
   for (const [id, status] of Object.entries(nodeStatuses)) {
-    nodes[id] = { status, started_at: null, completed_at: null, retries: 0, error: null, l0: null, verified: false, last_verdict: null, verify_history: [] };
+    nodes[id] = { status, started_at: null, completed_at: null, retries: 0, error: null, l0: null, verified: false, start_sha: null };
   }
   return { change, status: 'active', started_at: '2026-03-26T00:00:00Z', updated_at: '2026-03-26T00:00:00Z', lock: null, nodes };
 }
@@ -61,7 +61,7 @@ describe('node complete — L0 auto-read from disk', () => {
     // Setup: write-tests is in_progress and verified, ready to complete
     const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'in_progress', 'impl-core': 'pending' });
     state.nodes['write-tests'].verified = true;
-    state.nodes['write-tests'].last_verdict = 'PASS';
+    state.nodes['write-tests'].verified = true;
     setupFixtures(root, state);
 
     // Write L0.md on disk (as the summarizer would have written it)
@@ -90,7 +90,7 @@ describe('node complete — L0 auto-read from disk', () => {
   it('--l0 flag overrides the file value and updates L0.md on disk', async () => {
     const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'in_progress', 'impl-core': 'pending' });
     state.nodes['write-tests'].verified = true;
-    state.nodes['write-tests'].last_verdict = 'PASS';
+    state.nodes['write-tests'].verified = true;
     setupFixtures(root, state);
 
     // Write existing L0.md with old content
@@ -116,7 +116,7 @@ describe('node complete — L0 auto-read from disk', () => {
   it('succeeds with null L0 when neither flag nor file present', async () => {
     const state = makeState('test-change', { snapshot: 'complete', 'write-tests': 'in_progress', 'impl-core': 'pending' });
     state.nodes['write-tests'].verified = true;
-    state.nodes['write-tests'].last_verdict = 'PASS';
+    state.nodes['write-tests'].verified = true;
     setupFixtures(root, state);
 
     // No L0.md file on disk, no --l0 flag

@@ -98,15 +98,10 @@ The agent doesn't need memory of the overall plan. It reads `command`, sees `"te
 }
 ```
 
-And when verification fails:
+And when verification fails, the verifier agent calls `specwork node fail` directly with its findings:
 
 ```json
 {
-  "verdict": "FAIL",
-  "checks": [
-    { "type": "tests-pass", "status": "FAIL", "detail": "3 of 12 tests failing" },
-    { "type": "no-deferred-work", "status": "FAIL", "detail": "Found TODO in src/auth.ts:42" }
-  ],
   "next_action": {
     "command": "subagent:respawn",
     "description": "1 retry remaining. Re-spawn with failure feedback.",
@@ -179,9 +174,9 @@ sequenceDiagram
 
 Three critical rules:
 
-1. **The implementer never grades its own homework.** After every node, a separate verifier agent checks the work — type errors, test results, file existence, and deferred work scanning.
+1. **The implementer never grades its own homework.** After every node, a separate verifier agent runs the test suite and type-checker, then a QA agent adversarially re-checks. The CLI records the result but never runs the checks itself.
 2. **Tests before implementation.** The `write-tests` node always runs first. Tests must fail (red state) before any implementation begins.
-3. **No deferred work.** `TODO`, `FIXME`, `STUB`, and `// not implemented` are automatically detected and blocked. If it's in the diff, the node fails verification. There is no later — every node must be complete before it's marked complete.
+3. **Stack-agnostic verification.** Agents detect the test runner from `package.json` — jest, vitest, mocha, pytest, whatever the project uses. No hardcoded commands, no framework assumptions.
 
 ---
 
@@ -214,9 +209,15 @@ When a subagent starts working on a node, it doesn't receive the full conversati
 │     write-tests: complete, 23 tests (all red)   │
 │     impl-types: complete, 2 interfaces          │
 │                                                 │
+<<<<<<< HEAD
 │  6. Validation Checks                           │
 │     ✓ tests-pass  ✓ no-deferred-work            │
 │     ✓ type-check                                │
+=======
+│  6. Prior Node L0 Timeline                      │
+│     write-tests: complete, 23 tests (all red)   │
+│     impl-types: complete, 2 interfaces          │
+>>>>>>> adb1c08 (specwork(update-to-0.2.6): remove scope-check validation rule and enhance test runner detection)
 └─────────────────────────────────────────────────┘
 ```
 
@@ -354,7 +355,8 @@ Or use Claude Code slash commands:
 | `specwork node start <change> <node>` | Start a specific node (injects micro-spec context) |
 | `specwork node complete <change> <node>` | Mark a node complete |
 | `specwork node fail <change> <node>` | Mark a node failed |
-| `specwork node verify <change> <node>` | Run verification checks |
+| `specwork node verify <change> <node>` | Record agent-driven verification pass (sets verified=true) |
+| `specwork node qa-pass <change> <node>` | Record QA approval — triggers summarizer and completion |
 | `specwork graph generate <change>` | Generate DAG from tasks |
 | `specwork graph show <change>` | Display the node graph |
 | `specwork run <change>` | Find ready nodes and output execution plan |
@@ -387,7 +389,7 @@ All commands support `--json` for machine-readable output with `next_action` gui
 ├── changes/                 # In-flight changes (proposal + specs + design + tasks + overview.html)
 │   └── archive/             # Completed changes (auto-archived)
 ├── graph/<change>/
-│   ├── graph.yaml           # Node DAG (dependencies, scope, validation rules)
+│   ├── graph.yaml           # Node DAG (dependencies, scope, agent assignments)
 │   └── state.yaml           # Runtime state (status, wave, retries per node)
 ├── nodes/<change>/          # Per-node artifacts (L0/L1/L2, L1-structured.json, verify.md)
 ├── sandbox/                 # Sandbox runtime state (PIDs, ports)
@@ -410,7 +412,7 @@ All commands support `--json` for machine-readable output with `next_action` gui
 | `specwork-test-writer` | opus | Writes tests from specs — must all fail (RED state). No stubs allowed. |
 | `specwork-implementer` | sonnet | Makes tests pass with minimum code. No TODOs, no deferred work. |
 | `specwork-qa` | sonnet | Adversarial QA — tries to break the output. Checks edge cases, regressions, spec compliance. Read-only. |
-| `specwork-verifier` | haiku | Read-only validation: type-check, tests pass, scope check, no-deferred-work scan |
+| `specwork-verifier` | haiku | Detects test runner from package.json, runs tests + tsc, calls `specwork node verify` on pass |
 | `specwork-summarizer` | haiku | Generates L0/L1/L2 context and structured L1 JSON after each node |
 
 ### Node types

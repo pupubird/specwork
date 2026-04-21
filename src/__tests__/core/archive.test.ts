@@ -144,14 +144,14 @@ describe('archiveChange', () => {
     expect(fs.existsSync(path.join(archivePath, 'nodes'))).toBe(false);
   });
 
-  it('includes verification verdict in summary when state has last_verdict', () => {
+  it('includes verification verdict in summary when node is verified', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
-    // Add last_verdict to state for write-tests node
+    // Mark write-tests as verified
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], verified: true };
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');
@@ -378,14 +378,14 @@ describe('archiveChange — digest.md', () => {
     expect(content).toContain('write-tests');
   });
 
-  it('digest.md contains verification summary table when verdicts exist', () => {
+  it('digest.md contains verification summary table when node is verified', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
-    // Add verdict to state
+    // Mark write-tests as verified
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], verified: true };
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');

@@ -31,8 +31,6 @@ function defaultNodeState(): NodeState {
     error: null,
     l0: null,
     verified: false,
-    last_verdict: null,
-    verify_history: [],
     start_sha: null,
   };
 }

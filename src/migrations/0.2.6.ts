@@ -5,32 +5,26 @@ import type { MigrationFn } from '../types/migration.js';
 import { AGENTS_SPECWORK_VERIFIER } from '../templates/instructions/agents-specwork-verifier.js';
 import { AGENTS_SPECWORK_QA } from '../templates/instructions/agents-specwork-qa.js';
 
-export const description = 'Remove scope-check validation rule from agents and active graphs';
+export const description = 'Prompt-and-status-only refactor: remove CLI-side verification checks and validate arrays';
 
 export const migrate: MigrationFn = (root, _config) => {
   const details: string[] = [];
 
-  // ── Update verifier agent — remove scope-check reference ──────────────
+  // ── Update verifier agent to agent-driven model ──────────────────────
   const verifierPath = path.join(root, '.claude', 'agents', 'specwork-verifier.md');
   if (fs.existsSync(verifierPath)) {
-    const content = fs.readFileSync(verifierPath, 'utf-8');
-    if (content.includes('scope-check')) {
-      fs.writeFileSync(verifierPath, AGENTS_SPECWORK_VERIFIER, 'utf-8');
-      details.push('Updated specwork-verifier.md — removed scope-check');
-    }
+    fs.writeFileSync(verifierPath, AGENTS_SPECWORK_VERIFIER, 'utf-8');
+    details.push('Updated specwork-verifier.md to agent-driven verification model');
   }
 
-  // ── Update QA agent — remove scope-check reference ────────────────────
+  // ── Update QA agent to agent-driven model ─────────────────────────────
   const qaPath = path.join(root, '.claude', 'agents', 'specwork-qa.md');
   if (fs.existsSync(qaPath)) {
-    const content = fs.readFileSync(qaPath, 'utf-8');
-    if (content.includes('scope-check')) {
-      fs.writeFileSync(qaPath, AGENTS_SPECWORK_QA, 'utf-8');
-      details.push('Updated specwork-qa.md — removed scope-check');
-    }
+    fs.writeFileSync(qaPath, AGENTS_SPECWORK_QA, 'utf-8');
+    details.push('Updated specwork-qa.md to agent-driven verification model');
   }
 
-  // ── Strip scope-check from active graph validate arrays ───────────────
+  // ── Strip validate arrays from active graph.yaml files ───────────────
   const graphDir = path.join(root, '.specwork', 'graph');
   if (fs.existsSync(graphDir)) {
     for (const changeName of fs.readdirSync(graphDir)) {
@@ -38,24 +32,20 @@ export const migrate: MigrationFn = (root, _config) => {
       if (!fs.existsSync(graphPath)) continue;
 
       const content = fs.readFileSync(graphPath, 'utf-8');
-      if (!content.includes('scope-check')) continue;
-
       const graph = parseYaml(content);
       if (!graph?.nodes || !Array.isArray(graph.nodes)) continue;
 
       let changed = false;
       for (const node of graph.nodes) {
-        if (!Array.isArray(node.validate)) continue;
-        const before = node.validate.length;
-        node.validate = node.validate.filter(
-          (rule: { type: string }) => rule.type !== 'scope-check',
-        );
-        if (node.validate.length < before) changed = true;
+        if ('validate' in node) {
+          delete node.validate;
+          changed = true;
+        }
       }
 
       if (changed) {
         fs.writeFileSync(graphPath, stringifyYaml(graph), 'utf-8');
-        details.push(`Stripped scope-check from graph: ${changeName}`);
+        details.push(`Removed validate arrays from graph: ${changeName}`);
       }
     }
   }

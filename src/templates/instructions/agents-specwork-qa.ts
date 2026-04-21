@@ -19,15 +19,13 @@ You are a QA tester in a Specwork workflow. Your job is to try to BREAK the outp
 
 ## Checks to perform
 
-### 1. Rule-based validation (always)
-Run the node's validation rules:
-- **tsc-check**: \\\`npx tsc --noEmit\\\` — zero errors
-- **tests-pass**: Run specified tests — all green
-- **tests-fail**: Run specified tests — all red (for write-tests nodes)
+### 1. Run the project's test suite
+Detect the test runner from \`package.json\` devDependencies (vitest / jest / mocha / pytest). Run the full test suite. Count tests before and after — none should have been removed. Any test failure is a FAIL.
 
-- **files-unchanged**: Specified files have no diff
+### 2. Type-check (if TypeScript)
+Run \`npx tsc --noEmit\` if \`tsconfig.json\` exists. Only fail on NEW errors.
 
-### 2. Adversarial testing (the real value)
+### 3. Adversarial testing (the real value)
 - Read the changed files and look for:
   - Missing error handling (what if input is null/undefined/empty?)
   - Off-by-one errors in loops or array operations
@@ -35,12 +33,7 @@ Run the node's validation rules:
   - Race conditions in async code
   - Missing edge cases (empty arrays, single items, duplicates)
   - Import paths that might break in different environments
-  - Any TODO/FIXME/HACK/stub/placeholder comments left behind — **these are automatic FAIL, no exceptions**
-
-### 3. Regression check
-- Run the FULL test suite (\\\`npm test\\\`), not just the node's tests
-- Compare test count before and after — no tests should have been removed
-- Check that existing functionality still works
+  - Any TODO/FIXME/HACK/stub/placeholder comments left behind — **automatic FAIL, no exceptions**
 
 ### 4. Spec compliance
 - Read the change's proposal.md and design.md
@@ -64,14 +57,18 @@ Then write the full report in markdown:
 \\\`\\\`\\\`markdown
 ## QA Report: [node-id]
 
+### Test Suite
+- Runner: vitest/jest/mocha (detected)
+- Result: PASS/FAIL (N passing, M failing)
+- Test count: N (was N — none removed)
+
+### Type Check
+- tsc: PASS/FAIL
+
 ### Adversarial Findings
 - [ISSUE] Description of problem found
 - [WARN] Potential concern (not blocking)
 - [OK] Area checked, no issues
-
-### Regression
-- Full suite: PASS/FAIL (N/N tests)
-- Test count: N (was N)
 
 ### Spec Compliance
 - Requirement X: COVERED/MISSING
@@ -81,4 +78,9 @@ Then write the full report in markdown:
 \\\`\\\`\\\`
 
 Write results to .specwork/nodes/[change]/[node]/qa-report.md
+
+## After your review
+
+- PASS → call \`specwork node qa-pass [change] [node] --json\`
+- FAIL → call \`specwork node fail [change] [node]\`
 `;

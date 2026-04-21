@@ -49,9 +49,9 @@ function makeCompleteState(change: string): WorkflowState {
     updated_at: '2026-03-26T12:00:00Z',
     lock: null,
     nodes: {
-      'snapshot': { status: 'complete', started_at: '2026-03-26T00:01:00Z', completed_at: '2026-03-26T00:02:00Z', retries: 0, error: null, l0: 'Environment snapshot captured', verified: true, last_verdict: 'PASS', verify_history: [] },
-      'write-tests': { status: 'complete', started_at: '2026-03-26T00:03:00Z', completed_at: '2026-03-26T00:10:00Z', retries: 0, error: null, l0: '12 tests written, all RED', verified: true, last_verdict: 'PASS', verify_history: [] },
-      'impl-core': { status: 'complete', started_at: '2026-03-26T00:11:00Z', completed_at: '2026-03-26T00:20:00Z', retries: 1, error: null, l0: 'Archive digest implemented', verified: true, last_verdict: 'PASS', verify_history: [] },
+      'snapshot': { status: 'complete', started_at: '2026-03-26T00:01:00Z', completed_at: '2026-03-26T00:02:00Z', retries: 0, error: null, l0: 'Environment snapshot captured', verified: true, start_sha: null },
+      'write-tests': { status: 'complete', started_at: '2026-03-26T00:03:00Z', completed_at: '2026-03-26T00:10:00Z', retries: 0, error: null, l0: '12 tests written, all RED', verified: true, start_sha: null },
+      'impl-core': { status: 'complete', started_at: '2026-03-26T00:11:00Z', completed_at: '2026-03-26T00:20:00Z', retries: 1, error: null, l0: 'Archive digest implemented', verified: true, start_sha: null },
     },
   };
 }

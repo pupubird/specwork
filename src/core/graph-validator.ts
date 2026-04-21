@@ -64,13 +64,6 @@ export function validateGraph(graph: Graph): ValidationResult {
     checkRequiredFields(node, errors, warnings);
   }
 
-  // Warn on nodes with no validation rules (except deterministic which may not need them)
-  for (const node of graph.nodes) {
-    if (node.validate.length === 0) {
-      warnings.push(`Node "${node.id}" has no validation rules`);
-    }
-  }
-
   // Check scope overlap between LLM nodes (warning only)
   const llmNodes = graph.nodes.filter(n => n.type === 'llm');
 

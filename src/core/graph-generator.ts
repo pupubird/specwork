@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import type { Graph, GraphNode, ValidationRule } from '../types/graph.js';
+import type { Graph, GraphNode } from '../types/graph.js';
 import { readMarkdown } from '../io/filesystem.js';
 import { changeDir } from '../utils/paths.js';
 
@@ -25,29 +25,6 @@ function slugify(text: string): string {
     .slice(0, 40);
 }
 
-function deriveTestPaths(scope: string[]): string[] {
-  const testPaths: string[] = [];
-  for (const p of scope) {
-    if (p.startsWith('src/__tests__/')) {
-      testPaths.push(p);
-    } else if (p.endsWith('.ts') && /^src\/(?!types\/)/.test(p)) {
-      testPaths.push(p.replace(/^src\//, 'src/__tests__/').replace(/\.ts$/, '.test.ts'));
-    }
-  }
-  return [...new Set(testPaths)];
-}
-
-function buildValidate(scope: string[]): ValidationRule[] {
-  const testPaths = deriveTestPaths(scope);
-  return [
-    { type: 'files-unchanged', args: { files: ['src/__tests__/', 'tests/', '__tests__/'] } },
-    { type: 'imports-exist' },
-    { type: 'tsc-check' },
-    testPaths.length > 0
-      ? { type: 'tests-pass', args: { file: testPaths.join(' ') } }
-      : { type: 'tests-pass' },
-  ];
-}
 
 function extractFilePaths(text: string): string[] {
   // Match patterns like src/foo/bar.ts or relative paths ending in known extensions
@@ -155,10 +132,6 @@ export function generateGraph(root: string, change: string): Graph {
     inputs: [...specInputs],
     outputs: ['src/__tests__/'],
     scope: ['src/__tests__/'],
-    validate: [
-      { type: 'tsc-check' },
-      { type: 'tests-fail' },
-    ],
     retry: 2,
   };
   nodes.push(writeTestsNode);
@@ -193,7 +166,6 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: scope,
         scope,
-        validate: buildValidate(scope),
         retry: 2,
         group: slugify(name),
         sub_tasks: grouped.map(t => t.description),
@@ -214,7 +186,6 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: implScope,
         scope: implScope,
-        validate: buildValidate(implScope),
         retry: 2,
       };
       nodes.push(implNode);
@@ -235,7 +206,6 @@ export function generateGraph(root: string, change: string): Graph {
         inputs: [],
         outputs: implScope,
         scope: implScope,
-        validate: buildValidate(implScope),
         retry: 2,
       };
       nodes.push(implNode);
@@ -265,7 +235,6 @@ export function generateGraph(root: string, change: string): Graph {
     inputs: [],
     outputs: [],
     scope: [],
-    validate: [{ type: 'tests-pass' }],
     retry: 1,
   };
   nodes.push(integrationNode);

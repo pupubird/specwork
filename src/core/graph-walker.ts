@@ -153,18 +153,6 @@ export function shouldWaveAutoContinue(
     }
   }
 
-  // Check for regressions in verify_history
-  for (const id of waveNodeIds) {
-    const ns = state.nodes[id];
-    if (ns) {
-      for (const entry of ns.verify_history) {
-        if (entry.regressions && entry.regressions.length > 0) {
-          return { autoContinue: false, pauseReason: `Node "${id}" has regressions` };
-        }
-      }
-    }
-  }
-
   // Check for gate:human nodes
   for (const id of waveNodeIds) {
     const node = graph.nodes.find(n => n.id === id);

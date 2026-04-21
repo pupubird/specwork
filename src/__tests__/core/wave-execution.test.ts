@@ -25,7 +25,6 @@ const wideGraph = (count: number): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     ...Array.from({ length: count }, (_, i) => ({
       id: `impl-${i + 1}`,
@@ -36,7 +35,6 @@ const wideGraph = (count: number): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     })),
   ],
 });
@@ -58,7 +56,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     {
       id: 'impl-a',
@@ -69,7 +66,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     {
       id: 'impl-b',
@@ -80,7 +76,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     {
       id: 'impl-c',
@@ -91,7 +86,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     {
       id: 'impl-d',
@@ -102,7 +96,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
     {
       id: 'impl-e',
@@ -113,7 +106,6 @@ const twoWaveGraph = (): Graph => ({
       inputs: [],
       outputs: [],
       scope: [],
-      validate: [],
     },
   ],
 });
@@ -276,43 +268,6 @@ describe('wave gate behavior', () => {
     expect(result.pauseReason).toMatch(/fail/i);
   });
 
-  it('pauses when a node in the wave has regressions', () => {
-    // Spec: regression detected → pause execution with regression details
-    const graph = twoWaveGraph();
-    let state = completeWriteTests(graph);
-
-    const shouldWaveAutoContinue = (graphWalker as any).shouldWaveAutoContinue;
-
-    const waveNodes = ['impl-a', 'impl-b', 'impl-c'];
-    for (const id of waveNodes) {
-      state = transitionNode(state, id, 'in_progress');
-      state = transitionNode(state, id, 'complete');
-    }
-    // Inject regression data into verify_history
-    state = {
-      ...state,
-      nodes: {
-        ...state.nodes,
-        'impl-b': {
-          ...state.nodes['impl-b']!,
-          verify_history: [
-            {
-              attempt: 1,
-              verdict: 'PASS' as const,
-              timestamp: new Date().toISOString(),
-              checks: [],
-              regressions: ['tsc-check previously passed, now fails'],
-            },
-          ],
-        },
-      },
-    };
-
-    const result = shouldWaveAutoContinue(graph, state, waveNodes);
-    expect(result.autoContinue).toBe(false);
-    expect(result.pauseReason).toMatch(/regression/i);
-  });
-
   it('pauses when a node in the wave has gate:human', () => {
     // Spec: gate:human node → pause for user approval
     const graph: Graph = {
@@ -330,8 +285,7 @@ describe('wave gate behavior', () => {
           inputs: [],
           outputs: [],
           scope: [],
-          validate: [],
-        },
+            },
         {
           id: 'impl-1',
           type: 'llm',
@@ -341,8 +295,7 @@ describe('wave gate behavior', () => {
           inputs: [],
           outputs: [],
           scope: [],
-          validate: [],
-        },
+            },
       ],
     };
 

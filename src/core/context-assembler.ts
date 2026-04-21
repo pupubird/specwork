@@ -4,7 +4,7 @@ import { readYaml, readMarkdown } from '../io/filesystem.js';
 import { graphPath, statePath, nodeDir } from '../utils/paths.js';
 import { getParents } from './graph-walker.js';
 import { debug } from '../utils/logger.js';
-import type { Graph, ValidationRule } from '../types/graph.js';
+import type { Graph } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import type { ContextBundle, L0Entry, L1Entry, StructuredL1 } from '../types/context.js';
 
@@ -182,24 +182,6 @@ export function renderContext(bundle: ContextBundle): string {
   return sections.join('\n\n---\n\n');
 }
 
-export function expandValidate(rules: ValidationRule[]): string[] {
-  return rules.map(rule => {
-    switch (rule.type) {
-      case 'tests-pass':
-        return `All tests pass${rule.args?.pattern ? ` matching ${rule.args.pattern}` : ''}`;
-      case 'tsc-check':
-        return 'TypeScript type-check passes (tsc --noEmit)';
-      case 'file-exists':
-        return `File exists: ${rule.args?.path ?? '(unknown)'}`;
-      case 'files-unchanged':
-        return `Files are unchanged/immutable: ${((rule.args?.paths as string[]) ?? []).join(', ')}`;
-      case 'imports-exist':
-        return 'All imports resolve correctly';
-      default:
-        return `Validation: ${rule.type}`;
-    }
-  });
-}
 
 export function getParentL1Sources(graph: Graph, nodeId: string): Array<{ nodeId: string }> {
   const node = graph.nodes.find(n => n.id === nodeId);
@@ -256,12 +238,6 @@ export function composeMicroSpec(root: string, change: string, nodeId: string): 
       const l1 = getL1(root, change, parentId);
       if (l1) sections.push(`## Parent Context: ${parentId}\n\n${l1}`);
     }
-  }
-
-  // Validation rules
-  if (graphNode.validate && graphNode.validate.length > 0) {
-    const checks = expandValidate(graphNode.validate).map(r => `- ${r}`).join('\n');
-    sections.push(`## Validation Checks\n\n${checks}`);
   }
 
   // Prompt

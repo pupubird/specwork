@@ -121,14 +121,14 @@ describe('archiveChange — digest.md (replaces summary.md)', () => {
     expect(content).toContain('write-tests done');
   });
 
-  it('digest.md contains Verification Summary table when verdicts exist', () => {
+  it('digest.md contains Verification Summary table when node is verified', () => {
     createChange(root, 'my-feature');
     generateAndCompleteAll(root, 'my-feature');
 
-    // Add verdict to state before archiving
+    // Mark write-tests as verified
     const sp = statePath(root, 'my-feature');
     const state = readYaml<WorkflowState>(sp);
-    state.nodes['write-tests'] = { ...state.nodes['write-tests'], last_verdict: 'PASS' } as any;
+    state.nodes['write-tests'] = { ...state.nodes['write-tests'], verified: true };
     writeYaml(sp, state);
 
     archiveChange(root, 'my-feature');

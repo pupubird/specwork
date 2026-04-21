@@ -97,7 +97,7 @@ describe('state machine — start_sha tracking', () => {
       version: '1',
       created_at: new Date().toISOString(),
       nodes: [
-        { id: 'snapshot', type: 'deterministic' as const, description: 'snap', deps: [], inputs: [], outputs: [], scope: [], validate: [], command: 'echo' },
+        { id: 'snapshot', type: 'deterministic' as const, description: 'snap', deps: [], inputs: [], outputs: [], scope: [], command: 'echo' },
       ],
     };
     const state = initializeState(graph);
@@ -110,7 +110,7 @@ describe('state machine — start_sha tracking', () => {
       version: '1',
       created_at: new Date().toISOString(),
       nodes: [
-        { id: 'node-a', type: 'llm' as const, description: 'test', deps: [], inputs: [], outputs: [], scope: [], validate: [], agent: 'test' },
+        { id: 'node-a', type: 'llm' as const, description: 'test', deps: [], inputs: [], outputs: [], scope: [], agent: 'test' },
       ],
     };
     const state = initializeState(graph);
@@ -124,7 +124,7 @@ describe('state machine — start_sha tracking', () => {
       version: '1',
       created_at: new Date().toISOString(),
       nodes: [
-        { id: 'node-a', type: 'llm' as const, description: 'test', deps: [], inputs: [], outputs: [], scope: [], validate: [], agent: 'test' },
+        { id: 'node-a', type: 'llm' as const, description: 'test', deps: [], inputs: [], outputs: [], scope: [], agent: 'test' },
       ],
     };
     let state = initializeState(graph);
@@ -136,14 +136,3 @@ describe('state machine — start_sha tracking', () => {
   });
 });
 
-// ══════════════════════════════════════════════════════════════════════════════
-// RunChecksOptions.startSha
-// ══════════════════════════════════════════════════════════════════════════════
-
-describe('verification — RunChecksOptions.startSha', () => {
-  it('RunChecksOptions accepts optional startSha field', async () => {
-    // This is a type-level test — just verify the interface accepts the field
-    const { runChecks } = await import('../../core/verification.js');
-    expect(typeof runChecks).toBe('function');
-  });
-});

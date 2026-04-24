@@ -13,8 +13,7 @@ import type { WorkflowState } from '../../types/state.js';
  * 1. `node complete` reads L0 from L0.md on disk when --l0 flag is absent
  * 2. `node complete` with --l0 overrides and updates L0.md on disk
  * 3. `node complete` succeeds with null L0 when neither flag nor file present
- * 4. buildNextAction('node:verify:pass') returns 'subagent:spawn' (not the old complete --l0)
- * 5. buildNextAction('node:start') does NOT reference 'specwork context assemble'
+ * 4. buildNextAction('wave:spawn') does NOT reference 'specwork context assemble'
  *
  * All tests should FAIL because the current code doesn't implement these behaviors.
  */
@@ -131,37 +130,15 @@ describe('node complete — L0 auto-read from disk', () => {
     expect(updatedState.nodes['write-tests'].l0).toBeNull();
     expect(updatedState.nodes['write-tests'].status).toBe('complete');
 
-    // After anti-deferral change, verify:pass spawns QA first (subagent:spawn:qa)
-    // Still a subagent:spawn variant, not complete --l0
-    const action = buildNextAction('node:verify:pass', 'ctx', { change: 'test-change', nodeId: 'write-tests', summary: '' });
-    expect(action.command).toMatch(/subagent:spawn/);
   });
 });
 
 describe('buildNextAction — updated for auto-summarization', () => {
-  it('node:verify:pass returns subagent:spawn command, not specwork node complete --l0', () => {
-    const ctx = 'test change context';
-    const opts = { change: 'test-change', nodeId: 'write-tests', summary: 'tests written' };
-
-    const action = buildNextAction('node:verify:pass', ctx, opts);
-
-    // After anti-deferral change, node:verify:pass spawns QA first (not summarizer directly)
-    // Command is 'subagent:spawn:qa' — still a subagent:spawn variant, not complete --l0
-    expect(action.command).toMatch(/subagent:spawn/);
-    expect(action.command).not.toContain('specwork node complete');
-    expect(action.command).not.toContain('--l0');
-
-    // The on_pass should also not contain --l0 (QA handles next step)
-    if (action.on_pass) {
-      expect(action.on_pass).not.toContain('--l0');
-    }
-  });
-
   it('node:start does NOT reference specwork context assemble', () => {
     const ctx = 'test change context';
     const opts = { change: 'test-change', nodeId: 'write-tests' };
 
-    const action = buildNextAction('node:start', ctx, opts);
+    const action = buildNextAction('wave:spawn', ctx, opts);
 
     // After the change, context is auto-injected into node start response
     // so the next action should NOT tell the caller to assemble context separately

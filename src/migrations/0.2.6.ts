@@ -2,20 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { MigrationFn } from '../types/migration.js';
-import { AGENTS_SPECWORK_VERIFIER } from '../templates/instructions/agents-specwork-verifier.js';
 import { AGENTS_SPECWORK_QA } from '../templates/instructions/agents-specwork-qa.js';
 
 export const description = 'Prompt-and-status-only refactor: remove CLI-side verification checks and validate arrays';
 
 export const migrate: MigrationFn = (root, _config) => {
   const details: string[] = [];
-
-  // ── Update verifier agent to agent-driven model ──────────────────────
-  const verifierPath = path.join(root, '.claude', 'agents', 'specwork-verifier.md');
-  if (fs.existsSync(verifierPath)) {
-    fs.writeFileSync(verifierPath, AGENTS_SPECWORK_VERIFIER, 'utf-8');
-    details.push('Updated specwork-verifier.md to agent-driven verification model');
-  }
 
   // ── Update QA agent to agent-driven model ─────────────────────────────
   const qaPath = path.join(root, '.claude', 'agents', 'specwork-qa.md');

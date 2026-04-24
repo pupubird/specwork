@@ -18,21 +18,11 @@ Run the workflow for change: $ARGUMENTS
 
 The CLI guides every step. See the `specwork-engine` skill for details on `next_action` fields.
 
-## Node Verification Protocol
+## Wave QA Protocol
 
-After a subagent completes a node, follow this sequence:
+After all teammates in the current `ready_queue` finish their node work, follow this sequence:
 
-1. **Verify** — run `specwork node verify <change> <node> --json`
-2. **If PASS** → spawn `specwork-qa` (diff-scoped, reads node output + changed files)
-   - If **QA PASS** → spawn summarizer → `specwork node complete`
-   - If **QA FAIL** → re-spawn subagent with QA findings in context (up to `max_retries`)
-   - If retries exhausted → escalate to user
-3. **If FAIL** → re-spawn subagent (up to `max_retries`) → escalate if exhausted
-
-## go:final-review
-
-After all graph nodes are complete (graph `status: done`), before presenting results to the user:
-
-1. Spawn `specwork-qa` for a holistic review of all changes in the workflow
-2. If **PASS** → proceed to `go:done` (present `suggest_to_user` options)
-3. If **FAIL** → set `go:blocked`, report issues to user for manual resolution
+1. **QA once per wave** — spawn one `specwork-qa` for the completed wave, with the wave node IDs and changed files.
+2. **If QA PASS** → run `specwork node complete <change> <node> --json` for every node in the wave.
+3. **If QA FAIL** → run `specwork node fail <change> <node>` for the affected node(s), then re-spawn the implementer(s) with QA findings in context (up to `max_retries`).
+4. After all passing wave nodes are complete, run `specwork go <change> --json`. If no nodes remain, show the normal done flow.

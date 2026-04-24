@@ -58,8 +58,8 @@ function initSpecwork(root: string, opts: { version?: string } = {}): void {
   }
 
   const config: Record<string, unknown> = {
-    models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
-    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node', verify: 'gates' },
+    models: { default: 'sonnet', test_writer: 'opus' },
+    execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel', snapshot_refresh: 'after_each_node' },
     context: { ancestors: 'L0', parents: 'L1' },
     spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes', archive_dir: '.specwork/changes/archive', templates_dir: '.specwork/templates' },
     graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },
@@ -361,14 +361,13 @@ describe('deepMergeConfig', () => {
       models: { default: 'opus' },
     };
     const defaults = {
-      models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku' },
+      models: { default: 'sonnet', test_writer: 'opus' },
     };
 
     const { merged } = deepMergeConfig(existing, defaults);
     const models = (merged as { models: Record<string, string> }).models;
     expect(models.default).toBe('opus');       // preserved
     expect(models.test_writer).toBe('opus');   // added from defaults
-    expect(models.summarizer).toBe('haiku');   // added from defaults
   });
 
   it('reports deprecated fields not present in defaults', () => {

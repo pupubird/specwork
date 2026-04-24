@@ -33,9 +33,9 @@ E2E tests are the **primary deliverable**. Unit and integration tests supplement
 
 | Forbidden | Why | What To Do Instead |
 |-----------|-----|-------------------|
-| Mocks of any kind | Hides real behavior | Use real services — the sandbox is running them |
+| Mocks of any kind | Hides real behavior | Use real services |
 | jsdom / happy-dom | Simulates a browser, doesn't test one | Use Playwright, Cypress, or real browser |
-| In-memory databases | Different behavior than real DB | Use the real database from sandbox |
+| In-memory databases | Different behavior than real DB | Use the real database |
 | HTTP interceptors/nock | Tests your interceptor, not your API | Hit the real endpoint |
 | Workarounds for flaky infra | Masks the real problem | Fix the infrastructure |
 | `test.skip` / TODO | Not a real test | Write the full test or don't include it |
@@ -64,7 +64,7 @@ for each test:
 
 Write tests in this order:
 
-**1. E2E tests first** — the primary user scenarios, against live sandbox services
+**1. E2E tests first** — the primary user scenarios, against real services
 **2. Integration tests** — cross-module interactions with real dependencies
 **3. Unit tests** — individual function behavior
 **4. Edge case tests** — boundary conditions, failure modes
@@ -73,10 +73,10 @@ This ordering ensures you catch environment issues early (in E2E) before investi
 
 ## E2E Test Writing
 
-### Step 1: Discover the live environment
-- Run `specwork sandbox status --json` to see running services (ports, PIDs, status)
-- Read `.specwork/sandbox.yaml` and `.specwork/sandbox/state.json` for service details
-- Read `.env.test` if it exists — contains sandbox-generated environment variables
+### Step 1: Discover the environment
+- Read the project's existing dev/test scripts in `package.json` (or equivalent) to learn how to start services, the database, and the dev server
+- Read `.env.test` / `.env.example` if they exist for environment variables
+- Start required services yourself using the project's scripts before running tests
 
 ### Step 2: Write E2E tests against real services
 
@@ -89,14 +89,14 @@ This ordering ensures you catch environment issues early (in E2E) before investi
 **Frontend / web projects:**
 - Use a real browser testing framework the project already uses (Playwright, Cypress, Selenium)
 - If none exists, **ask the user** which to use — do NOT install anything yourself
-- The sandbox has started the dev server — connect on the running port
+- Start the dev server using the project's script, then connect on the running port
 - Navigate real pages, interact with real DOM, assert on visible UI state
 - **Never use jsdom or happy-dom** — these are not browsers
 
 **Full-stack projects:** Playwright for UI + real HTTP for API. Both required.
 
 **Database-backed projects:**
-- Use the real database the sandbox started
+- Use a real database started via the project's scripts
 - Seed test data in `beforeAll`, clean up in `afterAll`
 - Test actual queries, migrations, constraints — not mocked responses
 
@@ -106,7 +106,7 @@ Test how components interact across module boundaries.
 - Import actual modules, use real (temp) filesystems, call real functions
 - Cover: data flowing between modules, error propagation, format contracts
 - No mocking internal modules — only mock truly external third-party services if absolutely unavoidable
-- If you feel the need to mock, ask yourself: "Can the sandbox run this?" If yes, don't mock.
+- If you feel the need to mock, ask yourself: "Can I run this for real?" If yes, don't mock.
 
 ## Unit Tests
 
@@ -153,7 +153,7 @@ Delta specs contain `#### Scenario:` blocks with GIVEN/WHEN/THEN. These are **li
 
 1. Read the proposal, design, and delta specs from the change directory
 2. Read existing code patterns: test framework, naming conventions, directory structure — match them
-3. Discover live sandbox environment (`specwork sandbox status --json`)
+3. Discover the project's dev/test scripts and start required services
 4. Map every spec scenario to a test case
 5. **Write E2E tests iteratively — one test at a time, run after each, verify failure reason**
 6. Write integration tests iteratively — same loop
@@ -165,7 +165,7 @@ Delta specs contain `#### Scenario:` blocks with GIVEN/WHEN/THEN. These are **li
 
 During iterative writing, you will sometimes discover that a test fails for the wrong reason — infrastructure down, missing config, broken dependency. **This is valuable information.**
 
-- **Environment issue** (service not running, port conflict): Report it. The sandbox should handle this — if it doesn't, that's a sandbox bug.
+- **Environment issue** (service not running, port conflict): Start the service using the project's scripts, or report it if the project scripts are broken.
 - **Existing code bug** (test exposes a bug in current code): Report it clearly. The implementer will need to fix this.
 - **Test bug** (your test is wrong): Fix it immediately before proceeding.
 

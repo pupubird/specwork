@@ -338,9 +338,7 @@ describe('getChangeStatus', () => {
       state = transitionNode(state, id, 'in_progress');
       state = transitionNode(state, id, 'complete');
     }
-    // After anti-deferral change: all-nodes-done returns 'final-review' (not 'complete')
-    // because final review must run before declaring complete
-    expect(getChangeStatus(state)).toBe('final-review');
+    expect(getChangeStatus(state)).toBe('complete');
   });
 
   it('returns failed when a node is rejected', () => {

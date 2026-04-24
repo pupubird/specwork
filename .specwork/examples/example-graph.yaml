@@ -139,7 +139,7 @@ nodes:
   - id: acceptance
     type: llm
     description: Verify acceptance tests pass end-to-end
-    agent: specwork-verifier
+    agent: specwork-qa
     deps:
       - impl-handler
     inputs: []

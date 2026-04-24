@@ -77,7 +77,7 @@ describe('buildMermaidDiagram', () => {
 
   it('applies distinct style for integration nodes (purple)', () => {
     const graph = makeGraph([
-      makeNode({ id: 'integration', agent: 'specwork-verifier' }),
+      makeNode({ id: 'integration', agent: 'specwork-qa' }),
     ]);
     const diagram = buildMermaidDiagram(graph);
     expect(diagram).toMatch(/integration.*purple|style integration.*#[0-9a-fA-F]*|classDef.*integration/i);

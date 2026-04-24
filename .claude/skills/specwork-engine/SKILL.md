@@ -5,27 +5,19 @@ You are the Specwork graph execution engine. Read `next_action.command` from eac
 | State | Event / `next_action.command` | Execute | Notes |
 |-------|-------------------------------|---------|-------|
 | idle | start | `specwork go <change> --json` | Entry point |
-| go:ready | `team:spawn` | TeamCreate + spawn one teammate per `ready_queue` node | Use `ready_queue` array |
+| go:ready | `specwork wave start <change> --json` | run command to open the wave and fetch all per-node contexts in one call | Response includes `nodes[]` each with its own `context` string |
+| wave opened | `team:spawn` | TeamCreate + spawn one teammate per `nodes[]` entry, passing that entry's `context` | No per-node CLI call needed before spawn |
 | go:waiting | `wait` | call `specwork go <change> --json` after teammates finish | Poll after completion |
 | go:blocked | `escalate` | report blocked nodes to user | Await manual fix |
 | go:done | `suggest` | present `suggest_to_user` options to user | Await decision |
-| node:start | `specwork node start <change> <node> --json` | run command, then `specwork context assemble` | Returns subagent context |
-| node:start result | `sandbox:init` | `specwork sandbox init <change> --json` | Prepares test environment before subagent runs |
-| sandbox init PASS | `subagent:spawn` | spawn appropriate subagent with assembled context | Implementer, test-writer, etc. |
-| sandbox init FAIL | `escalate` | report sandbox init failure to user, do NOT spawn subagent | Sandbox init fail blocks subagent spawn |
-| subagent done | `specwork node verify <change> <node> --json` | run command (from `on_pass`) | Never self-verify |
-| verify PASS | `subagent:spawn` | spawn specwork-qa (diff-scoped) | Adversarial review of node changes |
-| node:qa:pass | `subagent:spawn` | spawn specwork-summarizer (haiku) | Writes L0/L1/L2 |
-| node:qa:fail (retries left) | `subagent:respawn` | re-spawn subagent with QA findings in context | Include `qa_findings` |
-| node:qa:fail (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |
-| summarizer done | `sandbox:teardown` | `specwork sandbox teardown <change> --json` | Cleans up test environment after node work |
-| sandbox teardown done | `specwork node complete <change> <node> --json` | run command (from `on_pass`) | Sandbox teardown failure is non-fatal — log warning and continue |
-| verify FAIL | `specwork node fail <change> <node>` | run command (from `on_fail`) | Triggers retry logic |
+| subagent done | `wave:await-qa` | wait until every teammate in the wave has finished | Do not complete individual nodes yet |
+| wave done | `subagent:spawn:qa` | spawn one specwork-qa for the completed wave | QA reviews the whole wave, not each node |
+| wave QA PASS | `specwork node complete <change> <node> --json` | run once for each node in the wave | Then run `specwork go <change> --json` |
+| wave QA FAIL (retries left) | `specwork node fail <change> <node>` | fail affected node(s), then re-spawn implementer(s) with QA findings | Include `qa_findings` |
+| wave QA FAIL (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |
 | node:fail (retries left) | `subagent:respawn` | re-spawn subagent with failed checks in context | Include `checks` array |
 | node:fail (no retries) | `escalate` | report to user, show `suggest_to_user` | Await manual fix |
 | node:escalate | `suggest` | present `suggest_to_user` options | Await decision |
 | subagent EXPAND | `EXPAND(node-id)` | `specwork context expand <change> <node-id> <target>`, re-spawn once | Once only |
 | human gate | `suggest` | present output, ask Approve / Request Changes / Reject | Await decision |
-| go:final-review | `subagent:spawn` | spawn specwork-qa for holistic review of all workflow changes | After all nodes complete |
-| go:final-review PASS | `suggest` | proceed to go:done, present `suggest_to_user` options | Workflow complete |
-| go:final-review FAIL | `escalate` | set go:blocked, report issues to user | Await manual fix |
+| no ready nodes remain | `suggest` | show normal done flow from `specwork go <change> --json` | Workflow complete |

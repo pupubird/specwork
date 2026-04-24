@@ -35,52 +35,29 @@ describe('exact commands in next_action', () => {
     expect(typeof (action as any).current_wave).toBe('number');
   });
 
-  it('node:verify:pass on_pass includes --json flag for QA pass', () => {
-    // After anti-deferral change: verify:pass → QA (not summarizer directly)
-    // on_pass now routes to QA pass handler with --json for machine parsing
-    const action = buildNextAction('node:verify:pass', context, {
+  it('wave:spawn command is the symbolic team:spawn action', () => {
+    // Post-refactor: wave:spawn fans out teammates with contexts already pre-assembled
+    // by `specwork wave start`. The command is symbolic team:spawn, not a per-node CLI.
+    const action = buildNextAction('wave:spawn', context, {
       change,
-      nodeId: 'impl-1',
+      readyNodes: ['impl-1'],
     });
 
-    expect(action.on_pass).toMatch(/qa/i);
-    expect(action.on_pass).toContain('--json');
+    expect(action.command).toBe('team:spawn');
+    expect(action.ready_queue).toEqual(['impl-1']);
   });
 
-  it('node:start command field is exact specwork node start CLI command', () => {
-    // Spec: command SHALL be exact CLI string, not symbolic
-    const action = buildNextAction('node:start', context, {
+  it('go:ready emits the exact wave start CLI command (no placeholders)', () => {
+    // Spec: command SHALL be executable as-is
+    const action = buildNextAction('go:ready', context, {
       change,
-      nodeId: 'impl-1',
+      readyNodes: ['impl-1'],
     });
 
-    // New requirement: command should be an exact CLI string, not 'subagent:spawn'
-    expect(action.command).toBe(`specwork node start ${change} impl-1 --json`);
+    expect(action.command).toBe(`specwork wave start ${change} --json`);
+    expect(action.command).not.toMatch(/<[^>]+>/);
   });
 
-  it('node:start on_fail has no angle-bracket placeholders', () => {
-    // Spec: on_fail SHALL be executable as-is — no <error> placeholder
-    const action = buildNextAction('node:start', context, {
-      change,
-      nodeId: 'impl-1',
-    });
-
-    expect(action.on_fail).toBeDefined();
-    // Current impl has '<error>' placeholder — this MUST fail
-    expect(action.on_fail).not.toMatch(/<[^>]+>/);
-  });
-
-  it('node:verify:fail on_fail has no angle-bracket placeholders', () => {
-    // Spec: on_fail SHALL be executable as-is — no <failed checks> placeholder
-    const action = buildNextAction('node:verify:fail', context, {
-      change,
-      nodeId: 'impl-1',
-    });
-
-    expect(action.on_fail).toBeDefined();
-    // Current impl has '<failed checks>' placeholder — this MUST fail
-    expect(action.on_fail).not.toMatch(/<[^>]+>/);
-  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -111,16 +88,6 @@ describe('no prose in command field', () => {
     expect(isSymbolic).toBe(true);
   });
 
-  it('node:verify:fail uses symbolic action or exact CLI (not template)', () => {
-    // Current impl uses a template with <failed checks>
-    const action = buildNextAction('node:verify:fail', context, {
-      change,
-      nodeId: 'impl-1',
-    });
-
-    // command should be clean — no angle-bracket placeholders
-    expect(action.command).not.toMatch(/<[^>]+>/);
-  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════

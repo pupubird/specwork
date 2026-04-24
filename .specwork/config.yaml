@@ -1,14 +1,11 @@
 models:
   default: sonnet
   test_writer: opus
-  summarizer: haiku
-  verifier: haiku
 execution:
   max_retries: 2
   expand_limit: 1
   parallel_mode: parallel
   snapshot_refresh: after_each_node
-  verify: gates
 context:
   ancestors: L0
   parents: L1
@@ -24,4 +21,4 @@ graph:
 environments:
   env_dir: .specwork/env
   active: development
-specwork_version: 0.2.1
+specwork_version: 0.2.7

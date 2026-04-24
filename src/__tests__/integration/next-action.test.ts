@@ -164,9 +164,6 @@ describe('specwork node complete --json next_action', () => {
     // Start write-tests
     runSpecwork(dir, 'node start my-change write-tests');
 
-    // Verify first (mandatory — thin state command, no checks run)
-    runSpecwork(dir, 'node verify my-change write-tests');
-
     const result = runSpecwork(dir, 'node complete my-change write-tests --l0 "write-tests done" --json');
     expect(result.exitCode).toBe(0);
 
@@ -203,46 +200,10 @@ describe('specwork node start --json next_action', () => {
     expect(json.next_action).toBeDefined();
     expect(json.next_action.on_pass).toBeDefined();
     expect(json.next_action.on_fail).toBeDefined();
-    // on_pass points to verify (not complete) — implementer never grades its own homework
-    expect(json.next_action.on_pass).toMatch(/specwork node verify/);
+    // on_pass waits for the rest of the wave before a single wave QA run.
+    expect(json.next_action.on_pass).toBe('wave:await-qa');
     expect(json.next_action.on_fail).toMatch(/specwork node fail/);
     expect(json.next_action.context).toBeDefined();
-  });
-});
-
-// ══════════════════════════════════════════════════════════════════════════════
-// specwork node verify --json — next_action
-// ══════════════════════════════════════════════════════════════════════════════
-
-describe('specwork node verify --json next_action', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = createTestProject();
-  });
-
-  afterEach(() => {
-    cleanup(dir);
-  });
-
-  it('includes next_action with on_pass referencing complete for PASS verdict', () => {
-    setupProjectWithGraph(dir);
-    // Start write-tests so we can verify it
-    runSpecwork(dir, 'node start my-change write-tests');
-
-    const result = runSpecwork(dir, 'node verify my-change write-tests --json');
-    // Verdict may be PASS or FAIL depending on validation rules, but next_action should exist
-    expect(result.exitCode).toBe(0);
-
-    const json = JSON.parse(result.stdout);
-    expect(json.next_action).toBeDefined();
-    expect(json.next_action.context).toBeDefined();
-
-    if (json.verdict === 'PASS') {
-      expect(json.next_action.on_pass).toMatch(/specwork node qa-pass/);
-    } else {
-      expect(json.next_action.on_fail).toMatch(/specwork node fail/);
-    }
   });
 });
 

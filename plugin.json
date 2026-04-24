@@ -13,9 +13,7 @@
   ],
   "agents": [
     ".claude/agents/specwork-test-writer.md",
-    ".claude/agents/specwork-implementer.md",
-    ".claude/agents/specwork-verifier.md",
-    ".claude/agents/specwork-summarizer.md"
+    ".claude/agents/specwork-implementer.md"
   ],
   "commands": [
     ".claude/commands/specwork-plan.md",

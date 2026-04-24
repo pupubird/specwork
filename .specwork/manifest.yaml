@@ -1,4 +1,4 @@
-specwork_version: 0.2.1
+specwork_version: 0.2.7
 generated_at: 2026-03-30T11:12:09.572Z
 files:
   .specwork/templates/proposal.md: f37ac5ee864e587aa09a393848334f06c77879be71a41ee5cdf2bc3836f9c474
@@ -8,9 +8,7 @@ files:
   .claude/agents/specwork-implementer.md: fbec83f7b30172fe71145d3464f330a798b76b373a2f5407e72fc901320a7b02
   .claude/agents/specwork-planner.md: e1e9bd655667a05e20d86ea2890cb92effa92cbedf195de34e01fbf3c71e5692
   .claude/agents/specwork-qa.md: 19e17c9641191e3306eeaa306bd85e8ac668c2f5159dcedfebc7d87ae36cfeae
-  .claude/agents/specwork-summarizer.md: 639d6787497b00a201c243fd194c88be987f47199955940f86b61b4a16c6dff9
   .claude/agents/specwork-test-writer.md: 0377ed82dd8e627a730db1e4f02491465a3fdc0cf626b00f1ae1eb0a359a62e1
-  .claude/agents/specwork-verifier.md: e51fc3660a4cc4339a2031c9a714eed4081e507216533f8f2d0ecabb54d08ab9
   .claude/skills/specwork-context/SKILL.md: 805eb8dae1955aa0a0e260eb79ffff596fced4e892a7d11e690d58ad35e21b72
   .claude/skills/specwork-conventions/SKILL.md: 6c69c70fc73c96c02cdaefa0e913597d44cbe37fe45d63b155ab9bc24ffa03e5
   .claude/skills/specwork-engine/SKILL.md: 6c7618ae9250498baae7f714a811973cd8a0c5e9e0194af4b0eb39a72d2eaa11

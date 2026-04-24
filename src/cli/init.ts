@@ -21,14 +21,11 @@ export const DEFAULT_CONFIG = {
   models: {
     default: 'sonnet',
     test_writer: 'opus',
-    summarizer: 'haiku',
-    verifier: 'haiku',
   },
   execution: {
     max_retries: 2,
     expand_limit: 1,
     parallel_mode: 'parallel',
-    verify: 'gates',
   },
   context: {
     ancestors: 'L0',

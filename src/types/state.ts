@@ -7,7 +7,7 @@ export type NodeStatus =
   | 'rejected'
   | 'skipped';
 
-export type ChangeStatus = 'active' | 'complete' | 'failed' | 'paused' | 'final-review';
+export type ChangeStatus = 'active' | 'complete' | 'failed' | 'paused';
 
 export interface NodeState {
   status: NodeStatus;

@@ -102,7 +102,7 @@ const startCmd = new Command('start')
     const contextStr = renderContext(bundle);
 
     const ctx = readChangeContext(root, change);
-    const next_action = buildNextAction('node:start', ctx, { change, nodeId });
+    const next_action = buildNextAction('wave:spawn', ctx, { change, readyNodes: [nodeId] });
 
     const nodeInfo = {
       change,
@@ -242,48 +242,32 @@ const completeCmd = new Command('complete')
     const node = getNode(graph, nodeId);
     if (!node) throw new NodeNotFoundError(nodeId);
 
-    // Enforce that agent has signalled verification (via specwork node verify or qa-pass)
-    const nodeState = state.nodes[nodeId];
-    if (!nodeState?.verified) {
-      if (jsonMode) {
-        const ctx = readChangeContext(root, change);
-        const next_action = buildNextAction('node:verify:pass', ctx, { change, nodeId });
-        next_action.command = `specwork node verify ${change} ${nodeId}`;
-        next_action.description = 'Node must be verified before completion';
-        output({
-          change,
-          node: nodeId,
-          error: 'Node must be verified before completion',
-          next_action,
-        }, { json: true, quiet: false });
-        process.exitCode = ExitCode.ERROR;
-        return;
-      }
-      throw new SpecworkError(
-        `Cannot complete "${nodeId}": node must be verified first. Run: specwork node verify ${change} ${nodeId}`,
-        ExitCode.ERROR
-      );
-    }
-
     // Resolve L0: flag > file > null
     let l0Summary = opts.l0 ?? null;
     const nDir = nodeDir(root, change, nodeId);
     ensureDir(nDir);
 
     if (!l0Summary) {
-      // Read from L0.md on disk (written by summarizer agent)
+      // Read from L0.md on disk when a previous tool wrote one.
       const l0FilePath = path.join(nDir, 'L0.md');
       if (fs.existsSync(l0FilePath)) {
         const raw = fs.readFileSync(l0FilePath, 'utf8').trim();
-        // Strip leading "- nodeId: " prefix written by summarizer
+        // Strip leading "- nodeId: " prefix from legacy/generated summaries.
         const match = raw.match(/^-\s*\S+:\s*(.+)$/m);
         l0Summary = match ? match[1].trim() : raw;
       }
     }
 
-    const updated = transitionNode(state, nodeId, 'complete', {
+    let updated = transitionNode(state, nodeId, 'complete', {
       l0: l0Summary ?? undefined,
     });
+    updated = {
+      ...updated,
+      nodes: {
+        ...updated.nodes,
+        [nodeId]: { ...updated.nodes[nodeId], verified: true },
+      },
+    };
 
     // Write L0 artifact (always sync file with resolved value)
     if (l0Summary) {
@@ -446,79 +430,6 @@ const escalateCmd = new Command('escalate')
     }
   });
 
-// ── load custom checks from config ───────────────────────────────────────────
-
-// ── specwork node verify ───────────────────────────────────────────────────────
-// Thin state command. The calling agent is responsible for running its own
-// checks (npm test, tsc, etc.) and calls this to record the verdict.
-
-const verifyCmd = new Command('verify')
-  .description('Record agent-driven verification verdict for a node')
-  .argument('<change>', 'Change name')
-  .argument('<node>', 'Node ID')
-  .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
-    const root = findSpecworkRoot();
-    const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
-
-    let { state } = loadGraphAndState(root, change);
-
-    const nodeState = state.nodes[nodeId];
-    if (nodeState?.status !== 'in_progress') {
-      throw new SpecworkError(
-        `Cannot verify "${nodeId}": node must be in_progress. Current: ${nodeState?.status ?? 'pending'}`,
-        ExitCode.ERROR
-      );
-    }
-
-    state = {
-      ...state,
-      updated_at: new Date().toISOString(),
-      nodes: {
-        ...state.nodes,
-        [nodeId]: { ...nodeState, verified: true },
-      },
-    };
-    saveState(root, change, state);
-
-    const nDir = nodeDir(root, change, nodeId);
-    ensureDir(nDir);
-    writeMarkdown(`${nDir}/verify.md`, `## Verification: ${nodeId}\n\n**Verdict: PASS** (${new Date().toISOString()})\n`);
-
-    const ctx = readChangeContext(root, change);
-    const next_action = buildNextAction('node:verify:pass', ctx, { change, nodeId });
-
-    if (jsonMode) {
-      output({ change, node: nodeId, verdict: 'PASS', next_action }, { json: true, quiet: false });
-    } else {
-      success(`✓ Verify ${change}/${nodeId}: PASS`);
-    }
-  });
-
-// ── specwork node qa-pass ──────────────────────────────────────────────────────
-// Called by the QA agent after approving a node. Triggers summarizer → complete.
-
-const qaPassCmd = new Command('qa-pass')
-  .description('Signal QA approval for a node — triggers summarizer and completion')
-  .argument('<change>', 'Change name')
-  .argument('<node>', 'Node ID')
-  .action(async (change: string, nodeId: string, _opts, cmd: Command) => {
-    const root = findSpecworkRoot();
-    const jsonMode = (cmd.parent?.parent?.opts() as { json?: boolean })?.json ?? false;
-
-    const { state } = loadGraphAndState(root, change);
-    const nodeState = state.nodes[nodeId];
-    if (!nodeState) throw new NodeNotFoundError(nodeId);
-
-    const ctx = readChangeContext(root, change);
-    const next_action = buildNextAction('node:qa:pass', ctx, { change, nodeId });
-
-    if (jsonMode) {
-      output({ change, node: nodeId, qa: 'PASS', next_action }, { json: true, quiet: false });
-    } else {
-      success(`✓ QA pass: ${change}/${nodeId}`);
-    }
-  });
-
 // ── specwork node (parent command) ─────────────────────────────────────────────
 
 export function makeNodeCommand(): Command {
@@ -529,8 +440,6 @@ export function makeNodeCommand(): Command {
   nodeCmd.addCommand(completeCmd);
   nodeCmd.addCommand(failCmd);
   nodeCmd.addCommand(escalateCmd);
-  nodeCmd.addCommand(verifyCmd);
-  nodeCmd.addCommand(qaPassCmd);
 
   return nodeCmd;
 }

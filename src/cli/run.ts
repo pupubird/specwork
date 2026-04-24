@@ -222,7 +222,6 @@ export function makeRunCommand(): Command {
         command: n.command ?? null,
         scope: n.scope,
         deps: n.deps,
-        validate: n.validate,
         gate: n.gate ?? null,
         model: n.model ?? null,
         retry: n.retry ?? 2,

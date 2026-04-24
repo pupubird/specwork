@@ -82,16 +82,27 @@ describe('buildNextAction', () => {
 
   // ── specwork go statuses ─────────────────────────────────────────────────
 
-  it('returns team:spawn action for go/ready status', () => {
+  it('returns wave:start CLI command for go/ready status', () => {
     const action = buildNextAction('go:ready', context, {
+      change,
+      readyNodes: ['impl-1-1', 'impl-1-2'],
+    });
+
+    expect(action.command).toMatch(/specwork wave start/);
+    expect(action.command).toContain(change);
+    expect(action.context).toBe(context);
+    expect(action.ready_queue).toEqual(['impl-1-1', 'impl-1-2']);
+  });
+
+  it('returns team:spawn action for wave:spawn status', () => {
+    const action = buildNextAction('wave:spawn', context, {
       change,
       readyNodes: ['impl-1-1', 'impl-1-2'],
     });
 
     expect(action.command).toBe('team:spawn');
     expect(action.context).toBe(context);
-    expect(action.description).toMatch(/team/i);
-    expect(action.description).toMatch(/teammate/i);
+    expect(action.ready_queue).toEqual(['impl-1-1', 'impl-1-2']);
   });
 
   it('returns suggest action for go/done status', () => {
@@ -126,20 +137,15 @@ describe('buildNextAction', () => {
 
   // ── specwork node statuses ───────────────────────────────────────────────
 
-  it('returns subagent action with on_pass/on_fail for node/start', () => {
-    const action = buildNextAction('node:start', context, {
+  it('wave:spawn returns team:spawn as command (wave-level fanout)', () => {
+    const action = buildNextAction('wave:spawn', context, {
       change,
-      nodeId: 'impl-1-1',
+      readyNodes: ['impl-1-1'],
     });
 
     expect(action.context).toBe(context);
-    expect(action.on_pass).toBeDefined();
-    expect(action.on_fail).toBeDefined();
-    // on_pass points to verify (not complete) — implementer never grades its own homework
-    expect(action.on_pass).toMatch(/specwork node verify/);
-    expect(action.on_pass).toMatch(/impl-1-1/);
-    expect(action.on_fail).toMatch(/specwork node fail/);
-    expect(action.on_fail).toMatch(/impl-1-1/);
+    expect(action.command).toBe('team:spawn');
+    expect(action.ready_queue).toEqual(['impl-1-1']);
   });
 
   it('returns go-again action for node/complete', () => {
@@ -190,31 +196,6 @@ describe('buildNextAction', () => {
     expect(action.command).toBe('suggest');
     expect(action.context).toBe(context);
     expect(action.suggest_to_user).toBeDefined();
-  });
-
-  it('returns QA spawn action with on_pass for node/verify:pass', () => {
-    const action = buildNextAction('node:verify:pass', context, {
-      change,
-      nodeId: 'impl-1-1',
-    });
-
-    expect(action.context).toBe(context);
-    expect(action.command).toMatch(/qa/i);
-    expect(action.on_pass).toBeDefined();
-    expect(action.on_pass).toMatch(/qa/i);
-    expect(action.on_pass).toMatch(/impl-1-1/);
-  });
-
-  it('returns fail action for node/verify:fail', () => {
-    const action = buildNextAction('node:verify:fail', context, {
-      change,
-      nodeId: 'impl-1-1',
-    });
-
-    expect(action.context).toBe(context);
-    expect(action.on_fail).toBeDefined();
-    expect(action.on_fail).toMatch(/specwork node fail/);
-    expect(action.on_fail).toMatch(/impl-1-1/);
   });
 
   // ── context is always present ───────────────────────────────────────────

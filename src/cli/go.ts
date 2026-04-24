@@ -26,8 +26,6 @@ import { ExitCode } from '../types/index.js';
 import { generateGraph } from '../core/graph-generator.js';
 import { initializeState } from '../core/state-machine.js';
 import { buildNextAction, readChangeContext } from '../core/next-action.js';
-import { ensureSandbox } from '../core/sandbox-init.js';
-import { teardownSandbox } from '../core/sandbox-teardown.js';
 import type { Graph, GraphNode } from '../types/graph.js';
 import type { WorkflowState } from '../types/state.js';
 import fs from 'node:fs';
@@ -128,9 +126,6 @@ export function makeGoCommand(): Command {
       const allTerminal = allNodes.every(n => isTerminal(state.nodes[n.id]?.status ?? 'pending'));
 
       if (allTerminal) {
-        // Teardown sandbox when workflow completes
-        await teardownSandbox(root, change);
-
         const changeStatus = getChangeStatus(state);
         const finalState: WorkflowState = { ...state, status: changeStatus, updated_at: new Date().toISOString() };
         writeYaml(statePath(root, change), finalState);
@@ -195,12 +190,6 @@ export function makeGoCommand(): Command {
         acquireLock(lp);
       }
 
-      // ── ensure sandbox is initialized ─────────────────────────────────
-      const sandboxResult = await ensureSandbox(root, change);
-      if (sandboxResult.initialized) {
-        info(`Sandbox initialized (${sandboxResult.state?.services.length ?? 0} service(s))`);
-      }
-
       // ── build execution payload ────────────────────────────────────────
       const ready = readyNodes.map(n => ({
         id: n.id,
@@ -210,7 +199,6 @@ export function makeGoCommand(): Command {
         command: n.command ?? null,
         scope: n.scope,
         deps: n.deps,
-        validate: n.validate,
         gate: n.gate ?? null,
         model: n.model ?? null,
         retry: n.retry ?? 2,

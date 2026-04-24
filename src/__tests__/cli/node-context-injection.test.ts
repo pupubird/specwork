@@ -92,7 +92,7 @@ describe('node start --json context injection', () => {
     // We check by importing the actual CLI behavior
     const { buildNextAction, readChangeContext } = await import('../../core/next-action.js');
     const ctx = readChangeContext(root, 'test-change');
-    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'write-tests' });
+    const nextAction = buildNextAction('wave:spawn', ctx, { change: 'test-change', nodeId: 'write-tests' });
 
     // After the change, node:start next_action should NOT reference `specwork context assemble`
     // because context is auto-injected. Currently it DOES reference it — so this FAILS.
@@ -127,7 +127,7 @@ describe('node start --json context injection', () => {
     // tells the caller to run `specwork context assemble` separately.
     const { buildNextAction, readChangeContext } = await import('../../core/next-action.js');
     const ctx = readChangeContext(root, 'test-change');
-    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'impl-core' });
+    const nextAction = buildNextAction('wave:spawn', ctx, { change: 'test-change', nodeId: 'impl-core' });
 
     // Currently returns command containing 'context assemble' — after change it should NOT
     expect(nextAction.command).not.toContain('context assemble');
@@ -147,7 +147,7 @@ describe('node start --json context injection', () => {
     // We check that buildNextAction for node:start still works for non-JSON mode
     const { buildNextAction, readChangeContext } = await import('../../core/next-action.js');
     const ctx = readChangeContext(root, 'test-change');
-    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'write-tests' });
+    const nextAction = buildNextAction('wave:spawn', ctx, { change: 'test-change', nodeId: 'write-tests' });
 
     // After the change, the command should NOT reference `specwork context assemble`
     // because context injection is automatic in JSON mode only
@@ -173,7 +173,7 @@ describe('node start --json context injection', () => {
     // should not reference context assemble (it's auto-injected)
     const { buildNextAction, readChangeContext } = await import('../../core/next-action.js');
     const ctx = readChangeContext(root, 'test-change');
-    const nextAction = buildNextAction('node:start', ctx, { change: 'test-change', nodeId: 'write-tests' });
+    const nextAction = buildNextAction('wave:spawn', ctx, { change: 'test-change', nodeId: 'write-tests' });
 
     // Currently returns command with 'context assemble' — after change it should NOT
     expect(nextAction.command).not.toContain('context assemble');

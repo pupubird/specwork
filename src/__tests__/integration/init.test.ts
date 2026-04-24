@@ -51,8 +51,7 @@ describe('specwork init', () => {
     const models = config.models as Record<string, string>;
     expect(models.default).toBe('sonnet');
     expect(models.test_writer).toBe('opus');
-    expect(models.summarizer).toBe('haiku');
-    expect(models.verifier).toBe('haiku');
+    expect(models.verifier).toBeUndefined();
   });
 
   it('defaults parallel_mode to parallel', () => {

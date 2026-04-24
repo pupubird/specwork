@@ -3,14 +3,11 @@ export interface SpecworkConfig {
   models: {
     default: string;
     test_writer: string;
-    summarizer: string;
-    verifier: string;
   };
   execution: {
     max_retries: number;
     expand_limit: number;
     parallel_mode: 'sequential' | 'parallel';
-    verify?: string;
     max_concurrent?: number;
   };
   context: {

@@ -7,9 +7,7 @@
 import { AGENTS_SPECWORK_IMPLEMENTER } from "./instructions/agents-specwork-implementer.js";
 import { AGENTS_SPECWORK_PLANNER } from "./instructions/agents-specwork-planner.js";
 import { AGENTS_SPECWORK_QA } from "./instructions/agents-specwork-qa.js";
-import { AGENTS_SPECWORK_SUMMARIZER } from "./instructions/agents-specwork-summarizer.js";
 import { AGENTS_SPECWORK_TEST_WRITER } from "./instructions/agents-specwork-test-writer.js";
-import { AGENTS_SPECWORK_VERIFIER } from "./instructions/agents-specwork-verifier.js";
 import { SKILLS_SPECWORK_CONTEXT_SKILL } from "./instructions/skills-specwork-context-SKILL.js";
 import { SKILLS_SPECWORK_CONVENTIONS_SKILL } from "./instructions/skills-specwork-conventions-SKILL.js";
 import { SKILLS_SPECWORK_ENGINE_SKILL } from "./instructions/skills-specwork-engine-SKILL.js";
@@ -26,9 +24,7 @@ export const CLAUDE_FILES: Record<string, string> = {
   ".claude/agents/specwork-implementer.md": AGENTS_SPECWORK_IMPLEMENTER,
   ".claude/agents/specwork-planner.md": AGENTS_SPECWORK_PLANNER,
   ".claude/agents/specwork-qa.md": AGENTS_SPECWORK_QA,
-  ".claude/agents/specwork-summarizer.md": AGENTS_SPECWORK_SUMMARIZER,
   ".claude/agents/specwork-test-writer.md": AGENTS_SPECWORK_TEST_WRITER,
-  ".claude/agents/specwork-verifier.md": AGENTS_SPECWORK_VERIFIER,
   ".claude/skills/specwork-context/SKILL.md": SKILLS_SPECWORK_CONTEXT_SKILL,
   ".claude/skills/specwork-conventions/SKILL.md":
     SKILLS_SPECWORK_CONVENTIONS_SKILL,
@@ -281,8 +277,8 @@ nodes:
   # ── Stage 6: Acceptance Tests ─────────────────────────────────────────────
   - id: acceptance
     type: llm
-    description: Verify acceptance tests pass end-to-end
-    agent: specwork-verifier
+    description: QA acceptance behavior end-to-end
+    agent: specwork-qa
     deps:
       - impl-handler
     inputs: []

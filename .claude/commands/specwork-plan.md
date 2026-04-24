@@ -78,6 +78,8 @@ specwork graph show <change-name>
 specwork viz <change-name> --json
 ```
 
+The graph must be presented as execution waves. For each wave, list every node ID and declare what that node does before asking for approval.
+
 The `specwork viz` command generates a **base** HTML overview (`overview.html`) and returns agent instructions in JSON. After running the command:
 
 1. Read the `agent_instructions` field from the JSON output

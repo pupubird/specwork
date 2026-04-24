@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { MigrationFn } from '../types/migration.js';
 import { AGENTS_SPECWORK_TEST_WRITER } from '../templates/instructions/agents-specwork-test-writer.js';
-import { AGENTS_SPECWORK_VERIFIER } from '../templates/instructions/agents-specwork-verifier.js';
 import { SKILLS_SPECWORK_ENGINE_SKILL } from '../templates/instructions/skills-specwork-engine-SKILL.js';
 
 export const description = 'Integrate sandbox into specwork go lifecycle, sandbox-aware E2E test writer, baseline-aware validation';
@@ -38,20 +37,6 @@ export const migrate: MigrationFn = (root, _config) => {
     ) {
       fs.writeFileSync(engineSkillPath, SKILLS_SPECWORK_ENGINE_SKILL, 'utf-8');
       details.push('Updated specwork-engine/SKILL.md — sandbox lifecycle moved to specwork go');
-    }
-  }
-
-  // ── Update verifier agent — baseline-aware tsc-check ──────────────────
-  const verifierPath = path.join(root, '.claude', 'agents', 'specwork-verifier.md');
-  if (fs.existsSync(verifierPath)) {
-    const content = fs.readFileSync(verifierPath, 'utf-8');
-    if (
-      !content.includes('baseline') ||
-      !content.includes('start_sha') ||
-      !content.includes('scope filter')
-    ) {
-      fs.writeFileSync(verifierPath, AGENTS_SPECWORK_VERIFIER, 'utf-8');
-      details.push('Updated specwork-verifier.md — baseline-aware tsc-check, scoped tests-pass');
     }
   }
 

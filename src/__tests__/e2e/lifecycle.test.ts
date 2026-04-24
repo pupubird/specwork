@@ -49,7 +49,7 @@ function initSpecwork(root: string): void {
   }
 
   const config = {
-    models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
+    models: { default: 'sonnet', test_writer: 'opus' },
     execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel' },
     context: { ancestors: 'L0', parents: 'L1' },
     spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes', archive_dir: '.specwork/changes/archive', templates_dir: '.specwork/templates' },

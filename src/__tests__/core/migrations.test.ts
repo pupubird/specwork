@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { stringify as stringifyYaml } from 'yaml';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import {
   getPendingMigrations,
@@ -77,7 +77,7 @@ describe('getPendingMigrations', () => {
 
   it('returns empty array when no migrations are pending', () => {
     // When all in-range migrations are already applied
-    const result = getPendingMigrations('0.1.0', '0.3.0', ['0.1.1', '0.1.2', '0.1.3', '0.2.0', '0.2.2', '0.2.4', '0.2.5', '0.2.6', '0.3.0']);
+    const result = getPendingMigrations('0.1.0', '0.3.0', ['0.1.1', '0.1.2', '0.1.3', '0.2.0', '0.2.2', '0.2.4', '0.2.5', '0.2.6', '0.2.7', '0.3.0']);
     expect(result).toEqual([]);
   });
 
@@ -226,6 +226,59 @@ describe('migration idempotency', () => {
 
     expect(result1.executed).toEqual(result2.executed);
     expect(result1.error).toEqual(result2.error);
+  });
+});
+
+describe('0.2.7 migration', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTmpRoot();
+    fs.mkdirSync(path.join(root, '.claude', 'agents'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.specwork'), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('removes obsolete verifier/summarizer agent files and config fields', () => {
+    const summarizerPath = path.join(root, '.claude', 'agents', 'specwork-summarizer.md');
+    const verifierPath = path.join(root, '.claude', 'agents', 'specwork-verifier.md');
+    fs.writeFileSync(summarizerPath, 'custom summarizer content', 'utf-8');
+    fs.writeFileSync(verifierPath, 'custom verifier content', 'utf-8');
+    fs.writeFileSync(
+      path.join(root, '.specwork', 'config.yaml'),
+      stringifyYaml({
+        models: {
+          default: 'sonnet',
+          test_writer: 'opus',
+          verifier: 'haiku',
+          summarizer: 'haiku',
+        },
+        execution: {
+          max_retries: 2,
+          verify: 'gates',
+        },
+      }),
+      'utf-8',
+    );
+
+    const migration = migrations.find((entry) => entry.version === '0.2.7');
+    expect(migration).toBeDefined();
+
+    const result = runMigrations(root, { models: { summarizer: 'haiku', verifier: 'haiku' }, execution: { verify: 'gates' } }, [migration!]);
+
+    expect(result.error).toBeUndefined();
+    expect(fs.existsSync(summarizerPath)).toBe(false);
+    expect(fs.existsSync(verifierPath)).toBe(false);
+
+    const config = parseYaml(
+      fs.readFileSync(path.join(root, '.specwork', 'config.yaml'), 'utf-8'),
+    ) as { models: Record<string, unknown>; execution: Record<string, unknown> };
+    expect(config.models.summarizer).toBeUndefined();
+    expect(config.models.verifier).toBeUndefined();
+    expect(config.execution.verify).toBeUndefined();
   });
 });
 

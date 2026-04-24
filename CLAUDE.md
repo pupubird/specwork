@@ -36,7 +36,7 @@ specwork status
 1. `specwork plan` creates `.specwork/changes/<name>/` with proposal, design, and tasks templates pre-filled with your description
 2. You (or an agent) fill in the details: proposal (WHY), specs (WHAT), design (HOW), tasks (STEPS)
 3. `specwork graph generate <name>` maps tasks to a DAG of nodes
-4. `specwork go <name>` walks the graph: write tests (RED) → implement (GREEN) → verify → commit
+4. `specwork go <name>` walks the graph: write tests (RED) → implement wave → QA wave → next/done
 5. `specwork status` shows all active changes with progress
 
 One-time setup: `specwork init` (creates `.specwork/` directory structure).
@@ -67,7 +67,7 @@ Context files: `.specwork/nodes/<change>/<node-id>/L0.md`, `L1.md`, `L2.md`
 
 1. **Tests before implementation** — `write-tests` node always runs before any `impl-*` node. Tests must fail (red state) first.
 2. **Immutable tests** — implementer agents cannot modify test files.
-3. **Verify before commit** — the verifier agent runs after each node, before any git commit.
+3. **QA before next wave** — one QA agent reviews the completed wave before nodes are completed and the next wave starts.
 4. **Human gates** — `write-tests` node requires human approval before implementation begins.
 5. **Auto-archive** — completed changes are automatically archived to `.specwork/changes/archive/` when `specwork go` detects all nodes are done.
 
@@ -84,9 +84,9 @@ Context files: `.specwork/nodes/<change>/<node-id>/L0.md`, `L1.md`, `L2.md`
 | `.specwork/changes/` | In-flight change proposals (proposal + specs + design + tasks) |
 | `.specwork/changes/archive/` | Completed changes (auto-archived on workflow completion) |
 | `.specwork/graph/<change>/` | `graph.yaml` (plan) + `state.yaml` (runtime status) |
-| `.specwork/nodes/<change>/` | Node artifacts: L0/L1/L2, verify.md, output.txt |
+| `.specwork/nodes/<change>/` | Node artifacts: L0/L1/L2, output.txt |
 | `.specwork/examples/` | Example graphs for reference |
-| `.claude/agents/` | Subagent roles (test-writer, implementer, verifier, summarizer) |
+| `.claude/agents/` | Subagent roles (test-writer, implementer, QA) |
 | `.claude/skills/` | Engine logic (specwork-engine, specwork-context, specwork-conventions) |
 | `.claude/commands/` | Slash commands (specwork-plan, specwork-go, specwork-status) |
 | `.claude/hooks/` | Lifecycle hooks (type-check, session-init, node-complete) |
@@ -113,8 +113,7 @@ specwork status <change-name>
 |-------|-------|------|
 | `specwork-test-writer` | opus | Writes tests from specs (RED state required) |
 | `specwork-implementer` | sonnet | Makes tests pass, minimum code, within scope |
-| `specwork-verifier` | haiku | Read-only validation, PASS/FAIL per check |
-| `specwork-summarizer` | haiku | Generates L0/L1/L2 context for completed nodes |
+| `specwork-qa` | sonnet | Adversarial QA once per completed wave |
 
 ### Agent Teams (Mandatory)
 
@@ -143,8 +142,6 @@ Specwork's spec system is a built-in feature. Full details in the `specwork-conv
 models:
   default: sonnet       # Default subagent model
   test_writer: opus     # Test writing (thorough)
-  summarizer: haiku     # Context generation (fast)
-  verifier: haiku       # Validation (fast)
 
 execution:
   max_retries: 2        # Retry failed nodes up to N times

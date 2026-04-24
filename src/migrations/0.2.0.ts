@@ -3,10 +3,9 @@ import path from 'node:path';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type { MigrationFn } from '../types/migration.js';
 import { SKILLS_SPECWORK_ENGINE_SKILL } from '../templates/instructions/skills-specwork-engine-SKILL.js';
-import { AGENTS_SPECWORK_SUMMARIZER } from '../templates/instructions/agents-specwork-summarizer.js';
 import { COMMANDS_SPECWORK_PLAN } from '../templates/instructions/commands-specwork-plan.js';
 
-export const description = 'Execution model v2: state machine SKILL.md, max_concurrent config, group-aware summarizer, plan visualization';
+export const description = 'Execution model v2: state machine SKILL.md, max_concurrent config, plan visualization';
 
 export const migrate: MigrationFn = (root, _config) => {
   const details: string[] = [];
@@ -43,17 +42,7 @@ export const migrate: MigrationFn = (root, _config) => {
     }
   }
 
-  // 3. Update summarizer agent for group-level awareness
-  const summarizerPath = path.join(root, '.claude', 'agents', 'specwork-summarizer.md');
-  if (fs.existsSync(summarizerPath)) {
-    const content = fs.readFileSync(summarizerPath, 'utf-8');
-    if (!content.includes('sub_tasks') && !content.includes('group-level')) {
-      fs.writeFileSync(summarizerPath, AGENTS_SPECWORK_SUMMARIZER, 'utf-8');
-      details.push('Updated specwork-summarizer.md with group-level summarization instructions');
-    }
-  }
-
-  // 4. Update specwork-plan.md to include viz step in step 4
+  // 3. Update specwork-plan.md to include viz step in step 4
   const planSkillPath = path.join(root, '.claude', 'commands', 'specwork-plan.md');
   if (fs.existsSync(planSkillPath)) {
     const content = fs.readFileSync(planSkillPath, 'utf-8');

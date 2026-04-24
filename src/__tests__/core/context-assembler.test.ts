@@ -209,7 +209,7 @@ describe('assembleContext', () => {
     const graph = makeGraph('ch', [
       { id: 'write-tests', type: 'llm', description: 'tests', agent: 'specwork-test-writer', deps: [], inputs: [], outputs: [], scope: [], validate: [] },
       { id: 'impl-core', type: 'llm', description: 'impl', agent: 'specwork-implementer', deps: ['write-tests'], inputs: [], outputs: [], scope: [], validate: [] },
-      { id: 'integration', type: 'llm', description: 'integration', agent: 'specwork-verifier', deps: ['impl-core'], inputs: [], outputs: [], scope: [], validate: [] },
+      { id: 'integration', type: 'llm', description: 'integration', agent: 'specwork-qa', deps: ['impl-core'], inputs: [], outputs: [], scope: [], validate: [] },
     ]);
     const state = makeState('ch', { 'write-tests': 'complete', 'impl-core': 'complete', 'integration': 'pending' });
     setupChange(

@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 
-*A spec-driven workflow engine that keeps AI agents focused, verified, and honest — from first test to final commit.*
+*A spec-driven workflow engine that keeps AI agents focused, verified, and honest — from first test to done flow.*
 
 </div>
 
@@ -36,8 +36,8 @@ stateDiagram-v2
     pending --> in_progress : start
     pending --> skipped : upstream failed
 
-    in_progress --> complete : verify passes
-    in_progress --> failed : verify fails
+    in_progress --> complete : wave QA passes
+    in_progress --> failed : wave QA fails
 
     failed --> in_progress : retry (auto)
     failed --> escalated : retries exhausted
@@ -84,21 +84,21 @@ Here's what that looks like in practice. The agent runs `specwork go`:
 }
 ```
 
-The agent doesn't need memory of the overall plan. It reads `command`, sees `"team:spawn"`, spawns the teammates. Done. When a teammate finishes, it runs verify:
+The agent doesn't need memory of the overall plan. It reads `command`, sees `"team:spawn"`, spawns the teammates, then waits for the wave to finish. When every teammate in the wave is done, it runs one QA pass for the wave:
 
 ```json
 {
   "verdict": "PASS",
   "next_action": {
-    "command": "subagent:spawn",
-    "description": "Spawn summarizer to write L0/L1/L2 context, then complete the node.",
-    "on_pass": "specwork node complete add-jwt-auth impl-types",
-    "on_fail": "specwork node fail add-jwt-auth impl-types --reason '<error>'"
+    "command": "wave:await-qa",
+    "description": "Wave ready for QA. Spawn specwork-qa once for: write-tests, impl-types.",
+    "on_pass": "specwork node complete add-jwt-auth <wave-node>",
+    "on_fail": "specwork node fail add-jwt-auth <affected-node>"
   }
 }
 ```
 
-And when verification fails, the verifier agent calls `specwork node fail` directly with its findings:
+And when QA fails, the lead agent fails only the affected node(s) and re-spawns those implementers with the findings:
 
 ```json
 {
@@ -124,15 +124,14 @@ graph TD
     S --> I2["impl-service<br/><small>sonnet · wave 2</small>"]:::active
     I1 --> I3["impl-middleware<br/><small>sonnet · wave 3</small>"]:::pending
     I2 --> I3
-    I3 --> V["verify-all<br/><small>haiku · wave 4</small>"]:::pending
 
     classDef done fill:#166534,stroke:#4ADE80,color:#BBF7D0
     classDef active fill:#1E40AF,stroke:#60A5FA,color:#BFDBFE
     classDef pending fill:#374151,stroke:#9CA3AF,color:#D1D5DB
 ```
 
-Each wave completes and commits before the next starts. This means:
-- **No agent conflicts** — agents in the same wave work on distinct files, and the next wave sees a clean git state
+Each wave is QA-gated before the next starts. This means:
+- **No agent conflicts** — agents in the same wave work on distinct files, and the next wave only starts after the completed wave passes QA
 - **Natural review points** — you can inspect the results after each wave before the engine continues
 - **Bounded cost** — no unbounded parallelism; `max_concurrent` controls how many agents run at once
 
@@ -148,25 +147,19 @@ Every node — whether it's writing tests, implementing code, or running a shell
 sequenceDiagram
     participant E as Engine
     participant A as Agent
-    participant V as Verifier
     participant Q as QA
-    participant S as Summarizer
 
-    E->>A: next_action: start node<br/>(with micro-spec context)
-    A->>A: Execute work
-    A->>E: Done (or failed)
-    E->>V: next_action: verify<br/>(agent never grades itself)
-    V->>E: PASS / FAIL
+    E->>A: next_action: start wave<br/>(one teammate per ready node)
+    A->>A: Execute wave work
+    A->>E: Wave done (or failed)
+    E->>Q: next_action: QA review<br/>(one adversarial pass for the wave)
+    Q->>E: PASS / FAIL with affected nodes
 
     alt PASS
-        E->>Q: next_action: QA review<br/>(adversarial — tries to break it)
-        Q->>E: Approved / Issues found
-        E->>S: next_action: summarize<br/>(write L0/L1/L2 context)
-        S->>E: Context artifacts written
-        E->>E: Mark complete, commit
+        E->>E: Mark every wave node complete
         E->>A: next_action: run specwork go<br/>(find next wave)
     else FAIL (retries left)
-        E->>A: next_action: respawn<br/>(with failure feedback injected)
+        E->>A: next_action: respawn affected nodes<br/>(with QA feedback injected)
     else FAIL (exhausted)
         E->>E: Escalate to user<br/>(with actionable suggestions)
     end
@@ -174,7 +167,7 @@ sequenceDiagram
 
 Three critical rules:
 
-1. **The implementer never grades its own homework.** After every node, a separate verifier agent runs the test suite and type-checker, then a QA agent adversarially re-checks. The CLI records the result but never runs the checks itself.
+1. **The implementer never grades its own homework.** After every wave, a separate QA agent runs tests, type-checks where appropriate, and adversarially reviews the wave. The CLI records state but never runs the checks itself.
 2. **Tests before implementation.** The `write-tests` node always runs first. Tests must fail (red state) before any implementation begins.
 3. **Stack-agnostic verification.** Agents detect the test runner from `package.json` — jest, vitest, mocha, pytest, whatever the project uses. No hardcoded commands, no framework assumptions.
 
@@ -209,15 +202,9 @@ When a subagent starts working on a node, it doesn't receive the full conversati
 │     write-tests: complete, 23 tests (all red)   │
 │     impl-types: complete, 2 interfaces          │
 │                                                 │
-<<<<<<< HEAD
-│  6. Validation Checks                           │
-│     ✓ tests-pass  ✓ no-deferred-work            │
-│     ✓ type-check                                │
-=======
 │  6. Prior Node L0 Timeline                      │
 │     write-tests: complete, 23 tests (all red)   │
 │     impl-types: complete, 2 interfaces          │
->>>>>>> adb1c08 (specwork(update-to-0.2.6): remove scope-check validation rule and enhance test runner detection)
 └─────────────────────────────────────────────────┘
 ```
 
@@ -247,30 +234,6 @@ Every completed node gets an L0 headline, an L1 structured summary (decisions, c
 
 ---
 
-## Sandbox: environment setup before agents run
-
-Agents shouldn't fail because the dev server isn't running or dependencies aren't installed. Specwork's **sandbox system** auto-detects your project infrastructure and ensures everything is ready before subagents execute.
-
-```bash
-# Auto-detect what your project needs
-specwork sandbox detect
-
-# Start everything (deps, dev servers, databases)
-specwork sandbox init
-
-# Check what's running
-specwork sandbox status
-
-# Clean up (only kills sandbox-started processes)
-specwork sandbox teardown
-```
-
-The sandbox detects: **package managers** (npm/yarn/pnpm), **test runners** (vitest/jest/mocha), **e2e frameworks** (playwright/cypress), **Docker services** (reads docker-compose.yaml), **dev scripts**, and **.env files**. Services start in dependency order with ready checks. PID tracking ensures only sandbox-started processes are killed on teardown — your other terminals stay untouched.
-
-The engine triggers sandbox init automatically before subagent spawn and teardown after verification completes.
-
----
-
 ## Plan visualization
 
 Before running `specwork go`, review the full plan in your browser:
@@ -283,7 +246,7 @@ This generates an interactive HTML page at `.specwork/changes/<change>/overview.
 - A **Mermaid DAG** showing all nodes, dependencies, and types
 - The **proposal** (why this change exists)
 - **Spec requirements** mapped to each node
-- **Node detail panels** with scope, agent, and validation rules
+- **Node detail panels** with wave, scope, agent, dependencies, and node responsibilities
 
 Review the plan visually, then run `specwork go` when you're confident.
 
@@ -339,15 +302,6 @@ Or use Claude Code slash commands:
 | `specwork viz <change>` | Generate and open interactive HTML plan visualization |
 | `specwork doctor [change]` | Health-check project or change artifacts |
 
-### Sandbox commands
-
-| Command | Description |
-| --- | --- |
-| `specwork sandbox detect` | Auto-detect project type, services, and infrastructure |
-| `specwork sandbox init [change]` | Start sandbox environment (deps, servers, databases) |
-| `specwork sandbox teardown [change]` | Stop only sandbox-started processes |
-| `specwork sandbox status` | Show running sandbox services and ports |
-
 ### Node and graph commands (used by the engine)
 
 | Command | Description |
@@ -355,8 +309,6 @@ Or use Claude Code slash commands:
 | `specwork node start <change> <node>` | Start a specific node (injects micro-spec context) |
 | `specwork node complete <change> <node>` | Mark a node complete |
 | `specwork node fail <change> <node>` | Mark a node failed |
-| `specwork node verify <change> <node>` | Record agent-driven verification pass (sets verified=true) |
-| `specwork node qa-pass <change> <node>` | Record QA approval — triggers summarizer and completion |
 | `specwork graph generate <change>` | Generate DAG from tasks |
 | `specwork graph show <change>` | Display the node graph |
 | `specwork run <change>` | Find ready nodes and output execution plan |
@@ -383,7 +335,6 @@ All commands support `--json` for machine-readable output with `next_action` gui
 .specwork/
 ├── config.yaml              # Engine + spec configuration
 ├── manifest.yaml            # SHA256 checksums of managed files (for specwork update)
-├── sandbox.yaml             # Sandbox environment configuration
 ├── schema.yaml              # Artifact dependency graph
 ├── specs/                   # Source-of-truth behavior specs
 ├── changes/                 # In-flight changes (proposal + specs + design + tasks + overview.html)
@@ -391,14 +342,13 @@ All commands support `--json` for machine-readable output with `next_action` gui
 ├── graph/<change>/
 │   ├── graph.yaml           # Node DAG (dependencies, scope, agent assignments)
 │   └── state.yaml           # Runtime state (status, wave, retries per node)
-├── nodes/<change>/          # Per-node artifacts (L0/L1/L2, L1-structured.json, verify.md)
-├── sandbox/                 # Sandbox runtime state (PIDs, ports)
+├── nodes/<change>/          # Per-node artifacts (L0/L1/L2, L1-structured.json, output.txt)
 ├── backups/                 # Pre-update backups by version
 ├── templates/               # Starter templates for proposals, specs, design, tasks
 └── examples/                # Example graphs for reference
 
 .claude/
-├── agents/                  # Subagent definitions (6 roles)
+├── agents/                  # Subagent definitions
 ├── skills/                  # Engine logic (specwork-engine, specwork-context, specwork-conventions)
 ├── commands/                # Slash commands (specwork-plan, specwork-go, specwork-status)
 └── hooks/                   # Lifecycle hooks (type-check, session-init, node-complete)
@@ -411,19 +361,17 @@ All commands support `--json` for machine-readable output with `next_action` gui
 | `specwork-planner` | sonnet | Explores codebase, asks clarifying questions, generates proposal/specs/design/tasks |
 | `specwork-test-writer` | opus | Writes tests from specs — must all fail (RED state). No stubs allowed. |
 | `specwork-implementer` | sonnet | Makes tests pass with minimum code. No TODOs, no deferred work. |
-| `specwork-qa` | sonnet | Adversarial QA — tries to break the output. Checks edge cases, regressions, spec compliance. Read-only. |
-| `specwork-verifier` | haiku | Detects test runner from package.json, runs tests + tsc, calls `specwork node verify` on pass |
-| `specwork-summarizer` | haiku | Generates L0/L1/L2 context and structured L1 JSON after each node |
+| `specwork-qa` | sonnet | Adversarial wave QA — tries to break the output. Checks edge cases, regressions, spec compliance. Read-only. |
 
 ### Node types
 
 - **`deterministic`** — Runs a shell command. Captures stdout/stderr, validates exit code.
-- **`llm`** — Spawns a subagent with micro-spec context and validation rules.
+- **`llm`** — Spawns a subagent with micro-spec context and a scoped prompt.
 - **`human`** — Pauses execution for manual approval.
 
 ### State machine
 
-Every node tracks: `status`, `retries`, `verified`, `l0` (headline), `start_sha` (git baseline for tsc-check), `wave` (execution batch), and a full `verify_history` with regression detection.
+Every node tracks: `status`, `retries`, `verified`, `l0` (headline), `start_sha`, and wave execution metadata.
 
 Terminal states: `complete`, `skipped`, `rejected`. Retryable: `failed` → `in_progress`. Escalatable: `escalated` → `in_progress` (manual via `specwork retry`).
 
@@ -438,15 +386,12 @@ Terminal states: `complete`, `skipped`, `rejected`. Retryable: `failed` → `in_
 models:
   default: sonnet
   test_writer: opus
-  verifier: haiku
-  summarizer: haiku
 
 execution:
   max_retries: 2        # Retry failed nodes up to N times
   expand_limit: 1       # Max EXPAND requests per node
   parallel_mode: parallel
   snapshot_refresh: after_each_node
-  verify: gates         # Verification mode (gates = block on fail)
 
 context:
   ancestors: L0         # All completed nodes get L0

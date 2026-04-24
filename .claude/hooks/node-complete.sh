@@ -1,8 +1,5 @@
 #!/bin/bash
-# SubagentStop hook — generate preliminary L2 context after node completion
-# NOTE: This generates L2 from git diff + verify.md. The specwork-summarizer agent
-# may later overwrite L2.md with a richer version that includes subagent output.
-# The summarizer's version takes precedence — this hook provides a baseline.
+# SubagentStop hook — generate L2 context after node completion
 
 INPUT=$(cat)
 AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty')
@@ -23,7 +20,7 @@ if [[ "$AGENT_ID" == specwork-* ]]; then
       cat "${NODE_DIR}/verify.md" >> "${NODE_DIR}/L2.md"
     fi
 
-    echo "Node ${NODE} artifacts saved. L0/L1 generation pending." >&2
+    echo "Node ${NODE} L2 artifact saved." >&2
   fi
 fi
 

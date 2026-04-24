@@ -170,7 +170,7 @@ describe('node-complete.sh — specwork agent, with .current-node', () => {
   });
 
   it('works for all specwork-* agent variants', () => {
-    const agents = ['specwork-test-writer', 'specwork-verifier', 'specwork-summarizer'];
+    const agents = ['specwork-test-writer', 'specwork-implementer', 'specwork-qa'];
     for (const agentId of agents) {
       // Reset .current-node for each agent variant test
       writeFileSync(
@@ -202,7 +202,7 @@ describe('node-complete.sh — verify.md integration', () => {
     mkdirSync(nodeDir, { recursive: true });
     writeFileSync(path.join(nodeDir, 'verify.md'), 'PASS: all checks passed\n', 'utf8');
 
-    runHook({ agent_id: 'specwork-verifier' }, tmpDir);
+    runHook({ agent_id: 'specwork-qa' }, tmpDir);
 
     const l2Content = readFileSync(path.join(nodeDir, 'L2.md'), 'utf8');
     expect(l2Content).toContain('---');
@@ -210,7 +210,7 @@ describe('node-complete.sh — verify.md integration', () => {
   });
 
   it('L2.md does not contain separator when verify.md is absent', () => {
-    runHook({ agent_id: 'specwork-verifier' }, tmpDir);
+    runHook({ agent_id: 'specwork-qa' }, tmpDir);
 
     const nodeDir = path.join(tmpDir, '.specwork', 'nodes', 'qa-change', 'write-tests');
     const l2Content = readFileSync(path.join(nodeDir, 'L2.md'), 'utf8');

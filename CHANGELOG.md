@@ -7,6 +7,32 @@ Specwork uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.7] - 2026-04-24
+
+### Changed
+
+- Simplified execution lifecycle to wave-level QA: start wave → implement wave → QA once → fix affected nodes or continue to next wave/done flow.
+- **Wave-level spawn**: replaced the per-node `node:start` state with `wave:start`. The engine now issues a single `specwork wave start <change> --json` call that marks all ready nodes in_progress and returns a `nodes[]` payload where each entry already carries its own pre-assembled `context` string. Teammates spawn with that slice directly — no more per-node CLI roundtrip before spawn.
+- `specwork node complete` marks nodes verified as part of the post-QA completion path.
+
+### Removed
+
+- Removed the summarizer agent step and stopped generating `.claude/agents/specwork-summarizer.md`.
+- Removed the verifier agent step and stopped generating `.claude/agents/specwork-verifier.md`.
+- Removed `specwork node verify`, `specwork node qa-pass`, `models.summarizer`, `models.verifier`, and `execution.verify`.
+- Removed the final-review state from the done flow; when no nodes remain, Specwork shows the normal done suggestions.
+- **Removed the `node:start` state from the engine state machine.** The old per-node `specwork node start` → `specwork context assemble` → `subagent:spawn` three-step loop is replaced by a single `specwork wave start`. The plumbing `specwork node start` CLI is retained for manual debugging but is no longer part of the autonomous flow.
+- **Removed the sandbox feature entirely.** Deleted `specwork sandbox` (init/teardown/status/detect) commands, `src/core/sandbox-*.ts`, `src/cli/sandbox.ts`, `src/types/sandbox.ts`, and all sandbox tests. Removed automatic `ensureSandbox`/`teardownSandbox` calls from `specwork go`. Rationale: agents know their stack and can start services using the project's own scripts — a bespoke sandbox layer was unnecessary duplication and a source of drift.
+
+### Migration
+
+The `0.2.7` migration automatically:
+- Deletes obsolete `.claude/agents/specwork-summarizer.md` and `.claude/agents/specwork-verifier.md`.
+- Removes `models.summarizer`, `models.verifier`, `execution.verify`, and the `sandbox` block from existing `.specwork/config.yaml`.
+- Deletes `.specwork/sandbox.yaml` and the `.specwork/sandbox/` runtime directory if present.
+
+[0.2.7]: https://github.com/pupubird/specwork/releases/tag/v0.2.7
+
 ## [0.2.6] - 2026-04-10
 
 ### Changed — Prompt and Status Only (breaking)

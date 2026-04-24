@@ -9,15 +9,10 @@ export type NextActionStatus =
   | 'go:done'
   | 'go:blocked'
   | 'go:waiting'
-  | 'go:final-review'
-  | 'node:start'
+  | 'wave:spawn'
   | 'node:complete'
   | 'node:fail'
-  | 'node:escalate'
-  | 'node:verify:pass'
-  | 'node:verify:fail'
-  | 'node:qa:pass'
-  | 'node:qa:fail';
+  | 'node:escalate';
 
 export interface NextActionOpts {
   change: string;
@@ -60,8 +55,16 @@ export function buildNextAction(
   switch (status) {
     case 'go:ready':
       return {
+        command: `specwork wave start ${change} --json`,
+        description: `Open next wave — fetch per-node contexts in one call`,
+        context,
+        ready_queue: readyNodes ?? [],
+      };
+
+    case 'wave:spawn':
+      return {
         command: 'team:spawn',
-        description: `Spawn teammates for wave`,
+        description: `Spawn teammates with per-node context payload from wave start`,
         context,
         ready_queue: readyNodes ?? [],
       };
@@ -90,15 +93,6 @@ export function buildNextAction(
         command: 'wait',
         description: `Nodes in progress`,
         context,
-      };
-
-    case 'node:start':
-      return {
-        command: `specwork node start ${change} ${nodeId} --json`,
-        description: `Start node ${nodeId}`,
-        context,
-        on_pass: `specwork node verify ${change} ${nodeId} --json`,
-        on_fail: `specwork node fail ${change} ${nodeId}`,
       };
 
     case 'node:complete':
@@ -134,64 +128,10 @@ export function buildNextAction(
         description: `Node ${nodeId} escalated`,
         context,
         suggest_to_user: [
-          `Fix manually and retry: specwork node start ${change} ${nodeId}`,
+          `Fix manually and retry: specwork wave start ${change}`,
           `Continue workflow without this node: specwork go ${change} --json`,
           'Abort the workflow',
         ],
-      };
-
-    case 'node:verify:pass':
-      return {
-        command: 'subagent:spawn:qa',
-        description: `Spawn specwork-qa for ${nodeId}`,
-        context,
-        on_pass: `specwork node qa-pass ${change} ${nodeId} --json`,
-      };
-
-    case 'node:qa:pass':
-      return {
-        command: 'subagent:spawn',
-        description: `Spawn summarizer for ${nodeId}`,
-        context,
-        on_pass: `specwork node complete ${change} ${nodeId} --json`,
-      };
-
-    case 'node:qa:fail':
-      if (retriesLeft !== undefined && retriesLeft > 0) {
-        return {
-          command: 'subagent:respawn',
-          description: `Retry node ${nodeId} after QA fail (${retriesLeft} left)`,
-          context,
-          on_fail: `specwork node fail ${change} ${nodeId}`,
-        };
-      }
-      return {
-        command: 'escalate',
-        description: `QA failed for node ${nodeId}, retries exhausted`,
-        context,
-        on_fail: `specwork node fail ${change} ${nodeId}`,
-        suggest_to_user: [
-          `Fix the issue manually and run: specwork node complete ${change} ${nodeId}`,
-          `Skip this node: specwork node escalate ${change} ${nodeId}`,
-          'Abort the workflow',
-        ],
-      };
-
-    case 'go:final-review':
-      return {
-        command: 'subagent:spawn:qa',
-        description: `Final QA review for change ${change}`,
-        context,
-        on_pass: `specwork go ${change} --done`,
-        on_fail: `specwork go ${change} --blocked`,
-      };
-
-    case 'node:verify:fail':
-      return {
-        command: `specwork node fail ${change} ${nodeId}`,
-        description: `Verification failed for ${nodeId}`,
-        context,
-        on_fail: `specwork node fail ${change} ${nodeId}`,
       };
 
     default:

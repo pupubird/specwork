@@ -50,7 +50,7 @@ function initSpecwork(root: string): void {
 
   // Valid config with all required sections
   const config = {
-    models: { default: 'sonnet', test_writer: 'opus', summarizer: 'haiku', verifier: 'haiku' },
+    models: { default: 'sonnet', test_writer: 'opus' },
     execution: { max_retries: 2, expand_limit: 1, parallel_mode: 'parallel' },
     spec: { schema: 'spec-driven', specs_dir: '.specwork/specs', changes_dir: '.specwork/changes' },
     graph: { graphs_dir: '.specwork/graph', nodes_dir: '.specwork/nodes' },

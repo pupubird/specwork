@@ -38,11 +38,12 @@ describe('specwork init (enhanced / batteries-included)', () => {
 
   // ── Config ──────────────────────────────────────────────────────────────
 
-  it('writes config.yaml with execution.verify: gates', () => {
+  it('writes config.yaml without legacy verifier settings', () => {
     runSpecwork(dir, 'init');
     const configPath = path.join(dir, '.specwork', 'config.yaml');
     const config = parseYaml(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>;
-    expect(config.execution.verify).toBe('gates');
+    expect(config.execution.verify).toBeUndefined();
+    expect(config.models.verifier).toBeUndefined();
   });
 
   // ── Schema & examples ──────────────────────────────────────────────────
@@ -84,9 +85,7 @@ describe('specwork init (enhanced / batteries-included)', () => {
       'specwork-implementer.md',
       'specwork-planner.md',
       'specwork-qa.md',
-      'specwork-summarizer.md',
       'specwork-test-writer.md',
-      'specwork-verifier.md',
     ];
     for (const agent of agents) {
       const p = path.join(dir, '.claude', 'agents', agent);
@@ -192,7 +191,7 @@ describe('specwork init (enhanced / batteries-included)', () => {
     // Config should be restored
     const config = parseYaml(fs.readFileSync(path.join(dir, '.specwork', 'config.yaml'), 'utf-8')) as Record<string, any>;
     expect(config.models).toBeDefined();
-    expect(config.execution.verify).toBe('gates');
+    expect(config.execution.verify).toBeUndefined();
   });
 
   // ── JSON mode ──────────────────────────────────────────────────────────

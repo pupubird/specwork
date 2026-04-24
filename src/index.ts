@@ -17,7 +17,6 @@ import { makeDoctorCommand } from './cli/doctor.js';
 import { makeUpdateCommand } from './cli/update.js';
 import { makeArchiveCommand } from './cli/archive.js';
 import { makeVizCommand } from './cli/viz.js';
-import { makeSandboxCommand } from './cli/sandbox.js';
 
 // Plumbing (agent-facing)
 import { makeNewCommand } from './cli/new.js';
@@ -27,6 +26,7 @@ import { makeRetryCommand } from './cli/retry.js';
 import { makeReportCommand } from './cli/report.js';
 import { makeLogCommand } from './cli/log.js';
 import { makeNodeCommand } from './cli/node.js';
+import { makeWaveCommand } from './cli/wave.js';
 import { makeGraphCommand } from './cli/graph.js';
 import { makeContextCommand } from './cli/context.js';
 
@@ -69,7 +69,6 @@ program.addCommand(makeDoctorCommand());
 program.addCommand(makeUpdateCommand());
 program.addCommand(makeArchiveCommand());
 program.addCommand(makeVizCommand());
-program.addCommand(makeSandboxCommand());
 
 // ── Plumbing commands (agent-facing — used by the engine skill) ──────────
 program.addCommand(makeNewCommand());
@@ -79,6 +78,7 @@ program.addCommand(makeRetryCommand());
 program.addCommand(makeReportCommand());
 program.addCommand(makeLogCommand());
 program.addCommand(makeNodeCommand());
+program.addCommand(makeWaveCommand());
 program.addCommand(makeGraphCommand());
 program.addCommand(makeContextCommand());
 
@@ -91,7 +91,6 @@ Workflow:
   specwork update                Update project files to current version
   specwork archive <change>     Archive a completed change
   specwork status [change]      Check progress
-  specwork sandbox <cmd>        Manage sandbox environments for agent testing
 
 All other commands are used by the engine internally.
 Run: specwork <command> --help  for details on any command.
